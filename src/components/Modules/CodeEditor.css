@@ -1,0 +1,44 @@
+.cm-editor {
+    height: 100%;
+    cursor: text;
+}
+.cm-gutters {
+    cursor: default;
+    -moz-user-select:none;
+    -webkit-user-select:none;
+    -ms-user-select:none;
+    -khtml-user-select:none;
+    user-select:none;
+}
+.cm-editor.cm-focused {
+    outline: none;
+}
+
+/* https://developer.mozilla.org/en-US/docs/Web/CSS/::-webkit-scrollbar */
+/* css for scrollbar */
+.cm-scroller::-webkit-scrollbar {
+  background: #ffffff00;
+}
+.cm-scroller::-webkit-scrollbar-corner {
+  background: #ffffff00;
+}
+.light-theme .cm-scroller::-webkit-scrollbar-thumb {
+  background: #00000022;
+  border-radius: 0px;
+}
+.light-theme .cm-scroller::-webkit-scrollbar-thumb:hover {
+  background: #00000044;
+}
+.light-theme .cm-scroller::-webkit-scrollbar-thumb:active {
+  background: #00000066;
+}
+.dark-theme .cm-scroller::-webkit-scrollbar-thumb {
+  background: #ffffff22;
+  border-radius: 0px;
+}
+.dark-theme .cm-scroller::-webkit-scrollbar-thumb:hover {
+  background: #ffffff44;
+}
+.dark-theme .cm-scroller::-webkit-scrollbar-thumb:active {
+  background: #ffffff66;
+}

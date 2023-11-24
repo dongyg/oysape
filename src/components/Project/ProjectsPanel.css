@@ -1,0 +1,4 @@
+/* 放在侧边栏里面放在右侧的时候, 右边有留空白, 不要留空白 */
+.ant-tabs-right >.ant-tabs-content-holder >.ant-tabs-content > .ant-tabs-tabpane {
+    padding-right: 0px;
+}

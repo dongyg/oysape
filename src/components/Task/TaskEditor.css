@@ -1,0 +1,44 @@
+.light-theme .ant-input-number {
+    color: #616161;
+    background-color: #ddd6c1;
+}
+
+.light-theme .ant-input-number .ant-input-number-handler-wrap {
+    color: #616161;
+    background-color: #ddd6c1;
+}
+
+.light-theme .ant-btn-default {
+    color: #616161;
+    background-color: #ddd6c1;
+}
+
+.dark-theme .ant-input-number {
+    background-color: #003847;
+}
+
+.dark-theme .ant-input-number .ant-input-number-handler-wrap {
+    background-color: #003847;
+}
+
+.dark-theme .ant-btn-default {
+    background-color: #003847;
+}
+
+.ant-input-group .ant-input-group-addon {
+    padding: 0px 0px;
+}
+
+.codeCmd {
+    border-width: 1px;
+    border-style: solid;
+    border-radius: 0px;
+    max-height: calc(100vh - 450px);
+    overflow: auto;
+}
+.dark-theme .codeCmd {
+    border-color: #424242;
+}
+.light-theme .codeCmd {
+    border-color: #d9d9d9;
+}

@@ -1,0 +1,15 @@
+/* DirectoryTree 有默认的 Folder 和 File 图标, Folder 图标有展开和折叠两个效果, 所以可以不要另外的折叠图标 */
+/* 把默认的展开折叠图标设置为透明, 就看不到了, 但还会占着位, 这样刚好树节点缩进的位置相对于上层 Collapse 是缩进一块的 */
+.ant-tree .ant-tree-switcher .ant-tree-switcher-icon {
+    color: #ffffff00;
+}
+.ant-tree.ant-tree-directory .ant-tree-treenode .ant-tree-node-content-wrapper.ant-tree-node-selected {
+    color: inherit;
+}
+
+.ant-tree.light-theme {
+    background-color: #eee8d5;
+}
+.ant-tree.dark-theme {
+    background-color: #00212b;
+}

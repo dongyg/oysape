@@ -1,0 +1,97 @@
+/* 覆盖默认 Collapse small size 的样式, 把 header padding 改为 0 以便里面放按钮时按钮周边无空白 */
+.ant-collapse>.ant-collapse-item >.ant-collapse-header {
+    padding: 0px 0px;
+}
+.ant-collapse-small >.ant-collapse-item >.ant-collapse-header {
+    padding: 0px 0px;
+}
+.ant-collapse .ant-collapse-content > .ant-collapse-content-box {
+    padding: 0px;
+}
+.ant-collapse-small > .ant-collapse-item > .ant-collapse-content > .ant-collapse-content-box {
+    padding: 0px;
+}
+/* 然后需要修改左边展开按钮和标题文字的偏移 */
+.ant-collapse-item >.ant-collapse-header >.ant-collapse-expand-icon {
+    padding-left: 8px;
+    padding-top: 8px;
+    margin-right: -4px;
+}
+.ant-collapse>.ant-collapse-item >.ant-collapse-header .ant-collapse-header-text {
+    padding-top: 4px;
+}
+
+/* Collapse 和里面的 Button 不要圆角 */
+.ant-collapse > .ant-collapse-item:last-child > .ant-collapse-header {
+    border-radius: 0px;
+}
+.ant-collapse .ant-collapse-item:last-child > .ant-collapse-content {
+    border-radius: 0px;
+}
+.ant-collapse .ant-btn {
+    border-radius: 0px;
+}
+
+/* Antd 的 Collapse 不加任何处理的话, 它的内容有多高, 整个组件就有多高, 不能适应高度 */
+/* 经过多次尝试, 针对有 2 个子元素并且header高度固定的情况, 设置 css 来基本达到可用的效果 */
+/* 见下面 1,2,3,4,5,6,7 注释 */
+.ant-collapse {
+    border: none;
+    border-radius: 0px;
+    height: 100%; /* 1. 在 Collapse 上层一定是一个独立的元素, Collapse 是 100% 高度 */
+    display: flex; /* 2. 把Collapse设置为 flex 布局 */
+    flex-direction: column; /* 3. 把Collapse里面的内容设置为 column 布局, 即纵向排列 */
+}
+.ant-collapse > .ant-collapse-item {
+    border: none;
+    max-height: calc(100% - 32px); /* 4. 因为总共2个子元素, 所以单个子元素的高度是 100% - 另外子元素的header高度. 如果有 n 个子元素, 那就应该是 100% - ((n-1)*32)px */
+}
+.ant-collapse > .ant-collapse-item:last-child {
+    border-radius: 0px;
+    max-height: calc(100% - 32px); /* 4. 同样是高度问题, 最后一个子元素的css独立定义 */
+    min-height: 0; /* 5. 最后一个子元素设置 min-height 为 0 后, 它的高度就不会超过父元素. 这个min-height的作用很神奇 */
+}
+.ant-collapse .ant-collapse-content {
+    border-top: none;
+    height: calc(100% - 32px); /* 6. 单个子元素中内容区域高度是子元素的高度减去它自己的header高度, 所以是 100% - 32px */
+    overflow: auto; /* 7. 把内容区里面的元素超出的话显示滚动条 */
+}
+
+/* 主题颜色 */
+.light-theme>.ant-collapse-item>.ant-collapse-header {
+    background-color: #d8d4c4;
+}
+.dark-theme>.ant-collapse-item>.ant-collapse-header {
+    background-color: #1a343c;
+}
+.ref-antd4-less-variable {
+    background-color: (@body-background); /* 这个没有用, 只是展示了可以引用 antd4 的 less 变量. antd4 的 less 变量是在 webpack 配置中注入的, 并且是经过 antd5 做过兼容转换才得到的 */
+}
+
+/* 滚动条样式 */
+.ant-collapse .ant-collapse-content::-webkit-scrollbar {
+    background: #ffffff00;
+}
+.ant-collapse .ant-collapse-content::-webkit-scrollbar-corner {
+    background: #ffffff00;
+}
+.light-theme .ant-collapse .ant-collapse-content::-webkit-scrollbar-thumb {
+    background: #00000022;
+    border-radius: 0px;
+}
+.light-theme .ant-collapse .ant-collapse-content::-webkit-scrollbar-thumb:hover {
+    background: #00000044;
+}
+.light-theme .ant-collapse .ant-collapse-content::-webkit-scrollbar-thumb:active {
+    background: #00000066;
+}
+.dark-theme .ant-collapse .ant-collapse-content::-webkit-scrollbar-thumb {
+    background: #ffffff22;
+    border-radius: 0px;
+}
+.dark-theme .ant-collapse .ant-collapse-content::-webkit-scrollbar-thumb:hover {
+    background: #ffffff44;
+}
+.dark-theme .ant-collapse .ant-collapse-content::-webkit-scrollbar-thumb:active {
+    background: #ffffff66;
+}

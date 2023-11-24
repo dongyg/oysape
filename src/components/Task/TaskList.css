@@ -1,0 +1,24 @@
+aside .dark-theme .ant-table-tbody {
+  background-color: #00212b;
+}
+aside .dark-theme .ant-table-tbody .ant-table-row.ant-table-row-selected .ant-table-cell {
+  background-color: #003440;
+}
+aside .dark-theme .ant-table-tbody .ant-table-row > .ant-table-cell-row-hover {
+  background: #003946;
+}
+aside .dark-theme .ant-input-affix-wrapper {
+  background: #003946;
+}
+aside .light-theme .ant-table-tbody {
+  background-color: #eee8d5;
+}
+aside .light-theme .ant-table-tbody .ant-table-row.ant-table-row-selected .ant-table-cell {
+  background-color: #dfca88;
+}
+aside .light-theme .ant-table-tbody .ant-table-row > .ant-table-cell-row-hover {
+  background: #eae0c0;
+}
+aside .light-theme .ant-input-affix-wrapper {
+  background: #eae0c0;
+}

@@ -1,3 +1,13 @@
+# Custom
+build
+gui
+venv-oysape
+yarn.lock
+.DS_Store
+__pycache__
+*.pyc
+*.pyd
+*.pyo
 # Logs
 logs
 *.log

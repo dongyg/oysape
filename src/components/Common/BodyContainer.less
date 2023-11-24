@@ -1,0 +1,53 @@
+body {
+  overflow: hidden;
+}
+#app {
+  height: 100vh;
+}
+.disableHighlight {
+  -moz-user-select:none;
+  -webkit-user-select:none;
+  -ms-user-select:none;
+  -khtml-user-select:none;
+  user-select:none;
+}
+
+.light-theme .ant-input {
+  color: #616161;
+  background-color: #ddd6c1;
+}
+.dark-theme .ant-input {
+  color: #919fa0;
+  background-color: #003847;
+}
+
+/* css for scrollbar */
+.withScrollContent::-webkit-scrollbar {
+  background: #ffffff00;
+}
+.withScrollContent::-webkit-scrollbar-corner {
+  background: #ffffff00;
+}
+.light-theme .withScrollContent::-webkit-scrollbar-thumb {
+  background: #00000022;
+  border-radius: 0px;
+}
+.light-theme .withScrollContent::-webkit-scrollbar-thumb:hover {
+  background: #00000044;
+}
+.light-theme .withScrollContent::-webkit-scrollbar-thumb:active {
+  background: #00000066;
+}
+.dark-theme .withScrollContent::-webkit-scrollbar-thumb {
+  background: #ffffff22;
+  border-radius: 0px;
+}
+.dark-theme .withScrollContent::-webkit-scrollbar-thumb:hover {
+  background: #ffffff44;
+}
+.dark-theme .withScrollContent::-webkit-scrollbar-thumb:active {
+  background: #ffffff66;
+}
+.ant-modal-confirm-content {
+  word-break: break-word;
+}

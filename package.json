@@ -93,6 +93,7 @@
     "init:default": "python3 -m venv venv-oysape && ./venv-oysape/bin/pip install -r requirements.txt",
     "init:qt5": "./venv-oysape/bin/pip install pyqt5 pyqtwebengine -r requirements.txt",
     "init:gtk": "sudo apt install libgirepository1.0-dev gcc libcairo2-dev pkg-config python3-dev gir1.2-gtk-3.0 && ./venv-oysape/bin/pip install pycairo pygobject -r requirements.txt",
+    "start": "run-script-os",
     "start:windows": "set BUILD_PATH=./gui & node scripts/build.js &.\\venv-oysape\\Scripts\\python src\\index.py",
     "start:default": "BUILD_PATH='./gui' node scripts/build.js && ./venv-oysape/bin/python3 src/index.py"
   },

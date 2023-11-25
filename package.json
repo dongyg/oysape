@@ -82,7 +82,7 @@
     "dev": "node scripts/start.js",
     "build": "yarn run clean && run-script-os",
     "build:macos": "./venv-oysape/bin/python build-macos.py py2app",
-    "build:windows": "set BUILD_PATH=./gui & node scripts/build.js & .\\venv-oysape\\Scripts\\pyinstaller build-windows.spec",
+    "build:windows": "set BUILD_PATH=gui&node scripts/build.js & .\\venv-oysape\\Scripts\\pyinstaller build-windows.spec",
     "build:linux": "BUILD_PATH='./gui' node scripts/build.js &&./venv-oysape/bin/pyinstaller build-linux.spec --onefile",
     "clean": "run-script-os",
     "clean:default": "rm -rf gui 2>/dev/null; rm -rf build 2>/dev/null; rm -rf dist 2>/dev/null; ",
@@ -94,7 +94,7 @@
     "init:qt5": "./venv-oysape/bin/pip install pyqt5 pyqtwebengine -r requirements.txt",
     "init:gtk": "sudo apt install libgirepository1.0-dev gcc libcairo2-dev pkg-config python3-dev gir1.2-gtk-3.0 && ./venv-oysape/bin/pip install pycairo pygobject -r requirements.txt",
     "start": "run-script-os",
-    "start:windows": "set BUILD_PATH=./gui & node scripts/build.js &.\\venv-oysape\\Scripts\\python src\\index.py",
+    "start:windows": "set BUILD_PATH=gui&node scripts/build.js & .\\venv-oysape\\Scripts\\python src\\index.py",
     "start:default": "BUILD_PATH='./gui' node scripts/build.js && ./venv-oysape/bin/python3 src/index.py"
   },
   "eslintConfig": {

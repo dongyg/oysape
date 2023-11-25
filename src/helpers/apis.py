@@ -13,7 +13,7 @@ ctrl_c = '\u0003'
 ctrl_d = '\u0004'
 es_home = '\u001b[200~'
 es_end = '\u001b[201~'
-folder_base = os.path.expanduser('~/.oysape')
+folder_base = os.path.expanduser(os.path.join('~', '.oysape'))
 folder_projects = os.path.join(folder_base, 'projects')
 filename_settings = os.path.join(folder_base, 'workspace.json')
 filename_tasks = os.path.join(folder_base, 'tasks.json')
@@ -791,6 +791,8 @@ class ApiOysape(ApiBase):
             with open(filename_settings, 'r') as f:
                 self.workspaceSettings = json.load(f)
         else:
+            if not os.path.exists(folder_base):
+                os.makedirs(folder_base)
             with open(filename_settings, 'w') as f:
                 json.dump(self.workspaceSettings, f, indent=4)
         exclude = self.workspaceSettings.get('exclude') or []

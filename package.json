@@ -88,7 +88,7 @@
     "clean:default": "rm -rf gui 2>/dev/null; rm -rf build 2>/dev/null; rm -rf dist 2>/dev/null; ",
     "clean:windows": "if exist gui rd /S /Q gui & if exist build rd /S /Q build & if exist dist rd /S /Q dist",
     "init": "yarn install && run-script-os",
-    "init:windows": "python3 -m venv venv-oysape & .\\venv-oysape\\Scripts\\pip install -r requirements.txt",
+    "init:windows": "python -m venv venv-oysape & .\\venv-oysape\\Scripts\\pip install -r requirements.txt",
     "init:linux": "python3 -m venv venv-oysape && if [[ -z \"${KDE_FULL_SESSION}\" ]]; then yarn run init:qt5; else yarn run init:gtk; fi",
     "init:default": "python3 -m venv venv-oysape && ./venv-oysape/bin/pip install -r requirements.txt",
     "init:qt5": "./venv-oysape/bin/pip install pyqt5 pyqtwebengine -r requirements.txt",

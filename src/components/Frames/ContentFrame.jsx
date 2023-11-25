@@ -13,8 +13,7 @@ import './ContentFrame.css';
 
 const defaultPanes = [
   {label: 'Workspace', key: '0', children: <Workspace inTabKey='0' />},
-  // {label: 'CodeEditor', key: '1', children: <CodeEditor inTabKey='1' filename='/Users/vs/Library/CloudStorage/OneDrive-zafu.edu.cn/Vansky/onlinepay/vs_schema_x07.mysql.sql' />},
-  // {label: 'CodeEditor', key: '1', children: <CodeEditor inTabKey='1' filename='/Users/Shared/Projects/oysape_client/requirements.txt' />},
+  // {label: 'CodeEditor', key: '1', children: <CodeEditor inTabKey='1' filename='/Users/Shared/Projects/oysape/requirements.txt' />},
   // {label: 'ServerEditor', key: '2', children: <ServerEditor />},
   // {label: 'Tab 3', key: '3', children: <BlankContent />},
 ];

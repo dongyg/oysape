@@ -20,7 +20,7 @@ export default function CodeEditor(props) {
   const inTabKey = props.inTabKey;
 
   const onValuesChange = React.useCallback((val, viewUpdate) => {
-    setValue(val)
+    setValue(val);
     var hasSomethingNew = false;
     const newItems = tabItems.map((item) => {
       if(item.key === inTabKey && item.label.indexOf('* ') !== 0) {

@@ -80,26 +80,21 @@
   },
   "scripts": {
     "dev": "node scripts/start.js",
-    "frontend:dev": "BUILD_PATH='./gui' node scripts/build.js",
-    "frontend:prod": "BUILD_PATH='./gui' node scripts/build.js",
-    "frontend:test": "node scripts/test.js",
-    "frontend:eject": "node scripts/eject.js",
-    "build": "yarn run clean && yarn run frontend:prod && run-script-os",
+    "build": "yarn run clean && run-script-os",
     "build:macos": "./venv-oysape/bin/python build-macos.py py2app",
-    "build:windows": ".\\venv-oysape\\Scripts\\pyinstaller build-windows.spec",
-    "build:linux": "./venv-oysape/bin/pyinstaller build-linux.spec --onefile",
+    "build:windows": "set BUILD_PATH=./gui & node scripts/build.js & .\\venv-oysape\\Scripts\\pyinstaller build-windows.spec",
+    "build:linux": "BUILD_PATH='./gui' node scripts/build.js &&./venv-oysape/bin/pyinstaller build-linux.spec --onefile",
     "clean": "run-script-os",
     "clean:default": "rm -rf gui 2>/dev/null; rm -rf build 2>/dev/null; rm -rf dist 2>/dev/null; ",
     "clean:windows": "if exist gui rd /S /Q gui & if exist build rd /S /Q build & if exist dist rd /S /Q dist",
     "init": "yarn install && run-script-os",
-    "init:windows": "python3 -m venv venv-oysape && .\\venv-oysape\\Scripts\\pip install -r requirements.txt",
+    "init:windows": "python3 -m venv venv-oysape & .\\venv-oysape\\Scripts\\pip install -r requirements.txt",
     "init:linux": "python3 -m venv venv-oysape && if [[ -z \"${KDE_FULL_SESSION}\" ]]; then yarn run init:qt5; else yarn run init:gtk; fi",
     "init:default": "python3 -m venv venv-oysape && ./venv-oysape/bin/pip install -r requirements.txt",
     "init:qt5": "./venv-oysape/bin/pip install pyqt5 pyqtwebengine -r requirements.txt",
     "init:gtk": "sudo apt install libgirepository1.0-dev gcc libcairo2-dev pkg-config python3-dev gir1.2-gtk-3.0 && ./venv-oysape/bin/pip install pycairo pygobject -r requirements.txt",
-    "start": "yarn run frontend:dev && run-script-os",
-    "start:windows": ".\\venv-oysape\\Scripts\\python src\\index.py",
-    "start:default": "./venv-oysape/bin/python3 src/index.py"
+    "start:windows": "set BUILD_PATH=./gui & node scripts/build.js &.\\venv-oysape\\Scripts\\python src\\index.py",
+    "start:default": "BUILD_PATH='./gui' node scripts/build.js && ./venv-oysape/bin/python3 src/index.py"
   },
   "eslintConfig": {
     "extends": [

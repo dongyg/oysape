@@ -50,7 +50,7 @@ To build an executable. The output binary will be produced in the `dist` directo
 yarn run build
 ```
 
-To start a development server (only for testing frontend code).
+To start a development server.
 
 ``` bash
 yarn run dev
@@ -60,16 +60,4 @@ To clean the developement environment, this will delete `gui`, `dist`, `build` d
 
 ``` bash
 yarn run clean
-```
-
-To eject create-react-app and tweak the configuration as you may wish.
-
-``` bash
-yarn run eject
-```
-
-To test the frontend code if you have written tests.
-
-``` bash
-yarn run frontend:test
 ```

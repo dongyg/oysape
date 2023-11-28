@@ -1,5 +1,11 @@
 # -*- mode: python -*-
 
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--onefile", action="store_true")
+options = parser.parse_args()
+
 block_cipher = None
 
 added_files = [
@@ -7,28 +13,40 @@ added_files = [
 ]
 
 a = Analysis(['.\\src\\index.py'],
-             pathex=['.\\dist'],
-             binaries=None,
-             datas=added_files,
-             hiddenimports=['clr'],
-             excludes=[],
-             win_no_prefer_redirects=False,
-             win_private_assemblies=False,
-             cipher=block_cipher)
+    pathex=['.\\dist'],
+    binaries=None,
+    datas=added_files,
+    hiddenimports=['clr'],
+    excludes=[],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher)
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
-exe = EXE(pyz,
-          a.scripts,
-          exclude_binaries=True,
-          name='Oysape',
-          debug=False,
-          strip=True,
-          icon='.\\src\\assets\\logo.ico',
-          upx=True,
-          console=False ) # set this to see error output of the executable
-coll = COLLECT(exe,
-               a.binaries,
-               a.zipfiles,
-               a.datas,
-               strip=False,
-               upx=False,
-               name='Oysape')
+
+if options.onefile:
+    exe = EXE(pyz,
+        a.scripts,
+        a.binaries,
+        a.zipfiles,
+        a.datas,
+        name='Oysape-portable',
+        debug=False,
+        icon='.\\src\\assets\\logo.ico',
+        console=False ) # set this to see error output of the executable
+else:
+    exe = EXE(pyz,
+        a.scripts,
+        exclude_binaries=True,
+        name='Oysape',
+        debug=False,
+        strip=True,
+        icon='.\\src\\assets\\logo.ico',
+        upx=True,
+        console=False ) # set this to see error output of the executable
+    coll = COLLECT(exe,
+        a.binaries,
+        a.zipfiles,
+        a.datas,
+        strip=False,
+        upx=False,
+        name='Oysape')

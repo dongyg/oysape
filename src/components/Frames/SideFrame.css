@@ -132,6 +132,17 @@
 /* Tabs - no radius for inside buttons */
 .ant-tabs .ant-tabs-extra-content .ant-btn {
   border-radius: 0px;
+  margin-left: 0px;
+  margin-right: 0px;
+}
+.ant-tabs .ant-tabs-nav .ant-tabs-extra-content:last-child {
+  padding: 8px 0px;
+}
+.ant-tabs .ant-tabs-content {
+  height: 100%;
+}
+.ant-tabs .ant-tabs-content > .ant-tabs-tabpane {
+  height: 100%;
 }
 
 /* Splitter */
@@ -152,15 +163,4 @@
 }
 .colResizeCursor {
   cursor: col-resize;
-}
-
-.ant-tabs .ant-tabs-extra-content .ant-btn {
-  margin-left: 0px;
-  margin-right: 0px;
-}
-.ant-tabs .ant-tabs-content {
-  height: 100%;
-}
-.ant-tabs .ant-tabs-content > .ant-tabs-tabpane {
-  height: 100%;
 }

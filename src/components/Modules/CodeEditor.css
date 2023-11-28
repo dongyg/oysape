@@ -1,6 +1,8 @@
 .cm-editor {
     height: 100%;
     cursor: text;
+    /* font-family: 'Ubuntu Mono', Menlo, Monaco, 'Courier New', monospace; */
+    /* font-size: 14px; */
 }
 .cm-gutters {
     cursor: default;

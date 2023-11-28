@@ -3,7 +3,7 @@
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--onefile", action="store_true")
+parser.add_argument("--portable", action="store_true")
 options = parser.parse_args()
 
 block_cipher = None
@@ -23,7 +23,7 @@ a = Analysis(['.\\src\\index.py'],
     cipher=block_cipher)
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
-if options.onefile:
+if options.portable:
     exe = EXE(pyz,
         a.scripts,
         a.binaries,

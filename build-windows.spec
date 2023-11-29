@@ -3,7 +3,7 @@
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--portable", action="store_true")
+parser.add_argument("--standalone", action="store_true")
 options = parser.parse_args()
 
 block_cipher = None
@@ -23,13 +23,13 @@ a = Analysis(['.\\src\\index.py'],
     cipher=block_cipher)
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
-if options.portable:
+if options.standalone:
     exe = EXE(pyz,
         a.scripts,
         a.binaries,
         a.zipfiles,
         a.datas,
-        name='Oysape-portable',
+        name='Oysape-standalone',
         debug=False,
         icon='.\\src\\assets\\logo.ico',
         console=False ) # set this to see error output of the executable

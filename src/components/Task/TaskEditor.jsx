@@ -167,7 +167,7 @@ export default function TaskEditor(props) {
           <Input placeholder='' autoCapitalize='off' autoComplete='off' autoCorrect='off' />
         </Form.Item>
         <Form.Item hidden={!isFileTransfer} label="Excludes" name="excludes">
-          <Input placeholder='.git .DS_Store' autoCapitalize='off' autoComplete='off' autoCorrect='off' />
+          <Input placeholder='Give the files/folders to be excluded. eg: .git .DS_Store' autoCapitalize='off' autoComplete='off' autoCorrect='off' />
         </Form.Item>
         <Form.Item hidden={isFileTransfer} label="Commands" name="cmdText" rules={!isFileTransfer?[{required: true, message: 'Please input commands!',},]:null}>
           <CodeMirror className='codeCmd withScrollContent'

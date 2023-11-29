@@ -1,6 +1,9 @@
 # -*- mode: python -*-
 
 import argparse
+import cpuinfo
+
+arch = ('-'+cpuinfo.get_cpu_info().get('arch_string_raw')) if cpuinfo.get_cpu_info().get('arch_string_raw') else ''
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--standalone", action="store_true")
@@ -29,9 +32,9 @@ if options.standalone:
         a.binaries,
         a.zipfiles,
         a.datas,
-        name='Oysape-standalone',
+        name='Oysape-linux-standalone'+arch,
         debug=False,
-        icon='./src/assets/logo.ico',
+        # icon='./src/assets/logo.ico',
         console=False ) # set this to see error output of the executable
 else:
     exe = EXE(pyz,
@@ -40,7 +43,7 @@ else:
         name='Oysape',
         debug=False,
         strip=True,
-        icon='./src/assets/logo.ico',
+        # icon='./src/assets/logo.ico',
         upx=True,
         console=False ) # set this to see error output of the executable
     coll = COLLECT(exe,
@@ -49,4 +52,4 @@ else:
         a.datas,
         strip=False,
         upx=False,
-        name='Oysape')
+        name='Oysape-linux-portable'+arch)

@@ -106,7 +106,7 @@ const SearchInput = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between'}}>
           <div>{prefix+getShowTitle(item.name)}</div>
           <div style={{ textAlign: 'right' }}>
-            { item.tags ? item.tags.map((tag) => (<Tag>{tag}</Tag>)) : null }
+            { item.tags ? item.tags.map((tag) => (<Tag key={getUniqueKey()}>{tag}</Tag>)) : null }
           </div>
         </div>
       )}
@@ -120,8 +120,8 @@ const SearchInput = () => {
       return { value: prefix+item.name, label: (
         <div style={{ display: 'flex', justifyContent: 'space-between'}}>
           <div>{prefix+getShowTitle(item.name)}</div><div>
-            { item.interaction ? (<Tag>{item.interaction}</Tag>) : null }
-            { item.tag ? (<Tag>{item.tag}</Tag>) : null }
+            { item.interaction ? (<Tag key={getUniqueKey()}>{item.interaction}</Tag>) : null }
+            { item.tag ? (<Tag key={getUniqueKey()}>{item.tag}</Tag>) : null }
           </div>
         </div>
       )}
@@ -135,7 +135,7 @@ const SearchInput = () => {
       return { value: prefix+item.name, label: (
         <div style={{ display: 'flex', justifyContent: 'space-between'}}>
           <div>{prefix+item.name}</div><div>
-            { item.tags ? item.tags.map((tag) => (<Tag>{tag}</Tag>)) : null }
+            { item.tags ? item.tags.map((tag) => (<Tag key={getUniqueKey()}>{tag}</Tag>)) : null }
           </div>
         </div>
       )}
@@ -173,9 +173,9 @@ const SearchInput = () => {
       key: uniqueKey,
       serverKey: serverKey,
       label: serverKey+'('+newIdx+')',
-      children: <Terminal inTabKey={uniqueKey} uniqueKey={uniqueKey} serverKey={serverKey} taskKey={taskKey} />,
+      children: <Terminal uniqueKey={uniqueKey} serverKey={serverKey} taskKey={taskKey} />,
     }]);
-    setTabActiveKey(uniqueKey); window.xterms.tabActiveKey = uniqueKey; setTimeout(() => {window.dispatchEvent(new Event('resize'));}, 10);
+    setTabActiveKey(uniqueKey);
   };
 
   const executeInput = (text) => {
@@ -271,10 +271,10 @@ const SearchInput = () => {
                   key: uniqueKey,
                   fileKey: fileBody,
                   label: title,
-                  children: <CodeEditor inTabKey={uniqueKey} uniqueKey={uniqueKey} filename={absPath} filebody={fileBody} tabTitle={title} />,
+                  children: <CodeEditor uniqueKey={uniqueKey} filename={absPath} filebody={fileBody} tabTitle={title} />,
                 }]);
               }
-              setTabActiveKey(uniqueKey); window.xterms.tabActiveKey = uniqueKey; setTimeout(() => {window.dispatchEvent(new Event('resize'));}, 10);
+              setTabActiveKey(uniqueKey);
             }else if(fileBody && fileBody.errinfo) {
               message.error(fileBody.errinfo);
             }
@@ -325,7 +325,7 @@ const SearchInput = () => {
           autoCorrect='off'
           spellCheck='false'
           placeholder="Type : for choosing a Task, or @ for Server, or ! for Pipeline"
-          allowClear={{ clearIcon: <div>{!dropMenuShowed?(window.xterms&&window.xterms.workspace&&window.xterms.workspace._core.browser.isMac?<BsCommand/>:<PiControl/>):null}<BsArrowReturnLeft /></div> }}
+          allowClear={{ clearIcon: <div>{!dropMenuShowed?(window.oypaseTabs&&window.oypaseTabs.workspace&&window.oypaseTabs.workspace._core.browser.isMac?<BsCommand/>:<PiControl/>):null}<BsArrowReturnLeft /></div> }}
         />
       </AutoComplete>
     </div>

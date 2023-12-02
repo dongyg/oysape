@@ -46,8 +46,8 @@ const TaskList = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', whiteSpace: 'break-spaces'}}>
               <div>{getShowTitle(text)}</div>
               <div style={{ textAlign: 'right' }}>
-                { record.interaction ? (<Tag onClick={onClickTag}>{record.interaction}</Tag>) : null }
-                { record.tags ? record.tags.map((tag) => (<Tag onClick={onClickTag}>{tag}</Tag>)) : null }
+                { record.interaction ? (<Tag key={getUniqueKey()} onClick={onClickTag}>{record.interaction}</Tag>) : null }
+                { record.tags ? record.tags.map((tag) => (<Tag key={getUniqueKey()} onClick={onClickTag}>{tag}</Tag>)) : null }
               </div>
             </div>
             <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#666666' }}>{(record.cmds||[]).join(', ')||record.source}</div>
@@ -104,9 +104,9 @@ const TaskList = () => {
         key: uniqueKey,
         taskKey: tabKey,
         label: taskKey,
-        children: <TaskEditor inTabKey={uniqueKey} uniqueKey={uniqueKey} taskKey={taskKey} />,
+        children: <TaskEditor uniqueKey={uniqueKey} taskKey={taskKey} />,
       }]);
-      setTabActiveKey(uniqueKey); window.xterms.tabActiveKey = uniqueKey; setTimeout(() => {window.dispatchEvent(new Event('resize'));}, 10);
+      setTabActiveKey(uniqueKey);
     }
   }
   const deleteTask = (taskKey) => {

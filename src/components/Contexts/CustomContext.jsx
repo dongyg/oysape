@@ -22,7 +22,7 @@ export const ThemeProvider = ({ children }) => {
   const [sideWidthUse, setSideWidthUse] = useState(400);
   const [sideWidthBak, setSideWidthBak] = useState(400);
   const [tabItems, setTabItems] = useState([]);
-  const [tabActiveKey, setTabActiveKey] = useState('0');
+  const [tabActiveKey, setTabActiveKey] = useState('workspace');
   const [serverItems, setServerItems] = useState([]);
   const [taskItems, setTaskItems] = useState([]);
   const [pipelineItems, setPipelineItems] = useState([]);
@@ -63,6 +63,17 @@ export const ThemeProvider = ({ children }) => {
     tabActiveKey, setTabActiveKey: (key) => {
       setCodeEditRowColText(null); setCodeEditCurrentLang(null);
       setTabActiveKey(key);
+      window.oypaseTabs = window.oypaseTabs || {};
+      window.oypaseTabs.tabActiveKey = key;
+      setTimeout(() => {window.dispatchEvent(new Event('resize'));}, 10);
+      setTimeout(() => {
+        if(window.oypaseTabs[key] && window.oypaseTabs[key].focus) {
+          try{window.oypaseTabs[key].focus();}catch(e){}
+        }
+        if(window.oypaseTabs[key] && window.oypaseTabs[key].editor && window.oypaseTabs[key].editor.focus) {
+          try{window.oypaseTabs[key].editor.querySelector('.cm-content').focus();}catch(e){}
+        }
+      }, 10);
     },
     serverItems, setServerItems,
     taskItems, setTaskItems,

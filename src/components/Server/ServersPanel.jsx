@@ -18,9 +18,9 @@ export default function ServersPanel() {
       key: uniqueKey,
       serverKey: "server-new",
       label: "New Server",
-      children: <ServerEditor inTabKey={uniqueKey} uniqueKey={uniqueKey} serverKey={""} />,
+      children: <ServerEditor uniqueKey={uniqueKey} serverKey={""} />,
     }]);
-    setTabActiveKey(uniqueKey); window.xterms.tabActiveKey = uniqueKey; setTimeout(() => {window.dispatchEvent(new Event('resize'));}, 10);
+    setTabActiveKey(uniqueKey);
   }
 
   return (

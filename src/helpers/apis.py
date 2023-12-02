@@ -254,6 +254,7 @@ def get_ps(sshconn, tty_number, debug=False):
     if debug: print(json.dumps(output))
     return [x for x in output.split('\n') if x and not x.strip().endswith((' sudo', ' sudo su', ' su', ' sh', ' bash'))]
 
+
 class SSHClient:
     def __init__(self, ssh_connection_string, password=None, private_key=None, passphrase=None, serverKey=None, startup=None):
         self.hostname, self.port, self.username = parse_ssh_connection_string(ssh_connection_string)

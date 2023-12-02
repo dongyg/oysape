@@ -46,7 +46,7 @@ const PipelineList = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', whiteSpace: 'break-spaces'}}>
             <div>{text}</div>
             <div style={{ textAlign: 'right' }}>
-              { record.tags ? record.tags.map((tag) => (<Tag onClick={onClickTag}>{tag}</Tag>)) : null }
+              { record.tags ? record.tags.map((tag) => (<Tag key={getUniqueKey()} onClick={onClickTag}>{tag}</Tag>)) : null }
             </div>
           </div>
           <div style={{ whiteSpace: 'break-spaces', color: '#666666' }}>
@@ -104,9 +104,9 @@ const PipelineList = () => {
         key: uniqueKey,
         pipelineKey: tabKey,
         label: pipelineKey,
-        children: <PipelineEditor inTabKey={uniqueKey} uniqueKey={uniqueKey} pipelineKey={pipelineKey} />,
+        children: <PipelineEditor uniqueKey={uniqueKey} pipelineKey={pipelineKey} />,
       }]);
-      setTabActiveKey(uniqueKey); window.xterms.tabActiveKey = uniqueKey; setTimeout(() => {window.dispatchEvent(new Event('resize'));}, 10);
+      setTabActiveKey(uniqueKey);
     }
   }
   const deletePipeline = (pipelineKey) => {

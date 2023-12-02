@@ -64,7 +64,7 @@ const ServerList = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', whiteSpace: 'break-spaces'}}>
               <div>{text}</div>
               <div style={{ textAlign: 'right' }}>
-                { record.tags ? record.tags.map((tag) => (<Tag onClick={onClickTag}>{tag}</Tag>)) : null }
+                { record.tags ? record.tags.map((tag) => (<Tag key={getUniqueKey()} onClick={onClickTag}>{tag}</Tag>)) : null }
               </div>
             </div>
             <div>{record.username}{record.username?'@':''}{record.address}{record.port?':':''}{record.port}</div>
@@ -110,9 +110,9 @@ const ServerList = () => {
         key: uniqueKey,
         serverKey: tabKey,
         label: serverKey,
-        children: <ServerEditor inTabKey={uniqueKey} uniqueKey={uniqueKey} serverKey={serverKey} />,
+        children: <ServerEditor uniqueKey={uniqueKey} serverKey={serverKey} />,
       }]);
-      setTabActiveKey(uniqueKey); window.xterms.tabActiveKey = uniqueKey; setTimeout(() => {window.dispatchEvent(new Event('resize'));}, 10);
+      setTabActiveKey(uniqueKey);
     }
   }
   const deleteServer = (serverKey) => {

@@ -18,7 +18,6 @@ export default function TaskEditor(props) {
   const [isFileTransfer, setIsFileTransfer] = useState(false);
   const taskKey = React.useRef(props.taskKey);
   const uniqueKey = props.uniqueKey;
-  const inTabKey = props.inTabKey;
   // tags
   const [tags, setTags] = useState([]);
   // form
@@ -71,7 +70,7 @@ export default function TaskEditor(props) {
   const onValuesChange = (changedFields, allFields) => {
     var hasSomethingNew = false;
     const newItems = tabItems.map((item) => {
-      if(item.key === inTabKey && item.label.indexOf('* ') !== 0) {
+      if(item.key === uniqueKey && item.label.indexOf('* ') !== 0) {
         hasSomethingNew = true;
         item.hasSomethingNew = true;
         item.label = (item.label.indexOf('* ') === 0 ? '' : '* ') + item.label;
@@ -89,7 +88,7 @@ export default function TaskEditor(props) {
           taskKey.current = newobj.key;
           setTaskItems(data.taskList);
           const newItems = tabItems.map((item) => {
-            if(item.key === inTabKey) {
+            if(item.key === uniqueKey) {
               item.hasSomethingNew = false;
               item.label = newobj.name;
             }
@@ -107,7 +106,7 @@ export default function TaskEditor(props) {
   }
   const onRunIt = () => {
     if(form.getFieldValue('name')) {
-      if(tabItems.filter((item) => item.key === inTabKey && item.hasSomethingNew).length > 0) form.submit();
+      if(tabItems.filter((item) => item.key === uniqueKey && item.hasSomethingNew).length > 0) form.submit();
       if(window.fillSearchTask) window.fillSearchTask(form.getFieldValue('name'));
     }
   }
@@ -123,7 +122,7 @@ export default function TaskEditor(props) {
 
   // shortcuts
   useKeyPress(keyMapping["shortcutSave"], (event) => {
-    if(tabActiveKey === inTabKey) form.submit();
+    if(tabActiveKey === uniqueKey) form.submit();
     event.preventDefault(); return;
   });
 

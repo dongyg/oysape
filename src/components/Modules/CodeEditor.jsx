@@ -17,13 +17,13 @@ export default function CodeEditor(props) {
   const [langExts, setLangExts] = React.useState([]);
   const [langCurr, setLangCurr] = React.useState(null);
   const inputCode = React.useRef(null);
-  const inTabKey = props.inTabKey;
+  const uniqueKey = props.uniqueKey;
 
   const onValuesChange = React.useCallback((val, viewUpdate) => {
     setValue(val);
     var hasSomethingNew = false;
     const newItems = tabItems.map((item) => {
-      if(item.key === inTabKey && item.label.indexOf('* ') !== 0) {
+      if(item.key === uniqueKey && item.label.indexOf('* ') !== 0) {
         hasSomethingNew = true;
         item.hasSomethingNew = true;
         item.label = (item.label.indexOf('* ') === 0 ? '' : '* ') + item.label;
@@ -31,11 +31,11 @@ export default function CodeEditor(props) {
       return item;
     });
     if(hasSomethingNew) setTabItems(newItems);
-  }, [inTabKey, tabItems, setTabItems])
+  }, [uniqueKey, tabItems, setTabItems])
 
   React.useEffect(() => {
     const v1 = getLanguages(props.filename);
-    console.log(props.filename);
+    // console.log(props.filename);
     setLangCurr(v1&&v1.length>0?v1[0]:'plaintext');
     setCodeEditCurrentLang(v1&&v1.length>0?v1[0]:'plaintext');
     const v2 = v1.map(lang=>loadLanguage(lang));
@@ -51,7 +51,8 @@ export default function CodeEditor(props) {
         }
       })
     }
-  }, [setCodeEditCurrentLang, props.filebody, props.filename, message]);
+    window.oypaseTabs = window.oypaseTabs || {}; window.oypaseTabs[uniqueKey] = inputCode.current;
+  }, [setCodeEditCurrentLang, props.filebody, props.filename, uniqueKey, message]);
 
   const chooseLang = (lang) => {
     setLangCurr(lang);
@@ -59,9 +60,9 @@ export default function CodeEditor(props) {
     setLangExts([loadLanguage(lang)]);
   }
   React.useEffect(()=>{
-    window['chooseLang_'+inTabKey] = chooseLang;
+    window['chooseLang_'+uniqueKey] = chooseLang;
     return () => {
-      delete window['chooseLang_'+inTabKey];
+      delete window['chooseLang_'+uniqueKey];
     }
   })
 
@@ -69,7 +70,7 @@ export default function CodeEditor(props) {
     callApi('save_file', {path:path, content:content}).then((data)=>{
       if(!data) {
         const newItems = tabItems.map((item) => {
-          if(item.key === inTabKey) {
+          if(item.key === uniqueKey) {
             item.hasSomethingNew = false;
             item.label = title;
           }
@@ -84,7 +85,7 @@ export default function CodeEditor(props) {
     });
   }
   useKeyPress(keyMapping["shortcutSave"], (event) => {
-    if(tabActiveKey === inTabKey) saveFile(props.filename, props.tabTitle, value);
+    if(tabActiveKey === uniqueKey) saveFile(props.filename, props.tabTitle, value);
     event.preventDefault(); return;
   });
 
@@ -98,7 +99,7 @@ export default function CodeEditor(props) {
       autoFocus={true}
       onChange={onValuesChange}
       onStatistics={(data)=>{
-        if(tabActiveKey !== inTabKey) {
+        if(tabActiveKey !== uniqueKey) {
           return;
         }
         setCodeEditCurrentLang(langCurr);

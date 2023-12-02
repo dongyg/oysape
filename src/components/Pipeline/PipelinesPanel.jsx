@@ -16,10 +16,9 @@ export default function PipelinesPanel() {
       key: uniqueKey,
       pipelineKey: "pipeline-new",
       label: "New Pipeline",
-      children: <PipelineEditor inTabKey={uniqueKey} uniqueKey={uniqueKey} pipelineKey={""} />,
+      children: <PipelineEditor uniqueKey={uniqueKey} pipelineKey={""} />,
     }]);
-    setTabActiveKey(uniqueKey); window.xterms.tabActiveKey = uniqueKey; setTimeout(() => {window.dispatchEvent(new Event('resize'));}, 10);
-
+    setTabActiveKey(uniqueKey);
   }
 
   return (

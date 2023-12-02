@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Input, Space, Tag, Tooltip } from 'antd';
 import { PlusOutlined } from "@ant-design/icons";
+import { getUniqueKey } from '../Common/global';
 
 export default function TagsComponent({tags, onChange, backgroundColor, ...props}) {
   const [inputVisible, setInputVisible] = useState(false);
@@ -74,12 +75,12 @@ export default function TagsComponent({tags, onChange, backgroundColor, ...props
       {tags.map((tag, index) => {
         if (editInputIndex === index) {
           return (
-            <Input ref={editInputRef} key={tag} size="small" style={tagInputStyle} value={editInputValue} onChange={handleEditInputChange} onBlur={handleEditInputConfirm} onPressEnter={handleEditInputConfirm} autoCorrect='off' autoComplete='off' autoCapitalize='off' />
+            <Input key={getUniqueKey()} ref={editInputRef} size="small" style={tagInputStyle} value={editInputValue} onChange={handleEditInputChange} onBlur={handleEditInputConfirm} onPressEnter={handleEditInputConfirm} autoCorrect='off' autoComplete='off' autoCapitalize='off' />
           );
         }
         const isLongTag = tag.length > 20;
         const tagElem = (
-          <Tag key={'server_tag_'+tag} closable={true} style={{ userSelect: 'none', }} onClose={() => handleClose(tag)}>
+          <Tag key={getUniqueKey()} closable={true} style={{ userSelect: 'none', }} onClose={() => handleClose(tag)}>
             <span onDoubleClick={(e) => {
                 setEditInputIndex(index);
                 setEditInputValue(tag);
@@ -91,13 +92,13 @@ export default function TagsComponent({tags, onChange, backgroundColor, ...props
           </Tag>
         );
         return isLongTag ? (
-          <Tooltip title={tag} key={tag}>{tagElem}</Tooltip>
+          <Tooltip key={getUniqueKey()} title={tag}>{tagElem}</Tooltip>
         ) : ( tagElem );
       })}
       {inputVisible ? (
         <Input ref={inputRef} type="text" size="small" style={tagInputStyle} value={inputValue} onChange={handleInputChange} onBlur={handleInputConfirm} onPressEnter={handleInputConfirm} autoCorrect='off' autoComplete='off' autoCapitalize='off' />
       ) : (
-        <Tag style={tagPlusStyle} icon={<PlusOutlined />} onClick={showInput}>New Tag</Tag>
+        <Tag key={getUniqueKey()} style={tagPlusStyle} icon={<PlusOutlined />} onClick={showInput}>New Tag</Tag>
       )}
     </Space>
   )

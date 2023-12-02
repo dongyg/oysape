@@ -13,6 +13,7 @@ export default function ProjectFileTree() {
   const { message, modal } = App.useApp();
   const { customTheme, projectFiles, setProjectFiles } = useCustomContext();
   const [contextMenuItems, setContextMenuItems] = React.useState([]);
+  const filetree = React.useRef(null);
   const time1 = React.useRef(0);
   const path1 = React.useRef('');
   const node1 = React.useRef(null);
@@ -75,7 +76,7 @@ export default function ProjectFileTree() {
 
   return (
     <Dropdown menu={{items: contextMenuItems, onClick: onClickMenu}} trigger={['contextMenu']}>
-      <DirectoryTree treeData={projectFiles} switcherIcon={<DownOutlined />} className={customTheme.className}
+      <DirectoryTree ref={filetree} treeData={projectFiles} switcherIcon={<DownOutlined />} className={customTheme.className}
         onSelect={(selectedKeys, info) => {
           if(Date.now() - time1.current < 500 && path1.current === info.node.path) {
             time1.current = Date.now();

@@ -20,7 +20,6 @@ export default function WebTerminal(props) {
     const { customTheme } = useCustomContext();
     const xtermRef = React.useRef(null)
     const divTerminalContainer = React.useRef(null)
-    const inTabKey = props.inTabKey;
     const uniqueKey = props.uniqueKey;
     const serverKey = props.serverKey;
     const taskKey = props.taskKey;
@@ -54,7 +53,7 @@ export default function WebTerminal(props) {
         }
 
         const onResize = () => {
-            if(window.xterms.tabActiveKey !== inTabKey) return;
+            if(window.oypaseTabs.tabActiveKey !== uniqueKey) return;
             // console.log('cols: ' + xtermRef.current._core._bufferService.cols, 'rows: ' + xtermRef.current._core._bufferService.rows);
             xtermRef.current.fitAddon.fit();
             if (window.pywebview) {
@@ -67,7 +66,7 @@ export default function WebTerminal(props) {
         xtermRef.current.focus();
         xtermRef.current.loadAddon(xtermRef.current.fitAddon);
         xtermRef.current.onData(handlerData);
-        window.xterms = window.xterms || {}; window.xterms[uniqueKey] = xtermRef.current;
+        window.oypaseTabs = window.oypaseTabs || {}; window.oypaseTabs[uniqueKey] = xtermRef.current;
         onResize();
         window.addEventListener('resize', onResize);
         if (window.pywebview) {
@@ -88,7 +87,7 @@ export default function WebTerminal(props) {
             window.removeEventListener('resize', onResize);
             xtermRef.current.dispose();
         }
-    }, [uniqueKey, serverKey, taskKey, inTabKey]);
+    }, [uniqueKey, serverKey, taskKey]);
 
     React.useEffect(() => {
         xtermRef.current.setOption('theme', {
@@ -105,7 +104,9 @@ export default function WebTerminal(props) {
 
     return (
         <div className={customTheme.className} style={{ height: "100%" }}>
-            <div id={"terminal_"+uniqueKey} ref={divTerminalContainer} style={{ height: "100%", width: "100%" }}></div>
+            <div id={"terminal_"+uniqueKey} ref={divTerminalContainer}
+                autoFocus={true}
+                style={{ height: "100%", width: "100%" }}></div>
         </div>
     );
 }

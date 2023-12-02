@@ -14,7 +14,6 @@ export default function PipelineEditor(props) {
   const { customTheme, tabActiveKey, pipelineItems, setPipelineItems, tabItems, setTabItems, setFooterStatusText } = useCustomContext();
   const pipelineKey = React.useRef(props.pipelineKey)
   const uniqueKey = props.uniqueKey;
-  const inTabKey = props.inTabKey;
   // tags
   const [tags, setTags] = useState([]);
   // steps
@@ -46,7 +45,7 @@ export default function PipelineEditor(props) {
   }
   const onValuesChange = (changedFields, allFields) => {
     const newItems = tabItems.map((item) => {
-      if(item.key === inTabKey) {
+      if(item.key === uniqueKey) {
         item.hasSomethingNew = true;
         item.label = (item.label.indexOf('* ') === 0 ? '' : '* ') + item.label;
       }
@@ -62,7 +61,7 @@ export default function PipelineEditor(props) {
         pipelineKey.current = newobj.key;
         setPipelineItems(data.pipelineList);
         const newItems = tabItems.map((item) => {
-          if(item.key === inTabKey) {
+          if(item.key === uniqueKey) {
             item.hasSomethingNew = false;
             item.label = newobj.name;
           }
@@ -76,7 +75,7 @@ export default function PipelineEditor(props) {
   }
   const onRunIt = () => {
     if(form.getFieldValue('name')) {
-      if(tabItems.filter((item) => item.key === inTabKey && item.hasSomethingNew).length > 0) form.submit();
+      if(tabItems.filter((item) => item.key === uniqueKey && item.hasSomethingNew).length > 0) form.submit();
       if(window.fillSearchPipeline) window.fillSearchPipeline(form.getFieldValue('name'));
     }
   }
@@ -91,7 +90,7 @@ export default function PipelineEditor(props) {
 
   // shortcuts
   useKeyPress(keyMapping["shortcutSave"], (event) => {
-    if(tabActiveKey === inTabKey) form.submit();
+    if(tabActiveKey === uniqueKey) form.submit();
     event.preventDefault(); return;
   });
 

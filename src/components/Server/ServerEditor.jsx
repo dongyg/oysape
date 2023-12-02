@@ -4,7 +4,7 @@ import { FolderOpenOutlined } from "@ant-design/icons";
 
 import { useCustomContext } from '../Contexts/CustomContext'
 import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
-import { callApi } from '../Common/global';
+import { callApi, getUniqueKey } from '../Common/global';
 import TagsComponent from '../Modules/TagsComponent';
 
 import './ServerEditor.css';
@@ -14,7 +14,6 @@ export default function ServerEditor(props) {
   const { customTheme, tabActiveKey, taskItems, serverItems, setServerItems, tabItems, setTabItems, setFooterStatusText } = useCustomContext();
   const serverKey = React.useRef(props.serverKey)
   const uniqueKey = props.uniqueKey;
-  const inTabKey = props.inTabKey;
   // tags
   const [tags, setTags] = useState([]);
   // form
@@ -85,7 +84,7 @@ export default function ServerEditor(props) {
     }
     var hasSomethingNew = false;
     const newItems = tabItems.map((item) => {
-      if(item.key === inTabKey && item.label.indexOf('* ') !== 0) {
+      if(item.key === uniqueKey && item.label.indexOf('* ') !== 0) {
         hasSomethingNew = true;
         item.hasSomethingNew = true;
         item.label = (item.label.indexOf('* ') === 0 ? '' : '* ') + item.label;
@@ -102,7 +101,7 @@ export default function ServerEditor(props) {
         serverKey.current = newobj.key;
         setServerItems(data.serverList);
         const newItems = tabItems.map((item) => {
-          if(item.key === inTabKey) {
+          if(item.key === uniqueKey) {
             item.hasSomethingNew = false;
             item.label = newobj.name;
           }
@@ -116,7 +115,7 @@ export default function ServerEditor(props) {
   }
   const onRunIt = () => {
     if(form.getFieldValue('name')) {
-      if(tabItems.filter((item) => item.key === inTabKey && item.hasSomethingNew).length > 0) form.submit();
+      if(tabItems.filter((item) => item.key === uniqueKey && item.hasSomethingNew).length > 0) form.submit();
       if(window.fillSearchServer) window.fillSearchServer(form.getFieldValue('name'));
     }
   }
@@ -132,7 +131,7 @@ export default function ServerEditor(props) {
 
   // shortcuts
   useKeyPress(keyMapping["shortcutSave"], (event) => {
-    if(tabActiveKey === inTabKey) form.submit();
+    if(tabActiveKey === uniqueKey) form.submit();
     event.preventDefault(); return;
   });
 
@@ -144,7 +143,7 @@ export default function ServerEditor(props) {
         labelCol={{ span: 6, }}
         wrapperCol={{ span: 18, }}
         style={{ maxWidth: 800, }}
-        initialValues={{ port: 22, }}
+        initialValues={{ }}
         onFinish={onFinish}
         onFinishFailed={onFinishFailed}
         onValuesChange={onValuesChange}
@@ -185,7 +184,7 @@ export default function ServerEditor(props) {
                 <Input placeholder="Select a Task" size='small' autoComplete='off' autoCapitalize='off' autoCorrect='off' spellCheck='false' />
               </AutoComplete>
             ) : (
-              <Tag key={'task_'+task} closable={!!task} style={{ userSelect: 'none', }} onClose={() => onCloseTask(idxTask)} onClick={() => onClickTask(idxTask)}>
+              <Tag key={getUniqueKey()} closable={!!task} style={{ userSelect: 'none', }} onClose={() => onCloseTask(idxTask)} onClick={() => onClickTask(idxTask)}>
                 {task||'+'}
               </Tag>
             )

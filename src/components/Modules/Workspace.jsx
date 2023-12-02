@@ -23,7 +23,7 @@ export default function CombinedTerminal(props) {
     const xtermRef = React.useRef(null)
     const divTerminalContainer = React.useRef(null)
     const currentWorkingChannel = React.useRef('')
-    const inTabKey = props.inTabKey;
+    const uniqueKey = props.uniqueKey;
     // const clearTerminal = '\x1b[2J\r';
     // const ctrl_c = '\x03';
     // const ctrl_d = '\x04';
@@ -43,7 +43,7 @@ export default function CombinedTerminal(props) {
         updateWorkspaceTabTitle(taskObj.interaction==='interactive'?serverKey:'');
         // xtermRef.current.write(showCursor);
         // xtermRef.current.setOption('disableStdin',false);
-        setTabActiveKey('0');
+        setTabActiveKey('workspace');
         setTimeout(() => {
             xtermRef.current.focus();
         }, 10);
@@ -55,7 +55,7 @@ export default function CombinedTerminal(props) {
     }
     const callPipeline = (pipelineName) => {
         updateWorkspaceTabTitle('');
-        setTabActiveKey('0');
+        setTabActiveKey('workspace');
         xtermRef.current.focus();
         xtermRef.current.write('\r\n\r\n'+colorizeText('Pipeline: '+pipelineName, 'green', customTheme.type==='light' ? 'white' : 'gray'));
         callApi('callPipeline', {pipelineName:pipelineName})
@@ -102,7 +102,7 @@ export default function CombinedTerminal(props) {
         }
 
         const onResize = () => {
-            if(window.xterms.tabActiveKey !== inTabKey) return;
+            if(window.oypaseTabs.tabActiveKey !== uniqueKey) return;
             // console.log('cols: ' + xtermRef.current._core._bufferService.cols, 'rows: ' + xtermRef.current._core._bufferService.rows);
             xtermRef.current.fitAddon.fit();
             if (window.pywebview) {
@@ -114,7 +114,7 @@ export default function CombinedTerminal(props) {
         xtermRef.current.open(termDom);
         xtermRef.current.loadAddon(xtermRef.current.fitAddon);
         xtermRef.current.onData(handlerData);
-        window.xterms = window.xterms || {}; window.xterms['workspace'] = xtermRef.current;
+        window.oypaseTabs = window.oypaseTabs || {}; window.oypaseTabs.tabActiveKey = uniqueKey; window.oypaseTabs[uniqueKey] = xtermRef.current;
         onResize();
         // xtermRef.current.write(hideCursor+clearTerminal);
         writeWelcome(xtermRef.current);
@@ -136,10 +136,9 @@ export default function CombinedTerminal(props) {
             window.removeEventListener('resize', onResize);
             xtermRef.current.dispose();
         }
-    }, [inTabKey]);
+    }, [uniqueKey]);
 
     React.useEffect(() => {
-        window.xterms = window.xterms || {}; window.xterms.tabActiveKey = '0';
         xtermRef.current.setOption('theme', {
             background: customTheme.colors["editor.background"],
             cursor: customTheme.isDark?'white':'darkgrey',

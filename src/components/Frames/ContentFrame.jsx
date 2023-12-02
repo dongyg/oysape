@@ -12,8 +12,8 @@ import Workspace from '../Modules/Workspace';
 import './ContentFrame.css';
 
 const defaultPanes = [
-  {label: 'Workspace', key: '0', children: <Workspace inTabKey='0' />},
-  // {label: 'CodeEditor', key: '1', children: <CodeEditor inTabKey='1' filename='/Users/Shared/Projects/oysape/requirements.txt' />},
+  {label: 'Workspace', key: 'workspace', children: <Workspace uniqueKey='workspace' />},
+  // {label: 'CodeEditor', key: '1', children: <CodeEditor uniqueKey='1' filename='/Users/Shared/Projects/oysape/requirements.txt' />},
   // {label: 'ServerEditor', key: '2', children: <ServerEditor />},
   // {label: 'Tab 3', key: '3', children: <BlankContent />},
 ];
@@ -27,12 +27,12 @@ const ContentFrame = () => {
     return label;
   }
   const onChange = (key) => {
-    setTabActiveKey(key); window.xterms.tabActiveKey = key; setTimeout(() => {window.dispatchEvent(new Event('resize'));}, 10);
+    setTabActiveKey(key);
   };
   const closeThisTab = (targetKey, force) => {
     // console.log('closeThisTab', targetKey, force);
     const tabTitle = getTabTitle(targetKey);
-    if (targetKey === '0') {
+    if (targetKey === 'workspace') {
       notification.error({
         message: 'Workspace',
         description: 'Workspace tab cannot be closed.',
@@ -62,7 +62,7 @@ const ContentFrame = () => {
     const newPanes = tabItems.filter((pane) => pane.key !== targetKey);
     if (newPanes.length && targetKey === tabActiveKey) {
       const { key } = newPanes[targetIndex === newPanes.length ? targetIndex - 1 : targetIndex];
-      setTabActiveKey(key); window.xterms.tabActiveKey = key; setTimeout(() => {window.dispatchEvent(new Event('resize'));}, 10);
+      setTabActiveKey(key);
     }
     setTabItems(newPanes);
   }
@@ -85,7 +85,7 @@ const ContentFrame = () => {
     const idx = (parseInt(event.key)+9)%10;
     if(tabItems.length > idx) {
       const key = tabItems[idx].key;
-      setTabActiveKey(key); window.xterms.tabActiveKey = key; setTimeout(() => {window.dispatchEvent(new Event('resize'));}, 10);
+      setTabActiveKey(key);
     }
     event.preventDefault(); return;
   });

@@ -3,6 +3,7 @@ import { Tag, Steps, AutoComplete, Input } from 'antd';
 import { PlusOutlined } from "@ant-design/icons";
 
 import { useCustomContext } from '../Contexts/CustomContext'
+import { getUniqueKey } from '../Common/global';
 
 export default function StepsComponent({steps, onChange, ...props}) {
   const { serverItems, taskItems } = useCustomContext();
@@ -60,7 +61,7 @@ export default function StepsComponent({steps, onChange, ...props}) {
             </AutoComplete>
           </div>
         ) : (
-          <div><Tag key={item.target+idxStep} closable={true} style={{ userSelect: 'none', }} onClose={() => onCloseTarget(idxStep)} onClick={()=>onClickTarget(idxStep)}>{item.target}</Tag></div>
+          <div><Tag key={getUniqueKey()} closable={true} style={{ userSelect: 'none', }} onClose={() => onCloseTarget(idxStep)} onClick={()=>onClickTarget(idxStep)}>{item.target}</Tag></div>
         )}
       </div>
       <div>{
@@ -73,7 +74,7 @@ export default function StepsComponent({steps, onChange, ...props}) {
                 <Input placeholder="Select a Task" size='small' autoComplete='off' autoCapitalize='off' autoCorrect='off' spellCheck='false' />
             </AutoComplete>
           ) : (
-            <Tag key={item.target+'_'+task} closable={!!task} style={{ userSelect: 'none', }} onClose={() => onCloseTask(idxStep, idxTask)} onClick={() => onClickTask(idxStep, idxTask)}>
+            <Tag key={getUniqueKey()} closable={!!task} style={{ userSelect: 'none', }} onClose={() => onCloseTask(idxStep, idxTask)} onClick={() => onClickTask(idxStep, idxTask)}>
               {task||'+'}
             </Tag>
           )
@@ -103,7 +104,7 @@ export default function StepsComponent({steps, onChange, ...props}) {
           status: 'wait',
         }
       }).concat({
-        title: <Tag icon={<PlusOutlined />} onClick={onClickAddStep}>Choose a server</Tag>,
+        title: <Tag key={getUniqueKey()} icon={<PlusOutlined />} onClick={onClickAddStep}>Choose a server</Tag>,
         subTitle: '',
         description: [],
         status: 'wait',

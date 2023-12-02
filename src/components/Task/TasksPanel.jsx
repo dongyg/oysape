@@ -16,9 +16,9 @@ export default function TasksPanel() {
       key: uniqueKey,
       taskKey: "task-new",
       label: "New Task",
-      children: <TaskEditor inTabKey={uniqueKey} uniqueKey={uniqueKey} taskKey={""} />,
+      children: <TaskEditor uniqueKey={uniqueKey} taskKey={""} />,
     }]);
-    setTabActiveKey(uniqueKey); window.xterms.tabActiveKey = uniqueKey; setTimeout(() => {window.dispatchEvent(new Event('resize'));}, 10);
+    setTabActiveKey(uniqueKey);
   }
 
   return (

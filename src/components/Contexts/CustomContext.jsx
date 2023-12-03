@@ -34,18 +34,22 @@ export const ThemeProvider = ({ children }) => {
   useEffect(() => {
     // Set the first color theme
     if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      setCurrentTheme(customThemes.dark)
+      setCurrentTheme(customThemes.dark);
+      callApi('setTheme', customThemes.dark).then((data) => {});
     } else {
-      setCurrentTheme(customThemes.light)
+      setCurrentTheme(customThemes.light);
+      callApi('setTheme', customThemes.light).then((data) => {});
     }
     // Monitoring system color theme changes
     window
       .matchMedia("(prefers-color-scheme: dark)")
       .addEventListener("change", (event) => {
         if (event.matches) {
-          setCurrentTheme(customThemes.dark)
+          setCurrentTheme(customThemes.dark);
+          callApi('setTheme', customThemes.dark).then((data) => {});
         } else {
-          setCurrentTheme(customThemes.light)
+          setCurrentTheme(customThemes.light);
+          callApi('setTheme', customThemes.light).then((data) => {});
         }
       })
   }, [])

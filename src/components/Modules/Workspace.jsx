@@ -51,6 +51,7 @@ export default function CombinedTerminal(props) {
         // const command = taskObj.cmds.join('\r\n');
         // console.log(command);
         // xtermRef.current.write(command);
+        callApi('setTheme', {type:customTheme.type}).then((data) => {}); // To ensure the theme is set on backend
         callApi('callTask', {taskKey:taskKey, serverKey:serverKey}).then(res => {}).catch(err => {});
     }
     const callPipeline = (pipelineName) => {

@@ -58,6 +58,7 @@ export default function CombinedTerminal(props) {
         setTabActiveKey('workspace');
         xtermRef.current.focus();
         xtermRef.current.write('\r\n\r\n'+colorizeText('Pipeline: '+pipelineName, 'green', customTheme.type==='light' ? 'white' : 'gray'));
+        callApi('setTheme', {type:customTheme.type}).then((data) => {}); // To ensure the theme is set on backend
         callApi('callPipeline', {pipelineName:pipelineName})
             .then(res => {
             })

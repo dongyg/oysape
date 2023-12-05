@@ -125,6 +125,10 @@ export default function TaskEditor(props) {
     if(tabActiveKey === uniqueKey) form.submit();
     event.preventDefault(); return;
   });
+  useKeyPress(keyMapping["shortcutRun"], (event) => {
+    if(tabActiveKey === uniqueKey) onRunIt();
+    event.preventDefault(); return;
+  });
 
   return (
     <div className={customTheme.className+' withScrollContent'} style={{ backgroundColor: customTheme.colors["editor.background"], color: customTheme.colors["editor.foreground"], height: '100%', paddingTop: '24px', overflow: 'auto' }}>
@@ -185,7 +189,7 @@ export default function TaskEditor(props) {
             <Radio value={'byline'}>line-by-line</Radio>
             <Radio value={'batch-join'}>batch:join</Radio>
             <Radio value={'batch-escape'}>batch:escape</Radio>
-            {/* <Radio value={'script'}>script</Radio> */}
+            <Radio value={'script'}>script</Radio>
           </Radio.Group>
         </Form.Item>
         <Form.Item label="Tags" name="tags">

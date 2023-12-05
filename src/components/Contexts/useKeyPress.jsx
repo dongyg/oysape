@@ -65,6 +65,7 @@ export const keyMapping = {
   "showAndRunCommand": ["ctrl+p", "meta+p"],
   "shortcutSave": ["ctrl+s", "meta+s"],
   "shortcutSaveAs": ["ctrl+shift+s", "meta+shift+s"],
+  "shortcutRun": ["ctrl+r", "meta+r"],
   "showAndSelectServer": ["ctrl+shift+@", "ctrl+shift+2", "meta+shift+@", "meta+shift+2"],
   "showAndSelectTask": ["ctrl+shift+:", "ctrl+shift+;", "meta+shift+:", "meta+shift+;"],
   "showAndSelectPipeline": ["ctrl+shift+!", "ctrl+shift+1", "meta+shift+!", "meta+shift+1"],

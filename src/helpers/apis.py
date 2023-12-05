@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os, base64, traceback, json, hashlib, re, json, _thread, time, getpass, fnmatch, platform
 import webview
 import paramiko
-import os, base64, traceback, json, hashlib, re, json, _thread, time, getpass, fnmatch
 
 BUF_SIZE = 1024
 CR = '\r'
@@ -15,6 +15,7 @@ es_home = '\u001b[200~'
 es_end = '\u001b[201~'
 folder_base = os.path.expanduser(os.path.join('~', '.oysape'))
 folder_projects = os.path.join(folder_base, 'projects')
+folder_cache = os.path.join(folder_base, 'cache')
 filename_settings = os.path.join(folder_base, 'workspace.json')
 filename_tasks = os.path.join(folder_base, 'tasks.json')
 filename_servers = os.path.join(folder_base, 'servers.json')
@@ -385,19 +386,19 @@ class SSHClient:
                     self.updateChannelStatus('recv')
             if self.shellCacheAuto or self.shellCacheHuman:
                 if not self.isChannelActive(): self.openChannel()
-                while self.channel and self.isChannelIdle():
-                    self.data1, self.data2 = '', ''
-                    if self.channel_available and self.shellCacheAuto:
-                        self.data1 = self.shellCacheAuto.pop(0)
-                        self.channel.send(self.data1)
-                        self.output = ''
-                    if self.shellCacheHuman:
-                        self.data2 = self.shellCacheHuman.pop(0)
-                        self.channel.send(self.data2)
-                        self.output = ''
-                    # time.sleep(0.01)
-                    if (self.data1 and re.findall(pattern, self.data1)):
-                        self.updateChannelStatus('send')
+                self.data1 = ''
+                if self.channel and self.isChannelIdle() and self.channel_available and self.shellCacheAuto:
+                    self.data1 = self.shellCacheAuto.pop(0)
+                    self.channel.send(self.data1)
+                    self.output = ''
+                # time.sleep(0.01)
+                if (self.data1 and re.findall(pattern, self.data1)):
+                    self.updateChannelStatus('send')
+                self.data2 = ''
+                if self.channel and self.shellCacheHuman:
+                    self.data2 = self.shellCacheHuman.pop(0)
+                    self.channel.send(self.data2)
+                    self.output = ''
             if self.channel and not self.sentChannelCloseEvent and self.channel.exit_status_ready():
                 self.onChannelClose()
 
@@ -435,6 +436,16 @@ class SSHClient:
         try:
             sftp = self.client.open_sftp()
             (callback or print)(' '.join([local_path, '->', remote_path]))
+            if remote_path.startswith('~/'):
+                user_dir = sftp.normalize('.')
+                remote_path = os.path.join(user_dir, remote_path[2:])
+            def ensureExists(apath):
+                try:
+                    sftp.stat(apath)
+                except Exception as e:
+                    ensureExists(os.path.split(apath)[0])
+                    sftp.mkdir(apath)
+            ensureExists(os.path.split(remote_path)[0])
             sftp.put(local_path, remote_path)
             sftp.close()
             (callback or print)(' Done.'+CRLF)
@@ -447,6 +458,12 @@ class SSHClient:
         try:
             sftp = self.client.open_sftp()
             (callback or print)(' '.join([remote_path, '->', local_path]))
+            if remote_path.startswith('~/'):
+                user_dir = sftp.normalize('.')
+                remote_path = os.path.join(user_dir, remote_path[2:])
+            apath = os.path.split(local_path)[0]
+            if not os.path.exists(apath):
+                os.makedirs(apath)
             sftp.get(remote_path, local_path)
             sftp.close()
             (callback or print)(' Done.'+CRLF)
@@ -979,25 +996,35 @@ def execTask(taskKey, taskObj, taskCmds, client, output=True):
         client.onChannelString((CRLF+'No commands defined: %s'%taskKey+CRLF))
     else:
         # Execute the task's commands
-        if output: client.onChannelString((CRLF+CRLF+colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF))
         runmode = taskObj.get('runmode') or ''
+        if output and runmode!='script': client.onChannelString((CRLF+CRLF+colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF))
         if runmode.startswith('batch'):
             # Send commands to the channel once for all
-            #TODO: Windows has different join symbol
-            command = (' && ' if runmode.endswith('join') else LF).join(taskCmds)
+            str_join = '&' if platform.system() == 'Windows' else ' && '
+            command = (str_join if runmode.endswith('join') else LF).join(taskCmds)
             if len(taskCmds)>1 and runmode.endswith('escape'):
                 command = es_home + command + es_end
             print('execTask', client.serverKey, json.dumps(command))
             client.send_to_channel(command + LF, human=False)
         elif runmode=='script':
-            #TODO: Save the commands to the script file, then execute it
-            pass
+            # Save the commands to a script file, then execute it
+            filename = get_key(taskKey)+'.sh'
+            filepath = os.path.join(folder_cache, filename)
+            content = LF.join(taskCmds)
+            if not os.path.exists(folder_cache):
+                os.makedirs(folder_cache)
+            with open(filepath, 'w') as f:
+                f.write(content)
+            number, transfered = client.upload_file(filepath, '~/.oysape/cache/%s'%filename)
+            if number==1 and transfered>0:
+                client.client.exec_command(f'chmod +x ~/.oysape/cache/%s'%filename)
+                client.send_to_channel('source ~/.oysape/cache/%s'%filename+LF, human=False)
         else:
             # Send commands to the channel line-by-line
             print('execTask', client.serverKey, json.dumps(taskCmds))
             while taskCmds:
                 data = taskCmds.pop(0)
                 data = data.strip()+LF
-                if not data.startswith('#'):
+                if data.strip() and not data.startswith('#'):
                     client.send_to_channel(data, human=False)
                     time.sleep(0.01)

@@ -432,21 +432,24 @@ class SSHClient:
         if self.isChannelActive():
             self.channel.resize_pty(width, height)
 
+    def ensureExists(self, sftp, apath):
+        try:
+            sftp.stat(apath)
+        except Exception as e:
+            self.ensureExists(sftp, os.path.split(apath)[0])
+            sftp.mkdir(apath)
+
     def upload_file(self, local_path, remote_path, callback=None):
         try:
             sftp = self.client.open_sftp()
             (callback or print)(' '.join([local_path, '->', remote_path]))
             if remote_path.startswith('~/'):
-                user_dir = sftp.normalize('.')
-                remote_path = os.path.join(user_dir, remote_path[2:])
-            def ensureExists(apath):
-                try:
-                    sftp.stat(apath)
-                except Exception as e:
-                    ensureExists(os.path.split(apath)[0])
-                    sftp.mkdir(apath)
-            ensureExists(os.path.split(remote_path)[0])
+                remote_path = os.path.join(sftp.normalize('.'), remote_path[2:])
+            self.ensureExists(sftp, os.path.split(remote_path)[0])
             sftp.put(local_path, remote_path)
+            source_stat = os.stat(local_path)
+            sftp.utime(remote_path, (source_stat.st_atime, source_stat.st_mtime))
+            sftp.chmod(remote_path, source_stat.st_mode)
             sftp.close()
             (callback or print)(' Done.'+CRLF)
             return 1, os.path.getsize(local_path)
@@ -459,12 +462,14 @@ class SSHClient:
             sftp = self.client.open_sftp()
             (callback or print)(' '.join([remote_path, '->', local_path]))
             if remote_path.startswith('~/'):
-                user_dir = sftp.normalize('.')
-                remote_path = os.path.join(user_dir, remote_path[2:])
+                remote_path = os.path.join(sftp.normalize('.'), remote_path[2:])
             apath = os.path.split(local_path)[0]
             if not os.path.exists(apath):
                 os.makedirs(apath)
             sftp.get(remote_path, local_path)
+            source_stat = sftp.stat(remote_path)
+            os.utime(local_path, (source_stat.st_atime, source_stat.st_mtime))
+            os.chmod(local_path, source_stat.st_mode)
             sftp.close()
             (callback or print)(' Done.'+CRLF)
             return 1, os.path.getsize(local_path)
@@ -475,11 +480,10 @@ class SSHClient:
     def upload_directory(self, local_path, remote_path, callback=None):
         exclude = ['__pycache__', 'node_modules', '.svn', '.git', '.gitignore', '.DS_Store', '.Trashes', 'Thumbs.db', 'Desktop.ini']
         sftp = self.client.open_sftp()
+        if remote_path.startswith('~/'):
+            remote_path = os.path.join(sftp.normalize('.'), remote_path[2:])
         remote_path = os.path.join(remote_path, os.path.basename(local_path))
-        try:
-            sftp.stat(remote_path)
-        except FileNotFoundError:
-            sftp.mkdir(remote_path)
+        self.ensureExists(sftp, remote_path)
         ret1, ret2 = 0, 0
         def recurse(spath, dpath, ret1, ret2):
             items = os.listdir(spath)
@@ -488,20 +492,25 @@ class SSHClient:
             files = [x for x in items if os.path.isfile(os.path.join(spath, x)) and x not in exclude]
             for dir in dirs:
                 (callback or print)(' '.join([os.path.join(spath, dir), '->', os.path.join(dpath, dir)])+CRLF)
-                try:
-                    sftp.stat(os.path.join(dpath, dir))
-                except Exception as e:
-                    sftp.mkdir(os.path.join(dpath, dir))
+                self.ensureExists(sftp, os.path.join(dpath, dir))
                 ret1, ret2 = recurse(os.path.join(spath, dir), os.path.join(dpath, dir), ret1, ret2)
             for file in files:
                 local_file_path = os.path.join(spath, file)
                 remote_file_path = os.path.join(dpath, file)
-                (callback or print)(' '.join([local_file_path, '->', remote_file_path]))
                 try:
-                    sftp.put(local_file_path, remote_file_path)
-                    ret1 += 1
-                    ret2 += os.path.getsize(local_file_path)
-                    (callback or print)(' Done.'+CRLF)
+                    local_stat = os.stat(local_file_path)
+                    try:
+                        remote_stat = sftp.stat(remote_file_path)
+                    except Exception as e:
+                        remote_stat = None
+                    if remote_stat == None or int(local_stat.st_mtime) > remote_stat.st_mtime or local_stat.st_size != remote_stat.st_size:
+                        (callback or print)(' '.join([local_file_path, '->', remote_file_path]))
+                        sftp.put(local_file_path, remote_file_path)
+                        sftp.utime(remote_file_path, (local_stat.st_atime, int(local_stat.st_mtime)))
+                        sftp.chmod(remote_file_path, local_stat.st_mode)
+                        ret1 += 1
+                        ret2 += local_stat.st_size
+                        (callback or print)(' Done.'+CRLF)
                 except Exception as e:
                     traceback.print_exc()
                     (callback or print)(str(e)+CRLF)
@@ -514,6 +523,8 @@ class SSHClient:
         import stat
         exclude = ['__pycache__', 'node_modules', '.svn', '.git', '.gitignore', '.DS_Store', '.Trashes', 'Thumbs.db', 'Desktop.ini']
         sftp = self.client.open_sftp()
+        if remote_path.startswith('~/'):
+            remote_path = os.path.join(sftp.normalize('.'), remote_path[2:])
         os.makedirs(local_path, exist_ok=True)
         local_path = os.path.join(local_path, os.path.basename(remote_path))
         os.makedirs(local_path, exist_ok=True)
@@ -523,23 +534,28 @@ class SSHClient:
                 if entry in exclude: continue
                 remote_file_path = os.path.join(spath, entry)
                 local_file_path = os.path.join(dpath, entry)
-                (callback or print)(' '.join([remote_file_path, '->', local_file_path]))
                 try:
-                    file_attr = sftp.stat(remote_file_path)
+                    remote_stat = sftp.stat(remote_file_path)
                 except Exception as e:
+                    (callback or print)(' '.join([remote_file_path, '->', local_file_path]))
                     traceback.print_exc()
                     (callback or print)(CRLF+str(e)+CRLF)
                     continue
-                if stat.S_ISDIR(file_attr.st_mode):
+                if stat.S_ISDIR(remote_stat.st_mode):
+                    (callback or print)(' '.join([remote_file_path, '->', local_file_path])+CRLF)
                     os.makedirs(local_file_path, exist_ok=True)
-                    (callback or print)(CRLF)
                     ret1, ret2 = recurse(remote_file_path, local_file_path, ret1, ret2)
                 else:
                     try:
-                        sftp.get(remote_file_path, local_file_path)
-                        ret1 += 1
-                        ret2 += os.path.getsize(local_file_path)
-                        (callback or print)(' Done.'+CRLF)
+                        local_stat = os.stat(local_file_path) if os.path.exists(local_file_path) else None
+                        if local_stat == None or remote_stat.st_mtime > int(local_stat.st_mtime) or remote_stat.st_size != local_stat.st_size:
+                            (callback or print)(' '.join([remote_file_path, '->', local_file_path]))
+                            sftp.get(remote_file_path, local_file_path)
+                            os.utime(local_file_path, (remote_stat.st_atime, remote_stat.st_mtime))
+                            os.chmod(local_file_path, remote_stat.st_mode)
+                            ret1 += 1
+                            ret2 += os.path.getsize(local_file_path)
+                            (callback or print)(' Done.'+CRLF)
                     except Exception as e:
                         traceback.print_exc()
                         (callback or print)(str(e)+CRLF)
@@ -549,20 +565,26 @@ class SSHClient:
         return ret1, ret2
 
     def upload(self, local_path, remote_path):
+        if local_path.startswith('~/'):
+            local_path = os.path.expanduser(local_path)
         if os.path.isdir(local_path):
             return self.upload_directory(local_path, remote_path, self.onChannelString)
         else:
             return self.upload_file(local_path, remote_path, self.onChannelString)
 
     def download(self, remote_path, local_path):
+        if local_path.startswith('~/'):
+            local_path = os.path.expanduser(local_path)
         import stat
         sftp = self.client.open_sftp()
+        if remote_path.startswith('~/'):
+            remote_path = os.path.join(sftp.normalize('.'), remote_path[2:])
         file_attr = sftp.stat(remote_path)
+        sftp.close()
         if stat.S_ISDIR(file_attr.st_mode):
             return self.download_directory(remote_path, local_path, self.onChannelString)
         else:
             return self.download_file(remote_path, local_path, self.onChannelString)
-
 
 class TerminalClient(SSHClient):
     def onChannelData(self, bdata):

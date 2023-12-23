@@ -164,7 +164,7 @@ export default function ServerEditor(props) {
         <Form.Item label="Password" name="password" validateStatus={passStatus} help={passHint} tooltip="Use the password to log in">
           <Input placeholder='Password' autoCapitalize='off' autoComplete='off' autoCorrect='off' />
         </Form.Item>
-        <Form.Item label="Private Key" name="prikey" validateStatus={passStatus} help={passHint} tooltip="Choose the private key file. If not specified, password will be used. Or the default ssh private key will be used">
+        <Form.Item label="Private Key" name="prikey" validateStatus={passStatus} help={passHint} tooltip="Give the private key file. It can start with ~/. If it is not given, password will be used, or the default ssh private key will be used.">
           <Input placeholder='Private Key' addonAfter={<Button type="text" onClick={openFile} icon={<FolderOpenOutlined />} style={{ height: "30px", borderTopLeftRadius: "0px", borderBottomLeftRadius: "0px" }} autoCapitalize='off' autoComplete='off' autoCorrect='off' ></Button>} />
         </Form.Item>
         <Form.Item label="Passphrase" name="passphrase" tooltip="The passphrase for the private key">

@@ -163,10 +163,10 @@ export default function TaskEditor(props) {
             <Radio value={'download'}>download</Radio>
           </Radio.Group>
         </Form.Item>
-        <Form.Item hidden={!isFileTransfer} label="Source" name="source" rules={isFileTransfer?[{required: true, message: 'Please give a source file/folder!',}]:null} tooltip={<>Must be an absolute path. eg: /path/to/file<br/><br/>Could be a file or folder. If it is a folder, all files in the folder will be transferred except the Excludes ones. If it is a file, the Destination must be a file.</>}>
+        <Form.Item hidden={!isFileTransfer} label="Source" name="source" rules={isFileTransfer?[{required: true, message: 'Please give a source file/folder!',}]:null} tooltip={<>It can start with ~/. Otherwise must be an absolute path. eg: /path/to/file<br/><br/>Could be a file or folder. If it is a folder, all files in the folder will be transferred except the Excludes ones. If it is a file, the Destination must be a file.</>}>
           <Input placeholder='' autoCapitalize='off' autoComplete='off' autoCorrect='off' />
         </Form.Item>
-        <Form.Item hidden={!isFileTransfer} label="Destination" name="destination" rules={isFileTransfer?[{required: true, message: 'Please give a destination!',},]:null}>
+        <Form.Item hidden={!isFileTransfer} label="Destination" name="destination" rules={isFileTransfer?[{required: true, message: 'Please give a destination!',},]:null} tooltip={<>It can start with ~/. Otherwise must be an absolute path. eg: /path/to/file</>}>
           <Input placeholder='' autoCapitalize='off' autoComplete='off' autoCorrect='off' />
         </Form.Item>
         <Form.Item hidden={!isFileTransfer} label="Excludes" name="excludes">

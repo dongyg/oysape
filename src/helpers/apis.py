@@ -16,6 +16,7 @@ es_end = '\u001b[201~'
 folder_base = os.path.expanduser(os.path.join('~', '.oysape'))
 folder_projects = os.path.join(folder_base, 'projects')
 folder_cache = os.path.join(folder_base, 'cache')
+filename_env = os.path.join(folder_base, 'env.json')
 filename_settings = os.path.join(folder_base, 'workspace.json')
 filename_tasks = os.path.join(folder_base, 'tasks.json')
 filename_servers = os.path.join(folder_base, 'servers.json')
@@ -72,9 +73,10 @@ def create_ssh_connection(hostname, username=None, port=22, password=None, priva
     elif private_key:
         private_key = get_paramiko_key_from_file(private_key, passphrase)
         client.connect(hostname, port=port, username=username, pkey=private_key)
+    client.get_transport().set_keepalive(30)
     return client
 
-def create_ssh_connection_string(hostname, username=None, port=22):
+def create_ssh_string(hostname, username=None, port=22):
     return 'ssh://%s@%s:%s'%(username or getpass.getuser(), hostname, (port or 22))
 
 def parse_ssh_connection_string(connection_string):
@@ -245,12 +247,14 @@ def get_tty_number(channel, debug=False):
 
 def get_ps(sshconn, tty_number, debug=False):
     try:
+        if not (sshconn.transport and sshconn.transport.is_alive()):
+            sshconn.reconnect()
         # stdin, stdout, stderr = sshconn.client.exec_command("ps -t %s"%tty_number)
-        stdin, stdout, stderr = sshconn.client.exec_command("ps -ef | grep %s | grep -v grep"%tty_number)
+        stdin, stdout, stderr = sshconn.client.exec_command("ps -ef | grep %s | grep -v grep"%tty_number, timeout=15)
         output = stdout.read().decode()
-    except ConnectionResetError as e:
+    except Exception as e:
         sshconn.reconnect()
-        stdin, stdout, stderr = sshconn.client.exec_command("ps -ef | grep %s | grep -v grep"%tty_number)
+        stdin, stdout, stderr = sshconn.client.exec_command("ps -ef | grep %s | grep -v grep"%tty_number, timeout=15)
         output = stdout.read().decode()
     if debug: print(json.dumps(output))
     return [x for x in output.split('\n') if x and not x.strip().endswith((' sudo', ' sudo su', ' su', ' sh', ' bash'))]
@@ -270,12 +274,15 @@ class SSHClient:
                 self.private_key = os.path.expanduser('~/.ssh/id_ecdsa')
             elif os.path.isfile(os.path.expanduser('~/.ssh/id_ed25519')):
                 self.private_key = os.path.expanduser('~/.ssh/id_ed25519')
+        if self.private_key.startswith('~/'):
+            self.private_key = os.path.expanduser(self.private_key)
         self.passphrase = passphrase
         self.serverKey = serverKey
         self.startup = startup
         self.reconnect()
 
     def reconnect(self):
+        self.close()
         self.client = None
         self.channel = None
         self.transport = None
@@ -295,7 +302,7 @@ class SSHClient:
         self.data2 = ''
         try:
             self.client = create_ssh_connection(self.hostname, self.username, self.port, self.password, self.private_key, self.passphrase)
-            self.transport = self.client.get_transport()
+            self.transport = self.client._transport
             self.openChannel()
             self.running = True
             _thread.start_new_thread(self.mainloop,())
@@ -414,7 +421,8 @@ class SSHClient:
 
     def execute_command(self, command):
         if self.client is None: return None
-        if not (self.client and self.transport.is_alive()): return None
+        if not (self.transport and self.transport.is_alive()):
+            self.reconnect()
         stdin, stdout, stderr = self.client.exec_command(command)
         self.command_result = stdout.read().decode() or stderr.read().decode()
         return self.command_result
@@ -423,6 +431,8 @@ class SSHClient:
         return self.command_result
 
     def send_to_channel(self, data, human=True):
+        if not (self.transport and self.transport.is_alive()):
+            self.reconnect()
         if human:
             self.shellCacheHuman.append(data)
         else:
@@ -565,6 +575,8 @@ class SSHClient:
         return ret1, ret2
 
     def upload(self, local_path, remote_path):
+        if not (self.transport and self.transport.is_alive()):
+            self.reconnect()
         if local_path.startswith('~/'):
             local_path = os.path.expanduser(local_path)
         if os.path.isdir(local_path):
@@ -573,6 +585,8 @@ class SSHClient:
             return self.upload_file(local_path, remote_path, self.onChannelString)
 
     def download(self, remote_path, local_path):
+        if not (self.transport and self.transport.is_alive()):
+            self.reconnect()
         if local_path.startswith('~/'):
             local_path = os.path.expanduser(local_path)
         import stat
@@ -887,7 +901,7 @@ class ApiTerminal(ApiOysape):
             return
         if not uniqueKey in self.terminalConnections:
             print('createTermConnection', serverKey, uniqueKey)
-            conn_str = create_ssh_connection_string(slist[0].get("address"), slist[0].get("username"), slist[0].get("port"))
+            conn_str = create_ssh_string(slist[0].get("address"), slist[0].get("username"), slist[0].get("port"))
             self.terminalConnections[uniqueKey] = TerminalClient(conn_str, private_key=slist[0].get("prikey"), serverKey=serverKey, startup=slist[0].get("tasks"))
             self.terminalConnections[uniqueKey].uniqueKey = uniqueKey
             if not self.terminalConnections[uniqueKey].client:
@@ -931,7 +945,7 @@ class ApiWorkspace(ApiTerminal):
             return
         if not serverKey in self.combinedConnections:
             print('createCombConnection', serverKey)
-            conn_str = create_ssh_connection_string(slist[0].get("address"), slist[0].get("username"), slist[0].get("port"))
+            conn_str = create_ssh_string(slist[0].get("address"), slist[0].get("username"), slist[0].get("port"))
             self.combinedConnections[serverKey] = WorkspaceClient(conn_str, private_key=slist[0].get("prikey"), serverKey=serverKey, startup=slist[0].get("tasks"))
             self.combinedConnections[serverKey].parentApi = self
 

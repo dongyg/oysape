@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os, base64, traceback, json, hashlib, re, json, _thread, time, getpass, fnmatch, platform
+import os, base64, traceback, json, hashlib, re, json, _thread, time, getpass, socket, fnmatch, platform
 import webview
 import paramiko
+from . import utils
 
 BUF_SIZE = 1024
 CR = '\r'
@@ -15,7 +16,7 @@ es_home = '\u001b[200~'
 es_end = '\u001b[201~'
 folder_base = os.path.expanduser(os.path.join('~', '.oysape'))
 folder_projects = os.path.join(folder_base, 'projects')
-folder_cache = os.path.join(folder_base, 'cache')
+folder_cache = os.path.join(folder_base, 'localcache')
 filename_env = os.path.join(folder_base, 'env.json')
 filename_settings = os.path.join(folder_base, 'workspace.json')
 filename_tasks = os.path.join(folder_base, 'tasks.json')
@@ -96,43 +97,6 @@ def parse_ssh_connection_string(connection_string):
         port = 22
     return hostname, port, username
 
-def n10to62(value):
-    stc = '0123456789abcdefghigklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    length = len(stc)
-    retval = ''
-    intp, remp = divmod(value,length)
-    while intp>0:
-        retval = stc[remp]+retval
-        intp, remp = divmod(intp,length)
-    retval = stc[remp]+retval
-    return retval
-
-def n62to10(value):
-    stc = '0123456789abcdefghigklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    length = len(stc)
-    retval = 0
-    for x in range(len(value)):
-        retval = retval+stc.find(value[x])*length**(len(value)-x-1)
-    return retval
-
-def n16to62(value):
-    return n10to62(int(value, 16))
-
-def convert_bytes(size):
-    # 1 KB = 1024 B
-    # 1 MB = 1024 KB
-    # 1 GB = 1024 MB
-    units = ["B", "KB", "MB", "GB"]
-    unit_index = 0
-    while size >= 1024 and unit_index < len(units) - 1:
-        size /= 1024
-        unit_index += 1
-    size = round(size, 2)
-    return '%d %s'%(int(size), units[unit_index])
-
-def get_key(text):
-    return n16to62(hashlib.md5(text.encode('utf-8')).hexdigest())
-
 def get_files(apath, recurse=True, exclude=[], ignore=None):
     if os.path.isdir(apath):
         result = []
@@ -142,13 +106,13 @@ def get_files(apath, recurse=True, exclude=[], ignore=None):
         files = [x for x in items if os.path.isfile(os.path.join(apath, x))]
         for item in dirs:
             if exclude and ignore and callable(ignore) and not ignore(item,exclude):
-                result.append({"title":item, "key":get_key(os.path.join(apath, item)), "path":os.path.join(apath, item), "children":get_files(os.path.join(apath, item), recurse, exclude, ignore) if recurse else []})
+                result.append({"title":item, "key":utils.get_key(os.path.join(apath, item)), "path":os.path.join(apath, item), "children":get_files(os.path.join(apath, item), recurse, exclude, ignore) if recurse else []})
         for item in files:
             if exclude and ignore and callable(ignore) and not ignore(item,exclude):
                 result.append(get_files(os.path.join(apath, item), recurse, exclude, ignore))
         return result
     elif os.path.isfile(apath):
-        return {"title":os.path.basename(apath), "key":get_key(apath), "path":apath, "isLeaf":True}
+        return {"title":os.path.basename(apath), "key":utils.get_key(apath), "path":apath, "isLeaf":True}
     else:
         return []
 
@@ -249,13 +213,19 @@ def get_ps(sshconn, tty_number, debug=False):
     try:
         if not (sshconn.transport and sshconn.transport.is_alive()):
             sshconn.reconnect()
-        # stdin, stdout, stderr = sshconn.client.exec_command("ps -t %s"%tty_number)
-        stdin, stdout, stderr = sshconn.client.exec_command("ps -ef | grep %s | grep -v grep"%tty_number, timeout=15)
-        output = stdout.read().decode()
+        if hasattr(sshconn, 'client') and sshconn.client is not None:
+            # stdin, stdout, stderr = sshconn.client.exec_command("ps -t %s"%tty_number)
+            stdin, stdout, stderr = sshconn.client.exec_command("ps -ef | grep %s | grep -v grep"%tty_number, timeout=15)
+            output = stdout.read().decode()
+        else:
+            output = ''
     except Exception as e:
         sshconn.reconnect()
-        stdin, stdout, stderr = sshconn.client.exec_command("ps -ef | grep %s | grep -v grep"%tty_number, timeout=15)
-        output = stdout.read().decode()
+        if hasattr(sshconn, 'client') and sshconn.client is not None:
+            stdin, stdout, stderr = sshconn.client.exec_command("ps -ef | grep %s | grep -v grep"%tty_number, timeout=15)
+            output = stdout.read().decode()
+        else:
+            output = ''
     if debug: print(json.dumps(output))
     return [x for x in output.split('\n') if x and not x.strip().endswith((' sudo', ' sudo su', ' su', ' sh', ' bash'))]
 
@@ -414,9 +384,9 @@ class SSHClient:
         self.prompt_endchar = None
         self.tty_number = None
         self.ps_list = []
-        if self.channel is not None:
+        if hasattr(self, 'channel') and self.channel is not None:
             self.channel.close()
-        if self.client is not None:
+        if hasattr(self, 'client') and self.client is not None:
             self.client.close()
 
     def execute_command(self, command):
@@ -578,7 +548,7 @@ class SSHClient:
         if not (self.transport and self.transport.is_alive()):
             self.reconnect()
         if local_path.startswith('~/'):
-            local_path = os.path.expanduser(local_path)
+            local_path = os.path.realpath(os.path.expanduser(local_path))
         if os.path.isdir(local_path):
             return self.upload_directory(local_path, remote_path, self.onChannelString)
         else:
@@ -630,6 +600,10 @@ themeType = 'dark'
 class ApiBase:
     def __init__(self, is_debug=False):
         self.is_debug = is_debug
+        if not os.path.isfile(filename_env):
+            json.dump({
+                'client': getpass.getuser()+'@'+socket.gethostname(),
+            }, open(filename_env, 'w'), indent=4)
 
     def isDebug(self):
         return self.is_debug
@@ -708,7 +682,27 @@ class ApiBase:
         return "Api not found: %s" % functionName
 
 
-class ApiOysape(ApiBase):
+class ApiGithubOauth(ApiBase):
+    def signInWithGithub(self, params):
+        # 打开 github oauth 登录页面
+        cid = getpass.getuser()+'@'+socket.gethostname()
+        url = 'https://github.com/login/oauth/authorize?scope=user:email&client_id=6d627d92ce5a51cda1b1&state=%s'%cid
+        apiObj = ApiGithubOauth()
+        apiObj.windowGithubSignIn = webview.create_window('Oysape', url, js_api=apiObj)
+    def signInGithubSuccess(self, params):
+        # 这是客户端的后端登录成功接口
+        print('signInGithubSuccess')
+        print(params)
+        # Close the signup window
+        # if hasattr(self, 'windowGithubSignIn') and self.windowGithubSignIn:
+        #     self.windowGithubSignIn.destroy()
+    def openTestWindow(self, params):
+        apiObj = ApiGithubOauth()
+        apiObj.windowGithubSignIn = webview.create_window('Oysape', 'https://ee862e31.aifetel.cc/', js_api=apiObj)
+        # apiObj.winGithub = webview.create_window('Oysape', 'https://aifetel.cc/', js_api=apiObj)
+
+
+class ApiOysape(ApiGithubOauth):
     listServer = []
     listTask = []
     listPipeline = []
@@ -858,7 +852,7 @@ class ApiOysape(ApiBase):
         # oyfiles = [{"title":"Files", "key":"__files__", "children":items}]
         # retval.extend(oyfiles)
         folders = (self.workspaceSettings.get('folders') or [])
-        folders = [{"root":True, "title":os.path.basename(x['path']), "key":get_key(x['path']), "path":x['path'], "children":get_files(x['path'], True, exclude+(x.get('exclude') or []), ignore)} for x in folders if x.get('path') and not ignore(x['path'],exclude)]
+        folders = [{"root":True, "title":os.path.basename(x['path']), "key":utils.get_key(x['path']), "path":x['path'], "children":get_files(x['path'], True, exclude+(x.get('exclude') or []), ignore)} for x in folders if x.get('path') and not ignore(x['path'],exclude)]
         retval.extend(folders)
         return retval
 
@@ -1017,7 +1011,7 @@ def execTask(taskKey, taskObj, taskCmds, client, output=True):
         if output: client.onChannelString((CRLF+CRLF+colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF))
         if taskObj.get('source') and taskObj.get('destination'):
             number, transfered = client.upload(taskObj.get('source'), taskObj.get('destination'))
-            if output: client.onChannelString(CRLF+'Uploaded %s file(s). %s transfered'%(number, convert_bytes(transfered))+CRLF)
+            if output: client.onChannelString(CRLF+'Uploaded %s file(s). %s transfered'%(number, utils.convert_bytes(transfered))+CRLF)
         else:
             client.onChannelString((CRLF+'No source or destination defined: %s'%taskObj.get('name')+CRLF))
     elif taskObj.get('interaction') == 'download':
@@ -1025,7 +1019,7 @@ def execTask(taskKey, taskObj, taskCmds, client, output=True):
         if output: client.onChannelString((CRLF+CRLF+colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF))
         if taskObj.get('source') and taskObj.get('destination'):
             number, transfered = client.download(taskObj.get('source'), taskObj.get('destination'))
-            if output: client.onChannelString(CRLF+'Downloaded %s file(s). %s transfered'%(number, convert_bytes(transfered))+CRLF)
+            if output: client.onChannelString(CRLF+'Downloaded %s file(s). %s transfered'%(number, utils.convert_bytes(transfered))+CRLF)
         else:
             client.onChannelString((CRLF+'No source or destination defined: %s'%taskObj.get('name')+CRLF))
     elif not taskCmds:
@@ -1044,7 +1038,7 @@ def execTask(taskKey, taskObj, taskCmds, client, output=True):
             client.send_to_channel(command + LF, human=False)
         elif runmode=='script':
             # Save the commands to a script file, then execute it
-            filename = get_key(taskKey)+'.sh'
+            filename = utils.get_key(taskKey)+'.sh'
             filepath = os.path.join(folder_cache, filename)
             content = LF.join(taskCmds)
             if not os.path.exists(folder_cache):

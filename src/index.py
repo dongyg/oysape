@@ -19,14 +19,15 @@ def get_entrypoint():
 
     raise Exception('No index.html found')
 
-is_debug = False
+is_debug = True
 entry = 'http://localhost:3000' if is_debug else get_entrypoint()
 
 
 if __name__ == '__main__':
     apiObj = apis.ApiWorkspace()
-    window = webview.create_window('Oysape', entry, js_api=apiObj, width=1280, height=768)
+    window = webview.create_window('Oysape', entry, js_api=apiObj, width=1280, height=768, confirm_close=True)
     # _thread.start_new_thread(webview.start, (), {"debug": True}) # pywebview must be run on a main thread
     # console.embed()
-    webview.start(debug=is_debug)
+    # Give private_mode=False to save cookies persistently
+    webview.start(debug=is_debug, private_mode=False)
     print('Bye.')

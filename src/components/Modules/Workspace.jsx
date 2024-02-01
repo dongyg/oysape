@@ -54,7 +54,8 @@ export default function CombinedTerminal(props) {
         callApi('setTheme', {type:customTheme.type}).then((data) => {}); // To ensure the theme is set on backend
         callApi('callTask', {taskKey:taskKey, serverKey:serverKey}).then(res => {}).catch(err => {});
     }
-    const callPipeline = (pipelineName) => {
+    const callPipeline = (pipelineObj) => {
+        const pipelineName = pipelineObj.name;
         updateWorkspaceTabTitle('');
         setTabActiveKey('workspace');
         xtermRef.current.focus();
@@ -69,6 +70,7 @@ export default function CombinedTerminal(props) {
 
     window.callTask = callTask;
     window.callPipeline = callPipeline;
+    window.updateWorkspaceTabTitle = updateWorkspaceTabTitle;
     window.closeWorkspaceChannel = (serverKey) => {
         currentWorkingChannel.current = '';
         tabItems[0].label = 'Workspace';

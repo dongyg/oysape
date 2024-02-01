@@ -976,7 +976,14 @@ class ApiWorkspace(ApiTerminal):
             taskObj = self.getTaskObject(taskKey)
             taskCmds = self.getTaskCommands(taskKey)
             # Set the workspace's current server if want the workspace to be interactive
-            self.workspaceWorkingChannel = serverKey if taskObj.get('interaction') == 'interactive' else ''
+            if taskObj.get('interaction') == 'interactive':
+                self.workspaceWorkingChannel = serverKey
+                if len(webview.windows) > 0:
+                    webview.windows[0].evaluate_js('window.updateWorkspaceTabTitle && window.updateWorkspaceTabTitle("%s")'%(serverKey))
+            else:
+                self.workspaceWorkingChannel = ''
+                if len(webview.windows) > 0:
+                    webview.windows[0].evaluate_js('window.updateWorkspaceTabTitle && window.updateWorkspaceTabTitle("%s")'%(''))
             execTask(taskKey, taskObj, taskCmds, self.combinedConnections[serverKey])
         elif self.combinedConnections[serverKey].message:
             outmsg = colorizeText(serverKey,None,'gray') + ' ' + colorizeText(self.combinedConnections[serverKey].message,'red')

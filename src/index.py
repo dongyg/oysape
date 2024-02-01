@@ -19,7 +19,7 @@ def get_entrypoint():
 
     raise Exception('No index.html found')
 
-is_debug = True
+is_debug = False
 entry = 'http://localhost:3000' if is_debug else get_entrypoint()
 
 

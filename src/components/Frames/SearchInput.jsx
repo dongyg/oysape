@@ -180,7 +180,9 @@ const SearchInput = () => {
 
   const executeInput = (text) => {
     if(text.indexOf(indexPipelineSign) === 0){
-      window.callPipeline(text.substring(1));
+      const pipelineName = text.substring(1);
+      const pipelineObj = pipelineItems.filter((item) => item.name === pipelineName)[0];
+      window.callPipeline(pipelineObj);
     } else if (text.indexOf(indexServerSign) >= 0 || text.indexOf(indexTaskSign) >= 0) {
       const taskInput = parseTaskString0(text);
       // console.log('executeInput', text, taskInput);

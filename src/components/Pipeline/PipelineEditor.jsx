@@ -57,9 +57,9 @@ export default function PipelineEditor(props) {
     callApi('addPipeline', newobj).then((data) => {
       if(data && data.errinfo) {
         message.error(data.errinfo);
-      }else if(data && data.pipelineList) {
+      }else if(data && data.pipelines) {
         pipelineKey.current = newobj.key;
-        setPipelineItems(data.pipelineList);
+        setPipelineItems(data.pipelines);
         const newItems = tabItems.map((item) => {
           if(item.key === uniqueKey) {
             item.hasSomethingNew = false;

@@ -15,7 +15,7 @@ import './SearchInput.css';
 
 const SearchInput = () => {
   const { message } = App.useApp();
-  const { serverItems, taskItems, pipelineItems, projectFiles, tabItems, setTabItems, setTabActiveKey } = useCustomContext();
+  const { serverItems, taskItems, pipelineItems, projectFiles, tabItems, setTabItems, setTabActiveKey, userSession } = useCustomContext();
   const [options, setOptions] = useState([]);
   const [showSearch, setShowSearch] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -101,7 +101,7 @@ const SearchInput = () => {
     const v1 = query.indexOf(indexServerSign)>=0;
     const prefix = v1 ? '' : indexServerSign;
     query = v1 ? query.toLowerCase().split(indexServerSign)[1] : query;
-    return serverItems ? serverItems.filter((item) => getShowTitle(item.name).toLowerCase().indexOf(query) >= 0).map((item) => {
+    return serverItems ? serverItems.filter((item) => getShowTitle(item.name).toLowerCase().includes(query) || (item.tags&&item.tags.join(',').toLowerCase().includes(query))).map((item) => {
       return { value: prefix+item.name, label: (
         <div style={{ display: 'flex', justifyContent: 'space-between'}}>
           <div>{prefix+getShowTitle(item.name)}</div>
@@ -116,12 +116,12 @@ const SearchInput = () => {
     const v1 = query.indexOf(indexTaskSign)>=0;
     const prefix = v1 ? '' : indexTaskSign;
     query = v1 ? query.toLowerCase().split(indexTaskSign)[1] : query;
-    return taskItems ? taskItems.filter((item) => getShowTitle(item.name).toLowerCase().indexOf(query) >= 0).map((item) => {
+    return taskItems ? taskItems.filter((item) => getShowTitle(item.name).toLowerCase().includes(query) || (item.tags&&item.tags.join(',').toLowerCase().includes(query))).map((item) => {
       return { value: prefix+item.name, label: (
         <div style={{ display: 'flex', justifyContent: 'space-between'}}>
           <div>{prefix+getShowTitle(item.name)}</div><div>
             { item.interaction ? (<Tag key={getUniqueKey()}>{item.interaction}</Tag>) : null }
-            { item.tag ? (<Tag key={getUniqueKey()}>{item.tag}</Tag>) : null }
+            { item.tags ? item.tags.map((tag) => (<Tag key={getUniqueKey()}>{tag}</Tag>)) : null }
           </div>
         </div>
       )}
@@ -131,7 +131,7 @@ const SearchInput = () => {
     const v1 = query.indexOf(indexPipelineSign)>=0;
     const prefix = v1 ? '' : indexPipelineSign;
     query = v1 ? query.toLowerCase().split(indexPipelineSign)[1] : query;
-    return pipelineItems ? pipelineItems.filter((item) => item.name.toLowerCase().indexOf(query) >= 0).map((item) => {
+    return pipelineItems ? pipelineItems.filter((item) => item.name.toLowerCase().includes(query) || (item.tags&&item.tags.join(',').toLowerCase().includes(query))).map((item) => {
       return { value: prefix+item.name, label: (
         <div style={{ display: 'flex', justifyContent: 'space-between'}}>
           <div>{prefix+item.name}</div><div>
@@ -156,7 +156,7 @@ const SearchInput = () => {
     } else if (searchMode.current === indexPipelineSign) {
       return getPipelinesForSearch(query);
     } else {
-      return getServersForSearch(query).concat(getTasksForSearch(query)).concat(getFilesForSearch(query));
+      return getServersForSearch(query).concat(getTasksForSearch(query)).concat(getPipelinesForSearch(query)).concat(getFilesForSearch(query));
     }
   };
   const handleSearch = (value) => {
@@ -306,7 +306,12 @@ const SearchInput = () => {
   })
   return (
     <div style={{ width: '50%', margin: '0 auto' }}>
-      <Button icon={<SearchOutlined />} style={{ width: '100%', display: !showSearch ? 'block' : 'none', transition: 'none' }} onClick={onSearch}>Workspace</Button>
+      <Button icon={<SearchOutlined />} style={{ width: '100%', display: !showSearch ? 'block' : 'none', transition: 'none' }} onClick={onSearch}>
+        { userSession && userSession.work0 && userSession.teams && userSession.team0 && userSession.teams[userSession.team0] && userSession.teams[userSession.team0].workspaces && userSession.teams[userSession.team0].workspaces[userSession.work0] && userSession.teams[userSession.team0].workspaces[userSession.work0].wname ?
+          userSession.teams[userSession.team0].workspaces[userSession.work0].wname :
+          'Workspace'
+        }
+      </Button>
       <AutoComplete
         popupMatchSelectWidth={'100%'}
         defaultActiveFirstOption={true}
@@ -327,7 +332,9 @@ const SearchInput = () => {
           autoCorrect='off'
           spellCheck='false'
           placeholder="Type : for choosing a Task, or @ for Server, or ! for Pipeline"
-          allowClear={{ clearIcon: <div>{!dropMenuShowed?(window.oypaseTabs&&window.oypaseTabs.workspace&&window.oypaseTabs.workspace._core.browser.isMac?<BsCommand/>:<PiControl/>):null}<BsArrowReturnLeft /></div> }}
+          allowClear={{ clearIcon: <div onClick={
+            () => { executeInput(searchValue); }
+          }>{!dropMenuShowed?(window.oypaseTabs&&window.oypaseTabs.workspace&&window.oypaseTabs.workspace._core.browser.isMac?<BsCommand/>:<PiControl/>):null}<BsArrowReturnLeft /></div> }}
         />
       </AutoComplete>
     </div>

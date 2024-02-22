@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { App, Tabs } from 'antd';
 import { QuestionCircleFilled } from "@ant-design/icons";
 
 import { useCustomContext } from '../Contexts/CustomContext'
+import { callApi } from '../Common/global';
 import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
 import Workspace from '../Modules/Workspace';
 // import BlankContent from '../Modules/BlankContent';
@@ -20,7 +21,7 @@ const defaultPanes = [
 
 const ContentFrame = () => {
   const { modal, notification } = App.useApp();
-  const { customTheme, tabItems, setTabItems, tabActiveKey, setTabActiveKey } = useCustomContext();
+  const { customTheme, tabItems, setTabItems, tabActiveKey, setTabActiveKey, userSession, setUserSession } = useCustomContext();
 
   const getTabTitle = (key) => {
     const { label } = tabItems.find((pane) => pane.key === key) || '';
@@ -73,9 +74,17 @@ const ContentFrame = () => {
     }
   }
 
+  const reloadUserSession = useCallback(() => {
+    callApi('getUserSession', {refresh: true}).then((data) => {
+      setUserSession(data);
+    });
+  }, [setUserSession]);
+  window.reloadUserSession = reloadUserSession;
+
   useEffect(() => {
-    setTabItems(defaultPanes)
-  }, [setTabItems]);
+    setTabItems(defaultPanes);
+    reloadUserSession();
+  }, [setTabItems, reloadUserSession]);
 
   useKeyPress(keyMapping["closeTab"], (event) => {
     closeThisTab(tabActiveKey);

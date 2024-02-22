@@ -24,7 +24,7 @@ OPTIONS = {
     'argv_emulation': False,
     'strip': True,
     'iconfile': 'src/assets/logo.icns',
-    'includes': ['WebKit', 'Foundation', 'webview', 'pkg_resources.py2_warn', 'paramiko', 'cffi'],
+    'includes': ['WebKit', 'Foundation', 'webview', 'pkg_resources.py2_warn', 'paramiko', 'cffi', 'jinja2'],
     'resources': ['gui'],
     'plist': {
         'CFBundleName': 'Oysape',

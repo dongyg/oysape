@@ -118,8 +118,8 @@ const PipelineList = () => {
         callApi('deletePipeline', {key: pipelineKey}).then((data) => {
           if(data && data.errinfo) {
             message.error(data.errinfo);
-          }else if(data && data.pipelineList) {
-            setPipelineItems(data.pipelineList);
+          }else if(data && data.pipelines) {
+            setPipelineItems(data.pipelines);
             setShowPipelines(showPipelines.filter((pipeline) => pipeline.key !== pipelineKey));
           }
         })
@@ -136,6 +136,20 @@ const PipelineList = () => {
       window.fillSearchPipeline(pipelineObj.name);
     }
   }
+
+  const reloadPipelineList = useCallback(() => {
+    callApi('getPipelineList', {refresh: true}).then((data) => {
+      setPipelineItems(data);
+      setShowPipelines(data);
+    });
+  }, [setPipelineItems, setShowPipelines]);
+  window.reloadPipelineList = reloadPipelineList;
+
+  // useEffect(() => {
+  //   setTimeout(() => {
+  //     reloadPipelineList();
+  //   }, 10)
+  // },[reloadPipelineList]);
 
   useEffect(() => {
     filterPipelines(searchKeyword);

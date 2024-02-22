@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Base64 } from 'js-base64';
 import { Terminal } from "xterm";
 import { FitAddon } from "xterm-addon-fit";
+import { SearchAddon } from "xterm-addon-search";
 import "xterm/css/xterm.css";
 
 import { useCustomContext } from '../Contexts/CustomContext'
@@ -80,6 +81,7 @@ export default function CombinedTerminal(props) {
     React.useEffect(() => {
         xtermRef.current = new Terminal(termOptions);
         xtermRef.current.fitAddon = new FitAddon();
+        xtermRef.current.searchAddon = new SearchAddon();
 
         const prompt = () => {
             xtermRef.current.write("\x1b[33m$\x1b[0m ");

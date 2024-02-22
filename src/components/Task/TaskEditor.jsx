@@ -84,9 +84,9 @@ export default function TaskEditor(props) {
       if(data && data.errinfo) {
         message.error(data.errinfo);
       }else if(data) {
-        if(data.taskList) {
+        if(data.tasks) {
           taskKey.current = newobj.key;
-          setTaskItems(data.taskList);
+          setTaskItems(data.tasks);
           const newItems = tabItems.map((item) => {
             if(item.key === uniqueKey) {
               item.hasSomethingNew = false;
@@ -98,8 +98,8 @@ export default function TaskEditor(props) {
           message.success('Task ['+form.getFieldValue('name')+'] saved');
           setFooterStatusText('Task ['+form.getFieldValue('name')+'] saved');
         }
-        if(data.pipelineList) {
-          setPipelineItems(data.pipelineList);
+        if(data.pipelines) {
+          setPipelineItems(data.pipelines);
         }
       }
     })

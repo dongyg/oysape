@@ -65,9 +65,10 @@ const TaskList = () => {
     filterTasks(event.target.value);
   }
   const filterTasks = useCallback((keyword, viewUpdate) => {
+    let query = keyword.toLowerCase();
     setShowTasks(
       (taskItems||[]).filter((task) => {
-        return task.name.includes(keyword) || (task.cmds||[]).join('\n').includes(keyword) || (task.tags&&task.tags.join(',').includes(keyword)) || (task.interaction&&task.interaction.includes(keyword));
+        return task.name.toLowerCase().includes(query) || (task.cmds||[]).join('\n').toLowerCase().includes(query) || (task.tags&&task.tags.join(',').toLowerCase().includes(query)) || (task.interaction&&task.interaction.toLowerCase().includes(query));
       })
     )
   }, [taskItems]);
@@ -121,8 +122,8 @@ const TaskList = () => {
         callApi('deleteTask', {key: taskKey}).then((data) => {
           if(data && data.errinfo) {
             message.error(data.errinfo);
-          }else if(data && data.taskList) {
-            setTaskItems(data.taskList);
+          }else if(data && data.tasks) {
+            setTaskItems(data.tasks);
             setShowTasks(showTasks.filter((task) => task.key !== taskKey));
           }
         })
@@ -138,6 +139,20 @@ const TaskList = () => {
       window.fillSearchTask(taskObj.name);
     }
   }
+
+  const reloadTaskList = useCallback(() => {
+    callApi('getTaskList', {refresh: true}).then((data) => {
+      setTaskItems(data);
+      setShowTasks(data);
+    });
+  }, [setTaskItems, setShowTasks]);
+  window.reloadTaskList = reloadTaskList;
+
+  // useEffect(() => {
+  //   setTimeout(() => {
+  //     reloadTaskList();
+  //   }, 10)
+  // },[reloadTaskList]);
 
   useEffect(() => {
     filterTasks(searchKeyword);

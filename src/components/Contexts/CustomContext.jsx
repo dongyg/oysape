@@ -17,6 +17,7 @@ const statusDefaultText = 'Oysape';
 
 export const ThemeProvider = ({ children }) => {
   const [currentTheme, setCurrentTheme] = useState(customThemes.light);
+  const [userSession, setUserSession] = useState({});
   const [sideAlign, setSideAlign] = useState('left');
   const [sideSplitterMoving, setSideSplitterMoving] = useState(false);
   const [sideWidthUse, setSideWidthUse] = useState(400);
@@ -59,6 +60,7 @@ export const ThemeProvider = ({ children }) => {
       setCurrentTheme(currentTheme === customThemes.dark ? customThemes.light : customThemes.dark);
       callApi('setTheme', currentTheme === customThemes.dark ? customThemes.light : customThemes.dark).then((data) => {});
     },
+    userSession, setUserSession,
     sideAlign, setSideAlign,
     sideSplitterMoving, setSideSplitterMoving,
     sideWidthUse, setSideWidthUse,

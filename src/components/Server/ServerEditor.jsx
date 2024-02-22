@@ -74,7 +74,7 @@ export default function ServerEditor(props) {
   const openFile = (e) => {
     callApi('choose_file').then((data) => {
       if(data) {
-        form.setFieldsValue({prikey: data[0]});
+        form.setFieldsValue({prikey: data});
       }
     })
   }
@@ -97,9 +97,9 @@ export default function ServerEditor(props) {
     callApi('addServer', newobj).then((data) => {
       if(data && data.errinfo) {
         message.error(data.errinfo);
-      }else if(data && data.serverList) {
+      }else if(data && data.servers) {
         serverKey.current = newobj.key;
-        setServerItems(data.serverList);
+        setServerItems(data.servers);
         const newItems = tabItems.map((item) => {
           if(item.key === uniqueKey) {
             item.hasSomethingNew = false;

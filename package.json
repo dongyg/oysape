@@ -77,7 +77,8 @@
     "webpack-manifest-plugin": "^4.0.2",
     "workbox-webpack-plugin": "^6.4.1",
     "xterm": "^4.5.0",
-    "xterm-addon-fit": "^0.4.0"
+    "xterm-addon-fit": "^0.4.0",
+    "xterm-addon-search": "^0.13.0"
   },
   "scripts": {
     "dev": "node scripts/start.js",

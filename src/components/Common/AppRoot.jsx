@@ -39,7 +39,7 @@ const AppRoot = () => {
         <Layout style={{ height: '100%' }}>
           <BodyContainer></BodyContainer>
           <Footer className='disableHighlight' style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <div>{footerStatusText}</div>
+            <div style={{ padding: '0 4px'}}>{footerStatusText}</div>
             <div style={{ display: (codeEditRowColText ? 'flex' : 'none') }}>
               <div style={{ paddingRight: '4px' }}>{codeEditRowColText}</div>
               <div style={{ paddingRight: '0px' }}>

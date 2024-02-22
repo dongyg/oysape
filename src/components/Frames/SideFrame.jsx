@@ -37,10 +37,10 @@ export default function SideFrame() {
 
   React.useEffect(() => {
     setTimeout(() => {
-      // callApi('getServerList').then((data) => { setServerItems(data); })
+      // callApi('getServerList', {refresh: true}).then((data) => { setServerItems(data); })
+      callApi('getTaskList', {refresh: true}).then((data) => { setTaskItems(data); });
+      callApi('getPipelineList', {refresh: true}).then((data) => { setPipelineItems(data); });
       callApi('getProjectFiles').then((data) => { setProjectFiles(data); })
-      callApi('getTaskList').then((data) => { setTaskItems(data); });
-      callApi('getPipelineList').then((data) => { setPipelineItems(data); });
     }, 50)
   },[setTaskItems, setPipelineItems, setProjectFiles]);
 

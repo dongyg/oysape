@@ -3,3 +3,4 @@ pywebview
 pyinstaller; sys_platform != 'darwin'
 py2app; sys_platform == 'darwin'
 paramiko
+jinja2

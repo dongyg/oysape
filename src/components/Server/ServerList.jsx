@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { App, Table, Dropdown, Input, Tag } from "antd";
 import { SearchOutlined } from '@ant-design/icons';
 import { EditOutlined, DeleteOutlined, QuestionCircleFilled } from "@ant-design/icons";
@@ -124,8 +124,8 @@ const ServerList = () => {
         callApi('deleteServer', {key: serverKey}).then((data) => {
           if(data && data.errinfo) {
             message.error(data.errinfo);
-          }else if(data && data.serverList) {
-            setServerItems(data.serverList);
+          }else if(data && data.servers) {
+            setServerItems(data.servers);
             setShowServers(showServers.filter((server) => server.key !== serverKey));
           }
         })
@@ -141,15 +141,19 @@ const ServerList = () => {
       window.fillSearchServer(serverObj.name);
     }
   }
+  const reloadServerList = useCallback(() => {
+    callApi('getServerList', {refresh: true}).then((data) => {
+      setServerItems(data);
+      setShowServers(data);
+    });
+  }, [setServerItems, setShowServers]);
+  window.reloadServerList = reloadServerList;
 
   useEffect(() => {
     setTimeout(() => {
-      callApi('getServerList').then((data) => {
-        setServerItems(data);
-        setShowServers(data);
-      })
+      reloadServerList();
     }, 10)
-  },[setServerItems]);
+  },[reloadServerList]);
 
   useEffect(() => {
     filterServers(searchKeyword);

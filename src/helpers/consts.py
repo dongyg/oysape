@@ -8,23 +8,24 @@ __all__ = [
 import os
 
 def get_home_entry():
-    if os.path.exists('../gui/index.html'): # unfrozen development
-        return '../gui/index.html'
-    if os.path.exists('../Resources/gui/index.html'): # frozen py2app
-        return '../Resources/gui/index.html'
-    if os.path.exists('./gui/index.html'):
-        return './gui/index.html'
+    if os.path.exists(os.path.realpath('../gui/index.html')):
+        return os.path.realpath('../gui/index.html')
+    if os.path.exists(os.path.realpath('../Resources/gui/index.html')):
+        return os.path.realpath('../Resources/gui/index.html')
+    if os.path.exists(os.path.realpath('./gui/index.html')):
+        return os.path.realpath('./gui/index.html')
     raise Exception('No index.html found')
 
 
 # Change this to True on development environment
-IS_DEBUG = True
+IS_DEBUG = False
 
 
 # Variables for local app
 windowObj = None
 homeEntry = 'http://localhost:3000' if IS_DEBUG else get_home_entry()
 
+print(homeEntry)
 
 # Variables for server conmunication
 userToken = ''

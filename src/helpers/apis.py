@@ -15,12 +15,12 @@ es_home = '\u001b[200~'
 es_end = '\u001b[201~'
 folder_base = os.path.expanduser(os.path.join('~', '.oysape'))
 folder_cache = os.path.join(folder_base, 'localcache')
-folder_projects = os.path.join(folder_base, 'projects')
-filename_session = os.path.join(folder_base, 'session.json')
+# folder_projects = os.path.join(folder_base, 'projects')
 filename_settings = os.path.join(folder_base, 'settings.json')
-filename_tasks = os.path.join(folder_base, 'tasks.json')
-filename_servers = os.path.join(folder_base, 'servers.json')
-filename_pipelines = os.path.join(folder_base, 'pipelines.json')
+# filename_session = os.path.join(folder_base, 'session.json')
+# filename_tasks = os.path.join(folder_base, 'tasks.json')
+# filename_servers = os.path.join(folder_base, 'servers.json')
+# filename_pipelines = os.path.join(folder_base, 'pipelines.json')
 themeType = 'dark'
 
 
@@ -131,10 +131,10 @@ def mainloop(window):
 class ApiBase:
     def __init__(self, _debug=False):
         self._debug = _debug
-        if not os.path.isfile(filename_session):
-            json.dump({
-                'client': getpass.getuser()+'@'+socket.gethostname(),
-            }, open(filename_session, 'w'), indent=4)
+        # if not os.path.isfile(filename_session):
+        #     json.dump({
+        #         'client': getpass.getuser()+'@'+socket.gethostname(),
+        #     }, open(filename_session, 'w'), indent=4)
 
     def isDebug(self):
         return self._debug
@@ -261,23 +261,24 @@ class ApiOysape(ApiOauth):
         tt = sdata.pop('tasks', []) or []
         pp = sdata.pop('pipelines', []) or []
         ss = sdata.pop('servers', []) or []
+        self.userSession = sdata
         self.listPipeline = pp
         self.listServer = ss
         self.listTask = tt
-        with open(filename_tasks, 'w') as f:
-            json.dump(tt, f, indent=4)
-        with open(filename_pipelines, 'w') as f:
-            json.dump(pp, f, indent=4)
-        with open(filename_servers, 'w') as f:
-            json.dump(ss, f, indent=4)
-        with open(filename_session, 'w') as f:
-            json.dump(sdata, f, indent=4)
+        # with open(filename_tasks, 'w') as f:
+        #     json.dump(tt, f, indent=4)
+        # with open(filename_pipelines, 'w') as f:
+        #     json.dump(pp, f, indent=4)
+        # with open(filename_servers, 'w') as f:
+        #     json.dump(ss, f, indent=4)
+        # with open(filename_session, 'w') as f:
+        #     json.dump(sdata, f, indent=4)
 
     def getUserSession(self, params={}):
-        if not self.userSession or params.get('refresh'):
-            if os.path.isfile(filename_session):
-                with open(filename_session, 'r') as f:
-                    self.userSession = json.load(f)
+        # if not self.userSession or params.get('refresh'):
+        #     if os.path.isfile(filename_session):
+        #         with open(filename_session, 'r') as f:
+        #             self.userSession = json.load(f)
         return self.userSession
 
     def switchToWorkspace(self, params):
@@ -289,10 +290,10 @@ class ApiOysape(ApiOauth):
 
     def getServerList(self, params={}):
         # Return server list as a list
-        if not self.listServer or params.get('refresh'):
-            if os.path.isfile(filename_servers):
-                with open(filename_servers, 'r') as f:
-                    self.listServer = json.load(f)
+        # if not self.listServer or params.get('refresh'):
+        #     if os.path.isfile(filename_servers):
+        #         with open(filename_servers, 'r') as f:
+        #             self.listServer = json.load(f)
         return self.listServer
 
     def addServer(self, params):
@@ -305,8 +306,8 @@ class ApiOysape(ApiOauth):
         # Return server list in {'servers': []}
         retval = tools.delItemOnServer('servers', params.get('key'))
         self.listServer = retval.get('servers') or []
-        with open(filename_servers, 'w') as f:
-            json.dump(self.listServer, f, indent=4)
+        # with open(filename_servers, 'w') as f:
+        #     json.dump(self.listServer, f, indent=4)
         return retval
 
     def getTaskObject(self, taskKey):
@@ -322,10 +323,10 @@ class ApiOysape(ApiOauth):
 
     def getTaskList(self, params={}):
         # Return task list as a list
-        if not self.listTask or params.get('refresh'):
-            if os.path.isfile(filename_tasks):
-                with open(filename_tasks, 'r') as f:
-                    self.listTask = json.load(f)
+        # if not self.listTask or params.get('refresh'):
+        #     if os.path.isfile(filename_tasks):
+        #         with open(filename_tasks, 'r') as f:
+        #             self.listTask = json.load(f)
         return self.listTask
 
     def addTask(self, params):
@@ -339,8 +340,8 @@ class ApiOysape(ApiOauth):
         # Return task list in {'tasks': []}
         retval = tools.delItemOnServer('tasks', params.get('key'))
         self.listTask = retval.get('tasks') or []
-        with open(filename_tasks, 'w') as f:
-            json.dump(self.listTask, f, indent=4)
+        # with open(filename_tasks, 'w') as f:
+        #     json.dump(self.listTask, f, indent=4)
         return retval
 
     def getPipelineObject(self, pipeName):
@@ -354,10 +355,10 @@ class ApiOysape(ApiOauth):
 
     def getPipelineList(self, params={}):
         # Return pipeline list as a list
-        if not self.listPipeline or params.get('refresh'):
-            if os.path.isfile(filename_pipelines):
-                with open(filename_pipelines, 'r') as f:
-                    self.listPipeline = json.load(f)
+        # if not self.listPipeline or params.get('refresh'):
+        #     if os.path.isfile(filename_pipelines):
+        #         with open(filename_pipelines, 'r') as f:
+        #             self.listPipeline = json.load(f)
         return self.listPipeline
 
     def addPipeline(self, params):
@@ -368,8 +369,8 @@ class ApiOysape(ApiOauth):
         # Return pipeline list in {'pipelines': []}
         retval = tools.delItemOnServer('pipelines', params.get('key'))
         self.listPipeline = retval.get('pipelines') or []
-        with open(filename_pipelines, 'w') as f:
-            json.dump(self.listPipeline, f, indent=4)
+        # with open(filename_pipelines, 'w') as f:
+        #     json.dump(self.listPipeline, f, indent=4)
         return retval
 
     def getProjectFiles(self, params={}):
@@ -430,11 +431,11 @@ class ApiOysape(ApiOauth):
             'tasks': self.listTask,
             'pipelines': self.listPipeline
         }
-        saves = {
-            'servers': filename_servers,
-            'tasks': filename_tasks,
-            'pipelines': filename_pipelines,
-        }
+        # saves = {
+        #     'servers': filename_servers,
+        #     'tasks': filename_tasks,
+        #     'pipelines': filename_pipelines,
+        # }
         if what not in objs.keys():
             return {"errinfo": "Invalid operation"}
         try:
@@ -449,8 +450,8 @@ class ApiOysape(ApiOauth):
             return_list = retval.get(what, []) or []
             objs[what].clear()
             objs[what].extend(return_list)
-            with open(saves[what], 'w') as f2:
-                json.dump(objs[what], f2, indent=4)
+            # with open(saves[what], 'w') as f2:
+            #     json.dump(objs[what], f2, indent=4)
             return retval
         except Exception as e:
             traceback.print_exc()

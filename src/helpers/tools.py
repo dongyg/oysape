@@ -4,6 +4,7 @@
 import hashlib, traceback, json
 import urllib.request
 import urllib.parse
+import ssl
 from . import consts
 
 def n10to62(value):
@@ -47,8 +48,9 @@ def send_get_request(url, data):
     print('GET', url)
     try:
         data_encoded = urllib.parse.urlencode(data)
+        context = ssl._create_unverified_context()
         request = urllib.request.Request(url+'?'+data_encoded, method='GET')
-        with urllib.request.urlopen(request) as response:
+        with urllib.request.urlopen(request, context=context) as response:
             response_data = response.read()
             response_text = response_data.decode('utf-8')
             # print(response_text, type(response_text))
@@ -64,8 +66,9 @@ def send_post_request(url, data, headers=None):
         json_data = json.dumps(data).encode('utf-8')
         headers = headers if headers else {}
         headers['Content-Type'] = 'application/json'
+        context = ssl._create_unverified_context()
         request = urllib.request.Request(url, data=json_data, headers=headers, method='POST')
-        with urllib.request.urlopen(request) as response:
+        with urllib.request.urlopen(request, context=context) as response:
             response_data = response.read()
             response_text = response_data.decode('utf-8')
             # print(response_text, type(response_text))
@@ -81,8 +84,9 @@ def send_delete_request(url, data, headers=None):
         data_encoded = urllib.parse.urlencode(data)
         headers = headers if headers else {}
         headers['Content-Type'] = 'application/json'
+        context = ssl._create_unverified_context()
         request = urllib.request.Request(url+'?'+data_encoded, headers=headers, method='DELETE')
-        with urllib.request.urlopen(request) as response:
+        with urllib.request.urlopen(request, context=context) as response:
             response_data = response.read()
             response_text = response_data.decode('utf-8')
             # print(response_text, type(response_text))

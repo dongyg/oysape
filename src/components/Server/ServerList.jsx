@@ -11,7 +11,7 @@ import ServerEditor from './ServerEditor';
 
 const ServerList = () => {
   const { message, modal } = App.useApp();
-  const { tabItems, setTabItems, setTabActiveKey, serverItems, setServerItems } = useCustomContext();
+  const { tabItems, setTabItems, setTabActiveKey, serverItems, setServerItems, setUserSession } = useCustomContext();
   const [showServers, setShowServers] = useState(serverItems);
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [multipleSelect, setMultipleSelect] = useState(false);
@@ -148,10 +148,18 @@ const ServerList = () => {
     });
   }, [setServerItems, setShowServers]);
   window.reloadServerList = reloadServerList;
+  const reloadUserSession = useCallback(() => {
+    callApi('getUserSession', {refresh: true}).then((data) => {
+      console.log('reloadUserSession', JSON.stringify(data));
+      setUserSession(data);
+    });
+  }, [setUserSession]);
+  window.reloadUserSession = reloadUserSession;
 
   useEffect(() => {
     setTimeout(() => {
       reloadServerList();
+      window.reloadUserSession && window.reloadUserSession();
     }, 10)
   },[reloadServerList]);
 

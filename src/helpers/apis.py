@@ -92,15 +92,15 @@ def clearCookies(window):
 
 def check_token(window):
     cookies = window.get_cookies()
-    if cookies and cookies[0].get('token') and cookies[0]['token'].value:
-        consts.userToken = cookies[0]['token'].value
+    if (cookies and cookies[0].get('token') and cookies[0]['token'].value) or consts.userToken:
+        consts.userToken = cookies[0]['token'].value if (cookies and cookies[0].get('token') and cookies[0]['token'].value) else consts.userToken
         loadEntrypointWindow(window)
         # time.sleep(1)
         retval = tools.callServerApiPost('/user/test', {'token': consts.userToken})
         if retval and not retval.get('errcode'):
             # Success
-            window.load_url(consts.homeEntry)
             apiInstance.update_session(retval)
+            window.load_url(consts.homeEntry)
             return True
         elif retval:
             # Has error
@@ -113,6 +113,7 @@ def check_token(window):
 def showSignInPage(window, signout=False, message=None):
     if signout: clearCookies(window)
     window.load_url('http://127.0.0.1:19790/signin')
+    if signout: clearCookies(window)
     if message:
         window.evaluate_js('''showError("%s");'''%(message or 'Unknown error.'))
     else:
@@ -243,9 +244,9 @@ class ApiOysape(ApiOauth):
 
     def testApi(self, params):
         print('ApiOysape.testApi', params)
-        print(self.listServer)
-        print(self.listTask)
-        print(self.listPipeline)
+        # print(self.listServer)
+        # print(self.listTask)
+        # print(self.listPipeline)
         return {'errinfo': 'test called'}
 
     def signIn(self, params):

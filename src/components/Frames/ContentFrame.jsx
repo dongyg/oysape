@@ -21,7 +21,7 @@ const defaultPanes = [
 
 const ContentFrame = () => {
   const { modal, notification } = App.useApp();
-  const { customTheme, tabItems, setTabItems, tabActiveKey, setTabActiveKey, userSession, setUserSession } = useCustomContext();
+  const { customTheme, tabItems, setTabItems, tabActiveKey, setTabActiveKey } = useCustomContext();
 
   const getTabTitle = (key) => {
     const { label } = tabItems.find((pane) => pane.key === key) || '';
@@ -74,17 +74,9 @@ const ContentFrame = () => {
     }
   }
 
-  const reloadUserSession = useCallback(() => {
-    callApi('getUserSession', {refresh: true}).then((data) => {
-      setUserSession(data);
-    });
-  }, [setUserSession]);
-  window.reloadUserSession = reloadUserSession;
-
   useEffect(() => {
     setTabItems(defaultPanes);
-    reloadUserSession();
-  }, [setTabItems, reloadUserSession]);
+  }, [setTabItems]);
 
   useKeyPress(keyMapping["closeTab"], (event) => {
     closeThisTab(tabActiveKey);

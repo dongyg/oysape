@@ -6,8 +6,7 @@ import webbrowser
 from datetime import datetime, timedelta
 from bottle import Bottle, run, request, response, static_file
 from jinja2 import Template
-from . import tools
-from . import consts
+from . import tools, apis, consts
 from .templs import *
 
 app = Bottle()
@@ -64,11 +63,11 @@ def githubOauthCallback():
     cid = getpass.getuser()+'@'+socket.gethostname()
     # Send the code to backend to finish the OAuth process and finish the sign in/sign up process
     retval = tools.callServerApiPost('/user/signin', {'c': cid, 'code': code, 'state': state})
-    print(retval)
     if retval and retval.get('errcode')==0 and retval.get('data') and retval.get('data').get('token'):
         # Write token to build-in webview window
         expires_time = datetime.utcnow() + timedelta(seconds=3600*24*30)
         consts.windowObj.evaluate_js('document.cookie = "token=%s; expires=%s; path=/";'%(retval.get('data').get('token'), expires_time.strftime("%a, %d %b %Y %H:%M:%S UTC")))
+        consts.userToken = retval.get('data').get('token')
         consts.windowObj.load_url(consts.homeEntry)
         # Return the success page
         rendered_template = Template(template_signin_success).render()

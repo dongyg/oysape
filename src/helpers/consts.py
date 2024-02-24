@@ -25,7 +25,6 @@ IS_DEBUG = False
 windowObj = None
 homeEntry = 'http://localhost:3000' if IS_DEBUG else get_home_entry()
 
-print(homeEntry)
 
 # Variables for server conmunication
 userToken = ''

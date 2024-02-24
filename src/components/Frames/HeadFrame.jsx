@@ -27,12 +27,10 @@ const HeadFrame = () => {
 
   const getTeamMenus = function() {
     const menus = [];
-    if(userSession){
-      menus.push({ key: 'menuManageTeams', label: ( 'Manage Teams' ), } )
-      menus.push({ key: 'menuReloadTeams', label: ( 'Refresh Teams' ), } )
-      menus.push({ type: 'divider', } )
-    }
+    menus.push({ key: 'menuReloadTeams', label: ( 'Refresh Teams' ), } )
     if(userSession && userSession.teams) {
+      menus.push({ key: 'menuManageTeams', label: ( 'Manage Teams' ), } )
+      menus.push({ type: 'divider', } )
       for (const teamId in userSession.teams) {
         const team = userSession.teams[teamId];
         const teamMenu = {
@@ -67,7 +65,7 @@ const HeadFrame = () => {
   }
   const menuItems = [
     ...getTeamMenus(),
-    // { key: 'menuTest3', label: ( 'testApi' ), },
+    { key: 'menuTest3', label: ( 'testApi' ), },
   ];
   const onClickMenu = ({ key }) => {
     if(key === 'menuManageTeams') {

@@ -576,7 +576,7 @@ class ApiWorkspace(ApiTerminal):
             taskObj = self.getTaskObject(taskKey)
             taskCmds = self.getTaskCommands(taskKey)
             # Set the workspace's current server if want the workspace to be interactive
-            if taskObj.get('interaction') == 'interactive':
+            if taskObj.get('interaction') in ('interactive', 'terminal'):
                 self.workspaceWorkingChannel = serverKey
                 if len(webview.windows) > 0:
                     webview.windows[0].evaluate_js('window.updateWorkspaceTabTitle && window.updateWorkspaceTabTitle("%s")'%(serverKey))
@@ -589,15 +589,45 @@ class ApiWorkspace(ApiTerminal):
             outmsg = colorizeText(serverKey,None,'gray') + ' ' + colorizeText(self.combinedConnections[serverKey].message,'red')
             self.combinedConnections[serverKey].onChannelString(outmsg)
 
+    def testIfTaskCanRunOnServer(self, params):
+        taskKey, serverKey = params.get('taskKey'), params.get('serverKey')
+        if not serverKey in self.combinedConnections:
+            return True
+        if not self.combinedConnections[serverKey].areAllTasksDone():
+            return False
+        return True
+
+    def testIfPipelineCanRun(self, params):
+        pipeName = params.get('pipelineName')
+        steps = self.getPipelineSteps(pipeName)
+        steps = merge_steps(steps)
+        for step in steps:
+            serverKey = step['target']
+            tasks = step['tasks']
+            for taskKey in tasks:
+                if not self.testIfTaskCanRunOnServer({'taskKey': taskKey, 'serverKey': serverKey}):
+                    return False
+        return True
+
     def callTask(self, params):
         taskKey, serverKey = params.get('taskKey'), params.get('serverKey')
+        if not self.testIfTaskCanRunOnServer({'taskKey': taskKey, 'serverKey': serverKey}):
+            self.combinedConnections[serverKey].onChannelString(colorizeText(LF+'Waiting for tasks to finish...', 'red'))
+            return
         self.taskOnServer(taskKey, serverKey)
 
     def callPipeline(self, params):
         pipeName = params.get('pipelineName')
-        print('execPipeline', pipeName)
         steps = self.getPipelineSteps(pipeName)
         steps = merge_steps(steps)
+        for step in steps:
+            serverKey = step['target']
+            tasks = step['tasks']
+            for taskKey in tasks:
+                if not self.testIfTaskCanRunOnServer({'taskKey': taskKey, 'serverKey': serverKey}):
+                    self.combinedConnections[serverKey].onChannelString(colorizeText(LF+'Waiting for tasks to finish...', 'red'))
+                    return
+        print('execPipeline', pipeName)
         for step in steps:
             serverKey = step['target']
             tasks = step['tasks']

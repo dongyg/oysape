@@ -9,6 +9,7 @@ import { useCustomContext } from '../Contexts/CustomContext'
 import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
 import { callApi, writeWelcome, colorizeText } from '../Common/global';
 import "./Terminal.css";
+import { message } from 'antd';
 
 const termOptions = {
     fontFamily: 'Menlo, Monaco, "Courier New", monospace',
@@ -40,33 +41,41 @@ export default function CombinedTerminal(props) {
         const taskKey = taskInput.task;
         const serverKey = taskInput.server;
         if(!taskKey || !serverKey) return;
-        // Set the workspace's tab label if workspace is interaction
-        updateWorkspaceTabTitle(taskObj.interaction==='interactive'?serverKey:'');
-        // xtermRef.current.write(showCursor);
-        // xtermRef.current.setOption('disableStdin',false);
-        setTabActiveKey('workspace');
-        setTimeout(() => {
-            xtermRef.current.focus();
-        }, 10);
-        // xtermRef.current.write(colorizeText(serverKey, 'cyan', customTheme.type==='light' ? 'white' : 'gray'));
-        // const command = taskObj.cmds.join('\r\n');
-        // console.log(command);
-        // xtermRef.current.write(command);
-        callApi('setTheme', {type:customTheme.type}).then((data) => {}); // To ensure the theme is set on backend
-        callApi('callTask', {taskKey:taskKey, serverKey:serverKey}).then(res => {}).catch(err => {});
+        callApi('testIfTaskCanRunOnServer', {taskKey: taskKey, serverKey: serverKey}).then(res1 => {
+            if(!res1) {
+                message.warning('Please wait for tasks to finish...');
+                return;
+            }
+            // Set the workspace's tab label if workspace is interaction
+            updateWorkspaceTabTitle(taskObj.interaction==='interactive'?serverKey:'');
+            // xtermRef.current.write(showCursor);
+            // xtermRef.current.setOption('disableStdin',false);
+            setTabActiveKey('workspace');
+            setTimeout(() => {
+                xtermRef.current.focus();
+            }, 10);
+            // xtermRef.current.write(colorizeText(serverKey, 'cyan', customTheme.type==='light' ? 'white' : 'gray'));
+            // const command = taskObj.cmds.join('\r\n');
+            // console.log(command);
+            // xtermRef.current.write(command);
+            callApi('setTheme', {type:customTheme.type}).then((data) => {}); // To ensure the theme is set on backend
+            callApi('callTask', {taskKey:taskKey, serverKey:serverKey}).then(res => {}).catch(err => {});
+        }).catch(err => {});
     }
     const callPipeline = (pipelineObj) => {
-        const pipelineName = pipelineObj.name;
-        updateWorkspaceTabTitle('');
-        setTabActiveKey('workspace');
-        xtermRef.current.focus();
-        xtermRef.current.write('\r\n\r\n'+colorizeText('Pipeline: '+pipelineName, 'green', customTheme.type==='light' ? 'white' : 'gray'));
-        callApi('setTheme', {type:customTheme.type}).then((data) => {}); // To ensure the theme is set on backend
-        callApi('callPipeline', {pipelineName:pipelineName})
-            .then(res => {
-            })
-            .catch(err => {
-            });
+        callApi('testIfPipelineCanRun', {pipelineName:pipelineObj.name}).then(res1 => {
+            if(!res1) {
+                message.warning('Please wait for tasks to finish...');
+                return;
+            }
+            const pipelineName = pipelineObj.name;
+            updateWorkspaceTabTitle('');
+            setTabActiveKey('workspace');
+            xtermRef.current.focus();
+            xtermRef.current.write('\r\n\r\n'+colorizeText('Pipeline: '+pipelineName, 'green', customTheme.type==='light' ? 'white' : 'gray'));
+            callApi('setTheme', {type:customTheme.type}).then((data) => {}); // To ensure the theme is set on backend
+            callApi('callPipeline', {pipelineName:pipelineName}).then(res2 => {}).catch(err => {});
+        }).catch(err => {});
     }
 
     window.callTask = callTask;

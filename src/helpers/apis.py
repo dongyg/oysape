@@ -647,7 +647,7 @@ def execTask(taskKey, taskObj, taskCmds, client, output=True):
         # Upload a file/directory
         if output: client.onChannelString((CRLF+CRLF+colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF))
         if taskObj.get('source') and taskObj.get('destination'):
-            number, transfered = client.upload(taskObj.get('source'), taskObj.get('destination'))
+            number, transfered = client.upload(taskObj.get('source'), taskObj.get('destination'), taskObj.get('excludes'))
             if output: client.onChannelString(CRLF+'Uploaded %s file(s). %s transfered'%(number, tools.convert_bytes(transfered))+CRLF)
         else:
             client.onChannelString((CRLF+'No source or destination defined: %s'%taskObj.get('name')+CRLF))
@@ -655,7 +655,7 @@ def execTask(taskKey, taskObj, taskCmds, client, output=True):
         # Download a file/directory
         if output: client.onChannelString((CRLF+CRLF+colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF))
         if taskObj.get('source') and taskObj.get('destination'):
-            number, transfered = client.download(taskObj.get('source'), taskObj.get('destination'))
+            number, transfered = client.download(taskObj.get('source'), taskObj.get('destination'), taskObj.get('excludes'))
             if output: client.onChannelString(CRLF+'Downloaded %s file(s). %s transfered'%(number, tools.convert_bytes(transfered))+CRLF)
         else:
             client.onChannelString((CRLF+'No source or destination defined: %s'%taskObj.get('name')+CRLF))

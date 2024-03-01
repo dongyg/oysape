@@ -378,8 +378,9 @@ class SSHClient:
             traceback.print_exc()
             (callback or print)(str(e)+CRLF)
 
-    def upload_directory(self, local_path, remote_path, callback=None):
+    def upload_directory(self, local_path, remote_path, callback=None, excludes=None):
         exclude = ['__pycache__', 'node_modules', '.svn', '.git', '.gitignore', '.DS_Store', '.Trashes', 'Thumbs.db', 'Desktop.ini']
+        if excludes: exclude.extend(excludes.split(' '))
         sftp = self.client.open_sftp()
         if remote_path.startswith('~/'):
             remote_path = os.path.join(sftp.normalize('.'), remote_path[2:])
@@ -420,9 +421,10 @@ class SSHClient:
         sftp.close()
         return ret1, ret2
 
-    def download_directory(self, remote_path, local_path, callback=None):
+    def download_directory(self, remote_path, local_path, callback=None, excludes=None):
         import stat
         exclude = ['__pycache__', 'node_modules', '.svn', '.git', '.gitignore', '.DS_Store', '.Trashes', 'Thumbs.db', 'Desktop.ini']
+        if excludes: exclude.extend(excludes.split(' '))
         sftp = self.client.open_sftp()
         if remote_path.startswith('~/'):
             remote_path = os.path.join(sftp.normalize('.'), remote_path[2:])
@@ -465,17 +467,17 @@ class SSHClient:
         sftp.close()
         return ret1, ret2
 
-    def upload(self, local_path, remote_path):
+    def upload(self, local_path, remote_path, excludes=None):
         if not (self.transport and self.transport.is_alive()):
             self.reconnect()
         if local_path.startswith('~/'):
             local_path = os.path.realpath(os.path.expanduser(local_path))
         if os.path.isdir(local_path):
-            return self.upload_directory(local_path, remote_path, self.onChannelString)
+            return self.upload_directory(local_path, remote_path, self.onChannelString, excludes=excludes)
         else:
             return self.upload_file(local_path, remote_path, self.onChannelString)
 
-    def download(self, remote_path, local_path):
+    def download(self, remote_path, local_path, excludes=None):
         if not (self.transport and self.transport.is_alive()):
             self.reconnect()
         if local_path.startswith('~/'):
@@ -487,7 +489,7 @@ class SSHClient:
         file_attr = sftp.stat(remote_path)
         sftp.close()
         if stat.S_ISDIR(file_attr.st_mode):
-            return self.download_directory(remote_path, local_path, self.onChannelString)
+            return self.download_directory(remote_path, local_path, self.onChannelString, excludes=excludes)
         else:
             return self.download_file(remote_path, local_path, self.onChannelString)
 

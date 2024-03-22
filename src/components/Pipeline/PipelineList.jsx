@@ -10,7 +10,7 @@ import './PipelineList.css';
 
 const PipelineList = () => {
   const { message, modal } = App.useApp();
-  const { pipelineItems, setPipelineItems, tabItems, setTabItems, setTabActiveKey } = useCustomContext();
+  const { hideSidebarIfNeed, pipelineItems, setPipelineItems, tabItems, setTabItems, setTabActiveKey, userSession } = useCustomContext();
   const [showPipelines, setShowPipelines] = useState(pipelineItems);
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [multipleSelect, setMultipleSelect] = useState(false);
@@ -30,18 +30,25 @@ const PipelineList = () => {
       callThisPipeline(selectedRowKeys[0])
     }
   };
-  const contextItems = [
-    { key: 'runPipeline', label: <strong>Run</strong>, icon: <FiTerminal />, },
-    { type: 'divider', },
-    { key: 'editPipeline', label: 'Edit', icon: <EditOutlined />, },
-    { key: 'deletePipeline', label: 'Delete', icon: <DeleteOutlined />, },
-  ];
+  const getContextItems = () => {
+    var retval = [
+      { key: 'runPipeline', label: <strong>Run</strong>, icon: <FiTerminal />, },
+    ];
+    if(userSession.teams[userSession.team0].members.find(item => item.email === userSession.email)?.access_writable) {
+      retval = retval.concat([
+        { type: 'divider', },
+        { key: 'editPipeline', label: 'Edit', icon: <EditOutlined />, },
+        { key: 'deletePipeline', label: 'Delete', icon: <DeleteOutlined />, },
+      ])
+    }
+    return retval;
+  };
   const columns = [
     {
       title: "Name",
       dataIndex: "name",
       ellipsis: true,
-      render: (text, record, index) => (<Dropdown menu={{items: contextItems, onClick: onClickMenu}} trigger={['contextMenu']}>
+      render: (text, record, index) => (<Dropdown menu={{items: getContextItems(), onClick: onClickMenu}} trigger={['contextMenu']}>
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', whiteSpace: 'break-spaces'}}>
             <div>{text}</div>
@@ -108,6 +115,7 @@ const PipelineList = () => {
       }]);
       setTabActiveKey(uniqueKey);
     }
+    hideSidebarIfNeed();
   }
   const deletePipeline = (pipelineKey) => {
     modal.confirm({
@@ -131,10 +139,10 @@ const PipelineList = () => {
   }
   const callThisPipeline = (pipelineKey) => {
     const pipelineObj = pipelineItems.filter((pipeline) => pipeline.key === pipelineKey)[0]||{};
-    console.log('pipelineObj', pipelineObj);
     if(pipelineObj&&pipelineObj.name){
       window.fillSearchPipeline(pipelineObj.name);
     }
+    hideSidebarIfNeed();
   }
 
   const reloadPipelineList = useCallback(() => {
@@ -173,10 +181,7 @@ const PipelineList = () => {
           selectRow(record);
         },
         onDoubleClick: (event) => {
-          console.log('onDoubleClick: record.key', record.key);
-          if(window.fillSearchPipeline) {
-            window.fillSearchPipeline(record.name);
-          }
+          callThisPipeline(record.key);
         },
       })}
     />

@@ -18,11 +18,12 @@ def get_home_entry():
 
 
 # Change this to True on development environment
-IS_DEBUG = False
+IS_DEBUG = True
 
 
 # Variables for local app
 windowObj = None
+windowAccount = None
 homeEntry = 'http://localhost:3000' if IS_DEBUG else get_home_entry()
 
 
@@ -31,3 +32,10 @@ userToken = ''
 API_HOST = 'http://localhost:8080' if IS_DEBUG else 'https://oysape.aifetel.cc'
 API_ROOT = '/oyapi'
 
+defaultExclude = [
+    ".DS_Store ._* .Spotlight-V100 .Trashes Thumbs.db Desktop.ini",
+    "_MTN .bzr .hg .fslckout _FOSSIL_ .fos CVS _darcs .git .svn .osc .gitattributes .gitmodules",
+    "*.pyc *.pyo *.class *.a *.obj *.o *.so *.la *.lib *.dylib *.ocx *.dll *.exe *.jar *.zip *.tar *.tar.gz *.tgz *.rpm *.dmg *.pkg *.deb}",
+    "*.jpg *.jpeg *.gif *.png *.bmp *.tiff *.tif *.webp *.wav *.mp3 *.ogg *.flac *.avi *.mpg *.mp4 *.mkv *.xcf *.xpm}",
+    "node_modules"
+]

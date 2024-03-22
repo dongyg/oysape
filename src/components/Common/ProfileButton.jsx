@@ -1,7 +1,6 @@
 import React from 'react';
-import { Dropdown, Space, Divider, Button, Switch, Avatar, theme } from 'antd';
-import { UserOutlined } from '@ant-design/icons';
-import { BsPerson, BsGear } from "react-icons/bs";
+import { App, Dropdown, Space, Switch, Avatar, theme } from 'antd';
+import { CheckOutlined, ReloadOutlined, SettingOutlined, LogoutOutlined, QuestionCircleFilled, UserOutlined } from "@ant-design/icons";
 
 import { useCustomContext } from '../Contexts/CustomContext'
 import { callApi } from './global';
@@ -9,8 +8,9 @@ import { callApi } from './global';
 const { useToken } = theme;
 
 export default function ProfileButton() {
+  const { message, modal } = App.useApp();
+  const { customTheme, toggleCustomTheme, userSession, setUserSession } = useCustomContext();
   const { token } = useToken();
-  const { customTheme, toggleCustomTheme, userSession } = useCustomContext();
   const contentStyle = {
     backgroundColor: token.colorBgElevated,
     borderRadius: token.borderRadiusLG,
@@ -29,58 +29,120 @@ export default function ProfileButton() {
       return <Avatar icon={<UserOutlined />} size={size} />
     }
   }
+  const getTeamMenus = function() {
+    const menus = [];
+    if(userSession && userSession.teams) {
+      for (const teamId in userSession.teams) {
+        const team = userSession.teams[teamId];
+        const teamMenu = {
+          key: teamId,
+          // type: "group",
+          label: team.tname,
+          icon: userSession.team0 === teamId ? <CheckOutlined /> : undefined,
+        };
+        menus.push(teamMenu);
+      }
+    }
+    if(menus.length > 0) {
+      menus.push({ type: 'divider', });
+    }
+    return menus;
+  };
   const getSignInTitle = () => {
     if(userSession && userSession.email && userSession.github_user) {
       return userSession.email + ' (GitHub)'
     } else if(userSession && userSession.email && userSession.google_user) {
       return userSession.email + ' (Google)'
+    } else if(userSession && userSession.email) {
+      return userSession.email
     } else {
       return 'Sign In'
     }
   }
+  const reloadEverything = (callDone) => {
+    callApi('reloadUserSession', {}).then((res) => {
+      window.reloadServerList && window.reloadServerList();
+      window.reloadTaskList && window.reloadTaskList();
+      window.reloadPipelineList && window.reloadPipelineList();
+      window.reloadFolderFiles && window.reloadFolderFiles();
+      if(callDone) callDone();
+    });
+  }
   const menuItems = [
-    { key: 'menuSettings', label: ('Settings'), icon: <BsGear />, },
-    // { key: '2', label: ( '2nd menu item (disabled)' ), disabled: true, },
-    // { key: '3', label: ( '3rd menu item' ), },
     { type: 'divider', },
+    ...getTeamMenus(),
     {
       key: 'menuSignIn',
       type: userSession ? 'group' : undefined,
       label: getSignInTitle(),
-      // icon: getAvatar('small'),
       children: userSession ? [
-        { key: 'menuAccount', label: ('Manage Account'), },
-        { key: 'menuSignOut', label: ('Sign Out'), },
+        { key: 'menuReloadTeams', label: 'Reload everything', icon: <ReloadOutlined />, },
+        { key: 'menuAccount', label: ('Manage Account'), icon: <SettingOutlined />, },
+        { key: 'menuSignOut', label: ('Sign Out'), icon: <LogoutOutlined />, },
       ] : undefined,
     },
+    // { type: 'divider', },
+    // { key: 'menuTest3', label: ( 'testApi' ), },
   ];
   const onClickMenu = ({ key }) => {
-    if(key === 'menuSettings') {
-      if(window.openProjectFile) window.openProjectFile('~/.oysape/settings.json', 'Settings');
-    } else if(key === 'menuSignIn') {
-      callApi('signIn', {}).then((res) => {});
+    if(key === 'menuManageTeams') {
+      window.openWebpageInTab && window.openWebpageInTab('http://localhost:8080/index.html', 'Webpage Demo');
+    }else if(key === 'menuReloadTeams') {
+      reloadEverything(() => {
+        message.success('Reloaded');
+      });
+    }else if(key === 'menuSignIn') {
+      callApi('clearCookies', {}).then((res) => {
+        setUserSession({});
+      });
     } else if(key === 'menuAccount') {
+      callApi('gotoAccountDashboard', {}).then((res) => {});
     } else if(key === 'menuSignOut') {
-      callApi('signIn', {}).then((res) => {});
+      modal.confirm({
+        title: 'Confirm to Sign Out',
+        icon: <QuestionCircleFilled />,
+        content: 'Are you sure you want to sign out?',
+        onOk() {
+          callApi('clearCookies', {}).then((res) => {
+            setUserSession({});
+          });
+        },
+        onCancel() {
+          console.log('Cancel');
+        },
+      });
+    }else if(key === 'menuTest3') {
+      callApi('testApi', {}).then((res) => {
+        message.info(JSON.stringify(res));
+      })
+    }else{
+      // If key is teamId, switch team
+      if(userSession && userSession.teams){
+        if (key !== userSession.team0 && key in userSession.teams) {
+          callApi('switchToTeam', {tid: key}).then((res) => {
+            reloadEverything(() => {
+              message.success('Switched to ' + userSession.teams[key].tname);
+            });
+          });
+        } else {
+          // Team not found
+        }
+      }
     }
   };
 
   return (
-    <Dropdown menu={{ items: menuItems, onClick: onClickMenu }} placement="topLeft" trigger={['click']}
+    <Dropdown menu={{ items: menuItems, onClick: onClickMenu }} placement="topRight" trigger={['click']}
       dropdownRender={(menu) => (
         <div style={contentStyle}>
           <Space style={{ padding: '8px 16px' }}>
             Theme: <Switch checkedChildren="Light" unCheckedChildren="Dark" defaultChecked={!customTheme.isDark} onChange={toggleCustomTheme} />
           </Space>
-          <Divider style={{ margin: 0 }} />
           {React.cloneElement(menu, { style: menuStyle })}
         </div>
       )}
     >
       { getAvatar() }
-      {/* <Button type='text'>
-        <BsPerson style={{fontSize:'2em', marginRight: '0px'}} />
-      </Button> */}
     </Dropdown>
-  )
+)
 }

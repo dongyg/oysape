@@ -1,109 +1,79 @@
 import React from 'react';
-import { App, Dropdown, Space, Col, Row, Button, Switch, theme } from 'antd';
-import { CheckOutlined } from "@ant-design/icons";
-import { BsThreeDots } from "react-icons/bs";
+import { Col, Row, Button, } from 'antd';
+import { MenuUnfoldOutlined, MenuFoldOutlined } from "@ant-design/icons";
 
 import { useCustomContext } from '../Contexts/CustomContext'
-
+import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
+import ProfileButton from '../Common/ProfileButton'
 import SearchInput from './SearchInput';
 import SearchLanguage from './SearchLanguage';
 
 import './HeadFrame.css';
-import { callApi } from '../Common/global';
 
-const { useToken } = theme;
 const HeadFrame = () => {
-  const { message } = App.useApp();
-  const { searchMode, customTheme, toggleCustomTheme, userSession } = useCustomContext();
-  const { token } = useToken();
-  const contentStyle = {
-    backgroundColor: token.colorBgElevated,
-    borderRadius: token.borderRadiusLG,
-    boxShadow: token.boxShadowSecondary,
-  };
-  const menuStyle = {
-    boxShadow: 'none',
-  };
+  const { searchMode, hideSidebar, setHideSidebar, currentSideKey, setCurrentSideKey, userSession } = useCustomContext();
 
-  const getTeamMenus = function() {
-    const menus = [];
-    menus.push({ key: 'menuReloadTeams', label: ( 'Refresh Teams' ), } )
-    if(userSession && userSession.teams) {
-      menus.push({ key: 'menuManageTeams', label: ( 'Manage Teams' ), } )
-      menus.push({ type: 'divider', } )
-      for (const teamId in userSession.teams) {
-        const team = userSession.teams[teamId];
-        const teamMenu = {
-          key: teamId,
-          type: "group",
-          label: team.tname,
-          children: []
-        };
-        for (const workspaceId in team.workspaces) {
-          const workspace = team.workspaces[workspaceId];
-          const workspaceMenu = {
-            key: workspaceId,
-            label: workspace.wname,
-            icon: userSession.work0 === workspaceId ? <CheckOutlined /> : undefined
-          };
-          teamMenu.children.push(workspaceMenu);
-        }
-        menus.push(teamMenu);
-      }
-    }
-    if(menus.length > 0) {
-      menus.push({ type: 'divider', });
-    }
-    return menus;
-  };
-
-  const reloadEverything = () => {
-    window.reloadUserSession && window.reloadUserSession();
-    window.reloadServerList && window.reloadServerList();
-    window.reloadTaskList && window.reloadTaskList();
-    window.reloadPipelineList && window.reloadPipelineList();
+  const handleShowSidebar = () => {
+    setHideSidebar(!hideSidebar);
+    setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 50);
   }
-  const menuItems = [
-    ...getTeamMenus(),
-    { key: 'menuTest3', label: ( 'testApi' ), },
-  ];
-  const onClickMenu = ({ key }) => {
-    if(key === 'menuManageTeams') {
-    }else if(key === 'menuReloadTeams') {
-      callApi('reloadUserSession', {}).then((res) => {
-        reloadEverything();
-        message.success('Your teams has been refreshed');
-      });
-    }else if(key === 'menuTest3') {
-      callApi('testApi', {}).then((res) => {
-        message.info(JSON.stringify(res));
-      })
-    }else{
-      // If key is workspaceId, switch workspace
-      let existsInWorkspaces = false;
-      if(userSession && userSession.teams){
-        for (const teamId in userSession.teams) {
-          const team = userSession.teams[teamId];
-          const workspaces = team.workspaces;
-          if (key !== userSession.work0 && workspaces && key in workspaces) {
-            existsInWorkspaces = true;
-            break;
-          }
-        }
-        if (existsInWorkspaces) {
-          callApi('switchToWorkspace', {wid: key}).then((res) => {
-            reloadEverything();
-            message.success('Switched to ' + userSession.teams[userSession.team0].workspaces[key].wname);
-          });
-        } else {
-          // Workspace not found
-        }
-      }
+
+  useKeyPress(keyMapping["gotoSideServer"], (event) => {
+    if((currentSideKey==='sideServer' && !hideSidebar) || hideSidebar){
+      handleShowSidebar();
     }
-  };
+    setCurrentSideKey('sideServer');
+    event.preventDefault(); return;
+  });
+  useKeyPress(keyMapping["gotoSideTask"], (event) => {
+    if((currentSideKey==='sideTask' && !hideSidebar) || hideSidebar){
+      handleShowSidebar();
+    }
+    setCurrentSideKey('sideTask');
+    event.preventDefault(); return;
+  });
+  useKeyPress(keyMapping["gotoSidePipeline"], (event) => {
+    if((currentSideKey==='sidePipeline' && !hideSidebar) || hideSidebar){
+      handleShowSidebar();
+    }
+    setCurrentSideKey('sidePipeline');
+    event.preventDefault(); return;
+  });
+  useKeyPress(keyMapping["gotoSideSftp"], (event) => {
+    if(userSession.teams[userSession.team0].members.find(item => item.email === userSession.email)?.access_sftp){
+      if((currentSideKey==='sideSftp' && !hideSidebar) || hideSidebar){
+        handleShowSidebar();
+      }
+      setCurrentSideKey('sideSftp');
+      event.preventDefault(); return;
+    }
+  });
+  useKeyPress(keyMapping["gotoSideDocker"], (event) => {
+    if(userSession.teams[userSession.team0].members.find(item => item.email === userSession.email)?.access_docker){
+      if((currentSideKey==='sideDocker' && !hideSidebar) || hideSidebar){
+        handleShowSidebar();
+      }
+      setCurrentSideKey('sideDocker');
+      event.preventDefault(); return;
+    }
+  });
+  useKeyPress(keyMapping["gotoSideExplorer"], (event) => {
+    if(userSession.teams[userSession.team0].members.find(item => item.email === userSession.email)?.access_files){
+      if((currentSideKey==='sideExplorer' && !hideSidebar) || hideSidebar){
+        handleShowSidebar();
+      }
+      setCurrentSideKey('sideExplorer');
+      event.preventDefault(); return;
+    }
+  });
 
   return (
     <Row wrap={false} className='ant-layout-header' style={{ position: 'relative', overflow: 'visible', zIndex: 3 }}>
+      <Col flex="none">
+        <Button type='text' icon={hideSidebar? <MenuUnfoldOutlined /> : <MenuFoldOutlined />} onClick={handleShowSidebar}></Button>
+      </Col>
       <Col flex="auto" style={{ textAlign: 'center' }}>
         {searchMode === 'language'
           ? <SearchLanguage style={{ width: '100%' }}></SearchLanguage>
@@ -111,18 +81,7 @@ const HeadFrame = () => {
         }
       </Col>
       <Col flex="none">
-        <Dropdown menu={{ items: menuItems, onClick: onClickMenu }} placement="topLeft" trigger={['click']}
-          dropdownRender={(menu) => (
-            <div style={contentStyle}>
-              {React.cloneElement(menu, { style: menuStyle })}
-              <Space style={{ padding: '8px 16px' }}>
-                Theme: <Switch checkedChildren="Light" unCheckedChildren="Dark" defaultChecked={!customTheme.isDark} onChange={toggleCustomTheme} />
-              </Space>
-            </div>
-          )}
-        >
-          <Button type='text' icon={<BsThreeDots />}></Button>
-        </Dropdown>
+        <ProfileButton />
       </Col>
     </Row>
   )

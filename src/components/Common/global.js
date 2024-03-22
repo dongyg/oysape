@@ -300,14 +300,14 @@ const languageDict = {
     "coffeescript": [".coffee"],
     "julia": [".jl"],
     "dockerfile": ["Dockerfile"],
-    "r": [".r"]
+    "r": [".r"],
 };
 
 export const getLanguageDict = languageDict;
 
 export const getLanguages = function(fileName) {
     if(fileName) {
-        const basename = fileName.split(/[\\/]/).pop()
+        const basename = fileName.split(/[\\/]/).pop();
         const fileExtension = fileName.includes('.') ? '.'+fileName.split('.').pop().toLowerCase() : '';
         const possibleLanguages = Object.keys(languageDict).filter(lang => {
             if (fileExtension && languageDict[lang].includes(fileExtension)) {

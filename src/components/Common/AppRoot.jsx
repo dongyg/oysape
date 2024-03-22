@@ -1,12 +1,22 @@
-import { ConfigProvider, App, theme, Layout, Button } from 'antd';
+import React, { useCallback } from 'react';
+import { ConfigProvider, App, theme, Layout } from 'antd';
 
 import { useCustomContext } from '../Contexts/CustomContext'
+import { callApi } from '../Common/global';
 import BodyContainer from './BodyContainer';
+import SignIn from './SignIn';
 
-const { Footer} = Layout;
 
 const AppRoot = () => {
-  const { customTheme, footerStatusText, codeEditRowColText, codeEditCurrentLang, setSearchMode } = useCustomContext();
+  const { customTheme, userSession, setUserSession } = useCustomContext();
+
+  const reloadUserSession = useCallback(() => {
+    callApi('getUserSession', {refresh: true}).then((data) => {
+      setUserSession(data);
+    });
+  }, [setUserSession]);
+  window.reloadUserSession = reloadUserSession;
+
   return (
     <ConfigProvider
       theme={{
@@ -35,21 +45,12 @@ const AppRoot = () => {
         }
       }}
     >
-      <App style={{ height: '100%' }}>
+      <App style={{ height: '100vh' }}>
         <Layout style={{ height: '100%' }}>
-          <BodyContainer></BodyContainer>
-          <Footer className='disableHighlight' style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <div style={{ padding: '0 4px'}}>{footerStatusText}</div>
-            <div style={{ display: (codeEditRowColText ? 'flex' : 'none') }}>
-              <div style={{ paddingRight: '4px' }}>{codeEditRowColText}</div>
-              <div style={{ paddingRight: '0px' }}>
-                <Button type='text'
-                  style={{ height: '23px', padding: '0 4px', borderRadius: '0px', marginTop: '-1px' }}
-                  onClick={ () => { setSearchMode('language'); } }
-                >{codeEditCurrentLang}</Button>
-              </div>
-            </div>
-          </Footer>
+          { userSession && userSession.uid ?
+            <BodyContainer></BodyContainer> :
+            <SignIn></SignIn>
+          }
         </Layout>
       </App>
     </ConfigProvider>

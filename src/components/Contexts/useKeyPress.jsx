@@ -64,7 +64,6 @@ export const keyMapping = {
   "closeTab": ["ctrl+w", "meta+w"],
   "showAndRunCommand": ["ctrl+p", "meta+p"],
   "shortcutSave": ["ctrl+s", "meta+s"],
-  "shortcutSaveAs": ["ctrl+shift+s", "meta+shift+s"],
   "shortcutRun": ["ctrl+r", "meta+r"],
   "showAndSelectServer": ["ctrl+shift+@", "ctrl+shift+2", "meta+shift+@", "meta+shift+2"],
   "showAndSelectTask": ["ctrl+shift+:", "ctrl+shift+;", "meta+shift+:", "meta+shift+;"],
@@ -72,4 +71,10 @@ export const keyMapping = {
   "execCommand": ["ctrl+enter", "meta+enter"],
   "terminalClear": ["ctrl+k", "meta+k"],
   "gotoTabWithNumber": ["ctrl+1", "meta+1", "ctrl+2", "meta+2", "ctrl+3", "meta+3", "ctrl+4", "meta+4", "ctrl+5", "meta+5", "ctrl+6", "meta+6", "ctrl+7", "meta+7", "ctrl+8", "meta+8", "ctrl+9", "meta+9", "ctrl+0", "meta+0"],
+  "gotoSideServer": ["ctrl+shift+s", "meta+shift+s"],
+  "gotoSideTask": ["ctrl+shift+t", "meta+shift+t"],
+  "gotoSidePipeline": ["ctrl+shift+x", "meta+shift+x"],
+  "gotoSideExplorer": ["ctrl+shift+e", "meta+shift+e"],
+  "gotoSideSftp": ["ctrl+shift+f", "meta+shift+f"],
+  "gotoSideDocker": ["ctrl+shift+d", "meta+shift+d"],
 }

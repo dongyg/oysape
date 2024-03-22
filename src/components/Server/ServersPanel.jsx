@@ -1,6 +1,6 @@
 import { App, Button, Dropdown } from 'antd';
 import { BsPlusLg, BsThreeDots } from "react-icons/bs";
-import { ImportOutlined, ExportOutlined } from '@ant-design/icons';
+import { ImportOutlined, ExportOutlined, DeleteFilled, QuestionCircleFilled } from '@ant-design/icons';
 
 import { useCustomContext } from '../Contexts/CustomContext'
 import { getUniqueKey, callApi } from '../Common/global';
@@ -10,8 +10,8 @@ import ServerEditor from './ServerEditor';
 import './ServerPanel.css';
 
 export default function ServersPanel() {
-  const { message } = App.useApp();
-  const { tabItems, setTabItems, setTabActiveKey } = useCustomContext();
+  const { message, modal } = App.useApp();
+  const { hideSidebarIfNeed, tabItems, setTabItems, setTabActiveKey, setServerItems, userSession } = useCustomContext();
   const headerHeight = '56px';
 
   const addServer = () => {
@@ -23,6 +23,7 @@ export default function ServersPanel() {
       children: <ServerEditor uniqueKey={uniqueKey} serverKey={""} />,
     }]);
     setTabActiveKey(uniqueKey);
+    hideSidebarIfNeed();
   }
 
   const menuItems = [
@@ -30,6 +31,8 @@ export default function ServersPanel() {
     { type: 'divider', },
     { key: 'menuImportServer', label: ( 'Import' ), icon: <ImportOutlined />, },
     { key: 'menuExportServer', label: ( 'Export' ), icon: <ExportOutlined />, },
+    { type: 'divider', },
+    { key: 'menuEmptyServer', label: ( 'Remove all servers' ), icon: <DeleteFilled />, },
   ];
   const onClickMenu = ({ key }) => {
     if(key === 'menuNewServer') {
@@ -48,6 +51,24 @@ export default function ServersPanel() {
           message.error(data.errinfo);
         }
       })
+    }else if(key === 'menuEmptyServer') {
+      modal.confirm({
+        title: 'Confirm to delete',
+        icon: <QuestionCircleFilled />,
+        content: 'Are you sure to delete all servers?',
+        onOk() {
+          callApi('deleteServer', {key: '__ALL__'}).then((data) => {
+            if(data && data.errinfo) {
+              message.error(data.errinfo);
+            }else if(data && data.servers) {
+              setServerItems(data.servers);
+            }
+          })
+        },
+        onCancel() {
+          console.log('Cancel');
+        },
+      });
     }
   };
 
@@ -55,11 +76,14 @@ export default function ServersPanel() {
     <>
     <div style={{ height: headerHeight, padding: '12px 16px', display: 'flex', flexWrap: 'nowrap', alignItems: 'flex-start' }}>
       <span style={{ flex: 'auto', paddingTop: '4px' }}>Servers</span>
-      <div>
-        <Dropdown menu={{ items: menuItems, onClick: onClickMenu }} placement="topRight">
-          <Button type='text' icon={<BsThreeDots />}></Button>
-        </Dropdown>
-      </div>
+      {
+        userSession.teams[userSession.team0].members.find(item => item.email === userSession.email)?.access_writable ?
+        <div>
+          <Dropdown menu={{ items: menuItems, onClick: onClickMenu }} placement="topRight">
+            <Button type='text' icon={<BsThreeDots />}></Button>
+          </Dropdown>
+        </div> : null
+      }
     </div>
     <div style={{ height: 'calc(100% - ' + headerHeight+')', overflow: 'auto' }} className='withScrollContent'>
       <ServerList />

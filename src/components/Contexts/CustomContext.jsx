@@ -16,22 +16,29 @@ const ThemeContext = React.createContext({
 const statusDefaultText = 'Oysape';
 
 export const ThemeProvider = ({ children }) => {
+  const [screenWidth, setScreenWidth] = useState(window.innerWidth);
   const [currentTheme, setCurrentTheme] = useState(customThemes.light);
-  const [userSession, setUserSession] = useState({});
+  const [userSession, setUserSession] = useState({loading: true});
+  const [browserInfo, setBrowserInfo] = useState({});
+  const [currentSideKey, setCurrentSideKey] = useState('sideServer');
   const [sideAlign, setSideAlign] = useState('left');
   const [sideSplitterMoving, setSideSplitterMoving] = useState(false);
-  const [sideWidthUse, setSideWidthUse] = useState(400);
-  const [sideWidthBak, setSideWidthBak] = useState(400);
+  const [sideWidthUse, setSideWidthUse] = useState("400");
+  const [sideWidthBak, setSideWidthBak] = useState("400");
   const [tabItems, setTabItems] = useState([]);
   const [tabActiveKey, setTabActiveKey] = useState('workspace');
   const [serverItems, setServerItems] = useState([]);
   const [taskItems, setTaskItems] = useState([]);
   const [pipelineItems, setPipelineItems] = useState([]);
-  const [projectFiles, setProjectFiles] = useState([]);
+  const [folderFiles, setFolderFiles] = useState([]);
   const [footerStatusText, setFooterStatusText] = useState(statusDefaultText);
   const [codeEditRowColText, setCodeEditRowColText] = useState(null);
   const [codeEditCurrentLang, setCodeEditCurrentLang] = useState(null);
   const [searchMode, setSearchMode] = useState('');
+  const [hideSidebar, setHideSidebar] = useState(window.innerWidth<=800);
+
+  let menuWidth = 60;
+
   useEffect(() => {
     // Set the first color theme
     if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
@@ -42,25 +49,51 @@ export const ThemeProvider = ({ children }) => {
       callApi('setTheme', customThemes.light).then((data) => {});
     }
     // Monitoring system color theme changes
-    window
-      .matchMedia("(prefers-color-scheme: dark)")
-      .addEventListener("change", (event) => {
-        if (event.matches) {
-          setCurrentTheme(customThemes.dark);
-          callApi('setTheme', customThemes.dark).then((data) => {});
-        } else {
-          setCurrentTheme(customThemes.light);
-          callApi('setTheme', customThemes.light).then((data) => {});
+    const handleColorSchemeChange = (event) => {
+      if (event.matches) {
+        setCurrentTheme(customThemes.dark);
+        callApi('setTheme', customThemes.dark).then((data) => {});
+      } else {
+        setCurrentTheme(customThemes.light);
+        callApi('setTheme', customThemes.light).then((data) => {});
+      }
+    }
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", handleColorSchemeChange)
+    // Monitoring screen size changes
+    const handleResize = () => {
+      if(sideWidthUse!==menuWidth) {
+        if(window.innerWidth <= 800) {
+          setSideWidthUse('100%');
+        } else if(sideWidthUse === '100%') {
+          setSideWidthUse(400);
         }
-      })
-  }, [])
+      }
+      setScreenWidth(window.innerWidth);
+    };
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('change', handleColorSchemeChange);
+      window.removeEventListener('resize', handleResize);
+    }
+  }, [setSideWidthUse, sideWidthUse, setScreenWidth, menuWidth]);
+
+  const hideSidebarIfNeed = () => {
+    if(sideWidthUse === '100%' && !hideSidebar) {
+      setHideSidebar(true);
+    }
+  }
+
   const context = {
+    screenWidth, setScreenWidth, hideSidebarIfNeed, menuWidth,
     customTheme: currentTheme,
     toggleCustomTheme: () => {
       setCurrentTheme(currentTheme === customThemes.dark ? customThemes.light : customThemes.dark);
       callApi('setTheme', currentTheme === customThemes.dark ? customThemes.light : customThemes.dark).then((data) => {});
     },
     userSession, setUserSession,
+    browserInfo, setBrowserInfo,
+    currentSideKey, setCurrentSideKey,
     sideAlign, setSideAlign,
     sideSplitterMoving, setSideSplitterMoving,
     sideWidthUse, setSideWidthUse,
@@ -84,7 +117,7 @@ export const ThemeProvider = ({ children }) => {
     serverItems, setServerItems,
     taskItems, setTaskItems,
     pipelineItems, setPipelineItems,
-    projectFiles, setProjectFiles,
+    folderFiles, setFolderFiles,
     footerStatusText, setFooterStatusText: (text) => {
       setFooterStatusText(text);
       setTimeout(() => {
@@ -93,10 +126,14 @@ export const ThemeProvider = ({ children }) => {
     },
     codeEditRowColText, setCodeEditRowColText, codeEditCurrentLang, setCodeEditCurrentLang,
     searchMode, setSearchMode,
+    hideSidebar, setHideSidebar,
   }
-  return <ThemeContext.Provider value={context}>
-    { children }
-  </ThemeContext.Provider>
+
+  return (
+    <ThemeContext.Provider value={context}>
+      { children }
+    </ThemeContext.Provider>
+  )
 }
 
 export const useCustomContext = () => {

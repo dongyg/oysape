@@ -1,40 +1,69 @@
-import { App, Button, Tooltip } from 'antd';
-import { BsPlusLg } from "react-icons/bs";
+import { App, Button, Dropdown } from 'antd';
+import { BsPlusLg, BsThreeDots } from "react-icons/bs";
 
 import { useCustomContext } from '../Contexts/CustomContext'
 import { callApi } from '../Common/global';
 
 // import ProjectCollapse from './ProjectCollapse';
 import ProjectFileTree from './ProjectFileTree';
+import CodeEditor from '../Modules/CodeEditor';
 
 import './ProjectsPanel.css';
 
 export default function ProjectsPanel() {
   const { message } = App.useApp();
-  const { setProjectFiles } = useCustomContext();
+  const { hideSidebarIfNeed, tabItems, setTabItems, setTabActiveKey, setFolderFiles } = useCustomContext();
   const headerHeight = '56px';
 
   const addFolder = () => {
-    callApi('addFolderToWorkspace').then((data) => {
+    callApi('addFolder').then((data) => {
       if(data && data.errinfo) {
         message.error(data.errinfo);
-      }else if(data && data.projectFiles) {
-        setProjectFiles(data.projectFiles);
+      }else if(data && data.folderFiles) {
+        setFolderFiles(data.folderFiles);
       }
     })
   }
+  const editGlobalExcludes = () => {
+    callApi('getGlobalExcludes', {}).then((listExcludes)=>{
+      const fileBody = JSON.stringify(listExcludes, null, 2);
+      const uniqueKey = 'globalExcludes.json';
+      if (tabItems.filter((item) => item.key === uniqueKey)[0]) {
+      } else {
+        setTabItems([...tabItems || [], {
+          key: uniqueKey,
+          fileKey: fileBody,
+          label: 'Global Excludes',
+          children: <CodeEditor uniqueKey={uniqueKey} filename={uniqueKey} filebody={fileBody} tabTitle={'Global Excludes'} />,
+        }]);
+      }
+      setTabActiveKey(uniqueKey);
+      hideSidebarIfNeed();
+    });
+  }
+
+  const menuItems = [
+    { key: 'menuNewFolder', label: ('Add a new folder'), icon: <BsPlusLg />, },
+    { type: 'divider', },
+    { key: 'menuExcludes', label: ( 'Set global excludes' ), },
+  ];
+  const onClickMenu = ({ key }) => {
+    if(key === 'menuNewFolder') {
+      addFolder();
+    }else if(key === 'menuExcludes') {
+      // if(window.openProjectFile) window.openProjectFile('~/.oysape/excludes.json', 'Global Excludes');
+      editGlobalExcludes();
+    }
+  };
 
   return (
     <>
     <div style={{ height: headerHeight, padding: '12px 16px', display: 'flex', flexWrap: 'nowrap', alignItems: 'flex-start' }}>
-      <span style={{ flex: 'auto', paddingTop: '4px' }}>Files</span>
+      <span style={{ flex: 'auto', paddingTop: '4px' }}>File Explorer</span>
       <div>
-        <Tooltip placement="bottomRight" title="Add a folder to the workspace">
-          <Button type='text' icon={<BsPlusLg />} onClick={(event) => {
-            addFolder()
-          }}>
-          </Button>
-        </Tooltip>
+        <Dropdown menu={{ items: menuItems, onClick: onClickMenu }} placement="topRight">
+          <Button type='text' icon={<BsThreeDots />}></Button>
+        </Dropdown>
       </div>
     </div>
     <div style={{ height: 'calc(100% - ' + headerHeight+')', overflow: 'auto' }} className='withScrollContent'>

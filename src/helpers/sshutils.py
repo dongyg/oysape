@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os, base64, traceback, json, re, json, _thread, time, getpass, platform
+import os, base64, traceback, json, re, json, _thread, time, getpass, stat
 import webview
 import paramiko
 from . import tools
@@ -90,12 +90,10 @@ def parse_ssh_connection_string(connection_string):
     return hostname, port, username
 
 def remove_ansi_color_codes(text):
-    import re
     ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
     return ansi_escape.sub('', text)
 
 def get_prompt_endchar(channel, debug=False):
-    import json
     while not channel.recv_ready(): pass
     output = ''
     while channel.recv_ready():
@@ -111,7 +109,6 @@ def get_prompt_endchar(channel, debug=False):
         return None
 
 def get_tty_number(channel, debug=False):
-    import re, json
     channel.send('tty\n')
     while not channel.recv_ready(): pass
     output = ''
@@ -153,6 +150,8 @@ def get_ps(sshconn, tty_number, debug=False):
 class SSHClient:
     def __init__(self, ssh_connection_string, password=None, private_key=None, passphrase=None, serverKey=None, startup=None):
         self.hostname, self.port, self.username = parse_ssh_connection_string(ssh_connection_string)
+        self.dockerCommandPrefix = None
+        self.dockerComposePrefix = None
         self.password = password
         self.private_key = private_key
         if not password and not private_key:
@@ -231,7 +230,9 @@ class SSHClient:
 
     def isChannelIdle(self):
         # Check if the channel is idle. If so, can send data to the channel
-        return self.channel and not self.channel.closed and self.channel.send_ready() and not self.channel.recv_ready()
+        # print(self.channel, not self.channel.closed, self.channel.send_ready(), not self.channel.recv_ready())
+        # return self.channel and not self.channel.closed and self.channel.send_ready() and not self.channel.recv_ready()
+        return self.channel and self.channel.send_ready() and not self.channel.recv_ready()
 
     def updateChannelStatus(self, source):
         # time1 = time.time()
@@ -255,6 +256,7 @@ class SSHClient:
         self.check_ps_time = time.time()
 
     def areAllTasksDone(self):
+        # print(self.shellCacheAuto, self.shellCacheHuman, self.channel_available, self.isChannelIdle())
         return len(self.shellCacheAuto) == 0 and len(self.shellCacheHuman) == 0 and self.channel_available and self.isChannelIdle()
 
     def onChannelString(self, string):
@@ -343,40 +345,50 @@ class SSHClient:
     def upload_file(self, local_path, remote_path, callback=None):
         try:
             sftp = self.client.open_sftp()
-            (callback or print)(' '.join([local_path, '->', remote_path]))
             if remote_path.startswith('~/'):
                 remote_path = os.path.join(sftp.normalize('.'), remote_path[2:])
             self.ensureExists(sftp, os.path.split(remote_path)[0])
+            try:
+                target_stat = sftp.stat(remote_path)
+            except Exception as e:
+                target_stat  = None
+            if target_stat and stat.S_ISDIR(target_stat.st_mode):
+                remote_path = os.path.join(remote_path, os.path.basename(local_path))
+            (callback or print)(CRLF+' '.join([local_path, '->', remote_path]))
             sftp.put(local_path, remote_path)
             source_stat = os.stat(local_path)
             sftp.utime(remote_path, (source_stat.st_atime, source_stat.st_mtime))
             sftp.chmod(remote_path, source_stat.st_mode)
             sftp.close()
-            (callback or print)(' Done.'+CRLF)
-            return 1, os.path.getsize(local_path)
+            # (callback or print)(CRLF+'Done.'+CRLF)
+            return {'count':1, 'size':os.path.getsize(local_path)}
         except Exception as e:
             traceback.print_exc()
-            (callback or print)(str(e)+CRLF)
+            (callback or print)(CRLF+str(e)+CRLF)
+            return {'errinfo': str(e), 'count':0, 'size':0}
 
     def download_file(self, remote_path, local_path, callback=None):
         try:
             sftp = self.client.open_sftp()
-            (callback or print)(' '.join([remote_path, '->', local_path]))
             if remote_path.startswith('~/'):
                 remote_path = os.path.join(sftp.normalize('.'), remote_path[2:])
             apath = os.path.split(local_path)[0]
             if not os.path.exists(apath):
                 os.makedirs(apath)
+            if os.path.isdir(local_path):
+                local_path = os.path.join(local_path, os.path.basename(remote_path))
+            (callback or print)(CRLF+' '.join([remote_path, '->', local_path]))
             sftp.get(remote_path, local_path)
             source_stat = sftp.stat(remote_path)
             os.utime(local_path, (source_stat.st_atime, source_stat.st_mtime))
             os.chmod(local_path, source_stat.st_mode)
             sftp.close()
-            (callback or print)(' Done.'+CRLF)
-            return 1, os.path.getsize(local_path)
+            # (callback or print)(CRLF+'Done.'+CRLF)
+            return {'count':1, 'size':os.path.getsize(local_path)}
         except Exception as e:
             traceback.print_exc()
-            (callback or print)(str(e)+CRLF)
+            (callback or print)(CRLF+str(e)+CRLF)
+            return {'errinfo': str(e), 'count':0, 'size':0}
 
     def upload_directory(self, local_path, remote_path, callback=None, excludes=None):
         exclude = ['__pycache__', 'node_modules', '.svn', '.git', '.gitignore', '.DS_Store', '.Trashes', 'Thumbs.db', 'Desktop.ini']
@@ -393,9 +405,10 @@ class SSHClient:
             dirs = [x for x in items if os.path.isdir(os.path.join(spath, x)) and x not in exclude]
             files = [x for x in items if os.path.isfile(os.path.join(spath, x)) and x not in exclude]
             for dir in dirs:
-                (callback or print)(' '.join([os.path.join(spath, dir), '->', os.path.join(dpath, dir)])+CRLF)
+                (callback or print)(CRLF+' '.join([os.path.join(spath, dir), '->', os.path.join(dpath, dir)]))
                 self.ensureExists(sftp, os.path.join(dpath, dir))
-                ret1, ret2 = recurse(os.path.join(spath, dir), os.path.join(dpath, dir), ret1, ret2)
+                retdat = recurse(os.path.join(spath, dir), os.path.join(dpath, dir), ret1, ret2)
+                ret1, ret2 = retdat.get('count', 0), retdat.get('size', 0)
             for file in files:
                 local_file_path = os.path.join(spath, file)
                 remote_file_path = os.path.join(dpath, file)
@@ -406,23 +419,25 @@ class SSHClient:
                     except Exception as e:
                         remote_stat = None
                     if remote_stat == None or int(local_stat.st_mtime) > remote_stat.st_mtime or local_stat.st_size != remote_stat.st_size:
-                        (callback or print)(' '.join([local_file_path, '->', remote_file_path]))
+                        (callback or print)(CRLF+' '.join([local_file_path, '->', remote_file_path]))
                         sftp.put(local_file_path, remote_file_path)
                         sftp.utime(remote_file_path, (local_stat.st_atime, int(local_stat.st_mtime)))
                         sftp.chmod(remote_file_path, local_stat.st_mode)
                         ret1 += 1
                         ret2 += local_stat.st_size
-                        (callback or print)(' Done.'+CRLF)
+                        # (callback or print)(CRLF+'Done.'+CRLF)
                 except Exception as e:
                     traceback.print_exc()
-                    (callback or print)(str(e)+CRLF)
-            return ret1, ret2
-        ret1, ret2 = recurse(local_path, remote_path, ret1, ret2)
+                    (callback or print)(CRLF+str(e)+CRLF)
+                    return {'errinfo': str(e), 'count': ret1, 'size': ret2}
+            return {'count': ret1, 'size': ret2}
+        (callback or print)(CRLF+' '.join([local_path, '->', remote_path]))
+        retdat = recurse(local_path, remote_path, ret1, ret2)
+        ret1, ret2 = retdat.get('count', 0), retdat.get('size', 0)
         sftp.close()
-        return ret1, ret2
+        return {'count': ret1, 'size': ret2}
 
     def download_directory(self, remote_path, local_path, callback=None, excludes=None):
-        import stat
         exclude = ['__pycache__', 'node_modules', '.svn', '.git', '.gitignore', '.DS_Store', '.Trashes', 'Thumbs.db', 'Desktop.ini']
         if excludes: exclude.extend(excludes.split(' '))
         sftp = self.client.open_sftp()
@@ -433,39 +448,37 @@ class SSHClient:
         os.makedirs(local_path, exist_ok=True)
         ret1, ret2 = 0, 0
         def recurse(spath, dpath, ret1, ret2):
-            for entry in sftp.listdir(spath):
-                if entry in exclude: continue
-                remote_file_path = os.path.join(spath, entry)
-                local_file_path = os.path.join(dpath, entry)
-                try:
-                    remote_stat = sftp.stat(remote_file_path)
-                except Exception as e:
-                    (callback or print)(' '.join([remote_file_path, '->', local_file_path]))
-                    traceback.print_exc()
-                    (callback or print)(CRLF+str(e)+CRLF)
-                    continue
-                if stat.S_ISDIR(remote_stat.st_mode):
-                    (callback or print)(' '.join([remote_file_path, '->', local_file_path])+CRLF)
+            ll = [x for x in sftp.listdir_attr(spath) if stat.S_ISDIR(x.st_mode) or stat.S_ISREG(x.st_mode)]
+            for entry in ll:
+                if entry.filename in exclude: continue
+                remote_file_path = os.path.join(spath, entry.filename)
+                local_file_path = os.path.join(dpath, entry.filename)
+                if stat.S_ISDIR(entry.st_mode):
+                    (callback or print)(CRLF+' '.join([remote_file_path, '->', local_file_path]))
                     os.makedirs(local_file_path, exist_ok=True)
-                    ret1, ret2 = recurse(remote_file_path, local_file_path, ret1, ret2)
+                    retdat = recurse(remote_file_path, local_file_path, ret1, ret2)
+                    ret1, ret2 = retdat.get('count', 0), retdat.get('size', 0)
                 else:
                     try:
                         local_stat = os.stat(local_file_path) if os.path.exists(local_file_path) else None
-                        if local_stat == None or remote_stat.st_mtime > int(local_stat.st_mtime) or remote_stat.st_size != local_stat.st_size:
-                            (callback or print)(' '.join([remote_file_path, '->', local_file_path]))
+                        if local_stat == None or entry.st_mtime > int(local_stat.st_mtime) or entry.st_size != local_stat.st_size:
+                            (callback or print)(CRLF+' '.join([remote_file_path, '->', local_file_path]))
                             sftp.get(remote_file_path, local_file_path)
-                            os.utime(local_file_path, (remote_stat.st_atime, remote_stat.st_mtime))
-                            os.chmod(local_file_path, remote_stat.st_mode)
+                            os.utime(local_file_path, (entry.st_atime, entry.st_mtime))
+                            os.chmod(local_file_path, entry.st_mode)
                             ret1 += 1
                             ret2 += os.path.getsize(local_file_path)
-                            (callback or print)(' Done.'+CRLF)
+                            # (callback or print)(CRLF+'Done.'+CRLF)
                     except Exception as e:
                         traceback.print_exc()
-                        (callback or print)(str(e)+CRLF)
-            return ret1, ret2
-        ret1, ret2 = recurse(remote_path, local_path, ret1, ret2)
+                        (callback or print)(CRLF+str(e)+CRLF)
+                        return {'errinfo': str(e), 'count': ret1, 'size': ret2}
+            return {'count': ret1, 'size': ret2}
+        (callback or print)(CRLF+' '.join([remote_path, '->', local_path]))
+        retdat = recurse(remote_path, local_path, ret1, ret2)
+        ret1, ret2 = retdat.get('count', 0), retdat.get('size', 0)
         sftp.close()
-        return ret1, ret2
+        return {'count': ret1, 'size': ret2}
 
     def upload(self, local_path, remote_path, excludes=None):
         if not (self.transport and self.transport.is_alive()):
@@ -482,16 +495,226 @@ class SSHClient:
             self.reconnect()
         if local_path.startswith('~/'):
             local_path = os.path.expanduser(local_path)
-        import stat
-        sftp = self.client.open_sftp()
-        if remote_path.startswith('~/'):
-            remote_path = os.path.join(sftp.normalize('.'), remote_path[2:])
-        file_attr = sftp.stat(remote_path)
-        sftp.close()
-        if stat.S_ISDIR(file_attr.st_mode):
-            return self.download_directory(remote_path, local_path, self.onChannelString, excludes=excludes)
+        try:
+            sftp = self.client.open_sftp()
+            if remote_path.startswith('~/'):
+                remote_path = os.path.join(sftp.normalize('.'), remote_path[2:])
+            file_attr = sftp.stat(remote_path)
+            sftp.close()
+            if stat.S_ISDIR(file_attr.st_mode):
+                return self.download_directory(remote_path, local_path, self.onChannelString, excludes=excludes)
+            else:
+                return self.download_file(remote_path, local_path, self.onChannelString)
+        except Exception as e:
+            (self.onChannelString or print)(CRLF+str(e)+CRLF)
+            return {'errinfo': str(e), 'count': 0, 'size': 0}
+
+    def getServerFiles(self, folder):
+        try:
+            sftp = self.client.open_sftp()
+            files = []
+            ll = [x for x in sftp.listdir_attr(folder) if stat.S_ISDIR(x.st_mode) or stat.S_ISREG(x.st_mode)]
+            ll.sort(key=lambda x: x.filename.lower())
+            for entry in ll:
+                remote_file_path = os.path.join(folder, entry.filename)
+                files.append({'title': entry.filename, 'key': tools.get_key(remote_file_path), 'path':remote_file_path, 'isLeaf': not stat.S_ISDIR(entry.st_mode)})
+            sftp.close()
+            return {'fileList': files}
+        except Exception as e:
+            print(self.hostname, remote_file_path)
+            traceback.print_exc()
+            return {'errinfo': str(e)}
+
+    def open_remote_file(self, thisPath):
+        try:
+            content = ''
+            sftp = self.client.open_sftp()
+            with sftp.open(thisPath, "r") as remote_file:
+                content = remote_file.read().decode()
+            sftp.close()
+            return content
+        except Exception as e:
+            print(self.hostname, thisPath)
+            traceback.print_exc()
+            return {'errinfo': str(e)}
+
+    def save_remote_file(self, thisPath, content):
+        try:
+            sftp = self.client.open_sftp()
+            with sftp.open(thisPath, "w") as remote_file:
+                remote_file.write(content)
+            sftp.close()
+        except Exception as e:
+            print(self.hostname, thisPath)
+            traceback.print_exc()
+            return {'errinfo': str(e)}
+
+    def dockerCheckEnv(self):
+        tryCmds = ['', '/usr/local/bin/' ]
+        for cmd in tryCmds:
+            retval = self.dockerGetCommandResult(cmd+'docker version')
+            retval = retval.get('errinfo') or ''
+            if (retval.find('permission denied')>=0):
+                self.dockerCommandPrefix = 'sudo ' + (self.dockerCommandPrefix or '')
+                return None
+            elif (retval.find('docker.sock')>=0):
+                return {'errinfo': 'Docker is not running'}
+            elif (retval.find('not found')>=0):
+                continue
+            elif retval:
+                return {'errinfo': retval}
+            else:
+                self.dockerCommandPrefix = (self.dockerCommandPrefix or '') + cmd
+                return None
+        return {'errinfo': 'Docker is not found'}
+
+    def dockerComposeCheckEnv(self):
+        tryCmds = ['docker compose', 'docker-compose', ]
+        for cmd in tryCmds:
+            retval = self.dockerGetCommandResult(cmd)
+            retval = retval.get('errinfo') or ''
+            if retval.find('is not a docker command')>=0:
+                continue
+            elif retval:
+                return {'errinfo': retval}
+            else:
+                self.dockerComposePrefix = (self.dockerComposePrefix or '') + cmd
+                return None
+        return {'errinfo': 'Docker Compose is not found'}
+
+    def dockerGetCommandResult(self, command):
+        command = (self.dockerCommandPrefix or '') + command
+        print(command)
+        try:
+            stdin, stdout, stderr = self.client.exec_command(command)
+            output = stdout.read().decode()
+            outerr = stderr.read().decode()
+            return {'output': output, 'errinfo': outerr}
+        except Exception as e:
+            print(command)
+            traceback.print_exc()
+            return {'errinfo': str(e)}
+
+    def dockerCommandJsonResult(self, command):
+        retval = self.dockerGetCommandResult(command)
+        if retval.get('errinfo'): return retval
+        output = retval.get('output')
+        try:
+            output = [json.loads(x) for x in output.split('\n') if x]
+            return {'output': output}
+        except Exception as e:
+            traceback.print_exc()
+            return {'errinfo': str(e), 'output': output}
+
+    def dockerGetComposeResult(self, command):
+        command = (self.dockerCommandPrefix or '') + (self.dockerComposePrefix or '') + command
+        print(command)
+        try:
+            stdin, stdout, stderr = self.client.exec_command(command)
+            output = stdout.read().decode()
+            outerr = stderr.read().decode()
+            return {'output': output, 'errinfo': outerr}
+        except Exception as e:
+            print(command)
+            traceback.print_exc()
+            return {'errinfo': str(e)}
+
+    def dockerComposeJsonResult(self, command):
+        retval = self.dockerGetComposeResult(command)
+        if retval.get('errinfo'): return retval
+        output = retval.get('output')
+        try:
+            output = json.loads(output)
+            return {'output': output}
+        except Exception as e:
+            traceback.print_exc()
+            return {'errinfo': str(e), 'output': output}
+
+    def dockerGetContainers(self):
+        # Nodes for Docker containers
+        containersParentKey = self.serverKey+'_docker_containers'
+        retval = self.dockerCommandJsonResult('docker container ls --format=json -a')
+        if retval.get('errinfo'):
+            containerList = [{'key': self.serverKey+'_docker_container_error', 'title': retval.get('errinfo'), 'isLeaf': True, }]
         else:
-            return self.download_file(remote_path, local_path, self.onChannelString)
+            containerList = [{'key': self.serverKey+'_docker_container_'+x['ID'], 'theName': x['Names'], 'title': x['Names']+' ('+x['State']+')', 'isLeaf': True, 'parent': containersParentKey, 'raw':x } for x in (retval.get('output') or [])]
+        return {'key': containersParentKey, 'title': 'Containers', 'isLeaf': False, 'children': containerList, 'subMenus':[
+            {'label': 'restart', 'key': 'tree_menu_command_container_restart', 'command': self.dockerCommandPrefix+'docker container restart {theName}', 'icon':'ReloadOutlined' },
+            {'type': 'divider' },
+            {'label': 'start', 'key': 'tree_menu_command_container_start', 'command': self.dockerCommandPrefix+'docker container start {theName}', 'icon':'CaretRightOutlined' },
+            {'label': 'pause', 'key': 'tree_menu_command_container_pause', 'command': self.dockerCommandPrefix+'docker container pause {theName}', 'icon':'PauseOutlined' },
+            {'label': 'stop', 'key': 'tree_menu_command_container_stop', 'command': self.dockerCommandPrefix+'docker container stop {theName}', 'icon':'BorderOutlined' },
+            {'type': 'divider' },
+            {'label': 'logs -f', 'key': 'tree_menu_command_container_logs', 'command': self.dockerCommandPrefix+'docker container logs -f --tail=100 {theName}', 'terminal': True, },
+            {'label': 'inspect', 'key': 'tree_menu_command_container_inspect', 'command': self.dockerCommandPrefix+'docker container inspect {theName}', },
+            {'label': 'stats --no-stream', 'key': 'tree_menu_command_container_stats', 'command': self.dockerCommandPrefix+'docker container stats --no-stream {theName}', },
+            {'type': 'divider' },
+            {'label': 'rm', 'key': 'tree_menu_command_container_rm', 'command': self.dockerCommandPrefix+'docker container rm {theName}', 'icon':'DeleteOutlined', 'confirm': 'Are you sure you want to delete this container' },
+        ]}
+
+    def dockerGetImages(self):
+        # Nodes for Docker images
+        imagesParentKey = self.serverKey+'_docker_images'
+        retval = self.dockerCommandJsonResult('docker image ls --format=json -a')
+        if retval.get('errinfo'):
+            imageList = [{'key': self.serverKey+'_docker_image_error', 'title': retval.get('errinfo'), 'isLeaf': True, }]
+        else:
+            imageList = [{'key': self.serverKey+'_docker_image_'+x['ID'], 'theName': x['Repository'], 'title': x['Repository']+':'+x['Tag']+' ('+x['Size']+')', 'isLeaf': True, 'parent': imagesParentKey, 'raw':x } for x in (retval.get('output') or [])]
+        return {'key': imagesParentKey, 'title': 'Images', 'isLeaf': False, 'children': imageList, 'subMenus':[
+            {'label': 'inspect', 'key': 'tree_menu_command_image_inspect', 'command': self.dockerCommandPrefix+'docker image inspect {theName}', },
+            {'label': 'history', 'key': 'tree_menu_command_image_history', 'command': self.dockerCommandPrefix+'docker image history {theName}', },
+            {'type': 'divider' },
+            {'label': 'rm', 'key': 'tree_menu_command_image_rm', 'command': self.dockerCommandPrefix+'docker image rm {theName}', 'icon':'DeleteOutlined', 'confirm': 'Are you sure you want to delete this image' },
+        ]}
+
+    def dockerGetComposes(self):
+        # Nodes for Docker compose
+        composeParentKey = self.serverKey+'_docker_composes'
+        if self.dockerComposePrefix == None:
+            retval = self.dockerComposeCheckEnv()
+        else:
+            retval = None
+        if retval and retval.get('errinfo'):
+            composeList = [{'key': self.serverKey+'_docker_compose_error', 'title': retval.get('errinfo'), 'isLeaf': True, }]
+        else:
+            retval = self.dockerComposeJsonResult(' ls --format=json -a')
+            if retval.get('errinfo'):
+                composeList = [{'key': self.serverKey+'_docker_compose_error', 'title': retval.get('errinfo'), 'isLeaf': True, }]
+            else:
+                composeList = [{'key': self.serverKey+'_docker_compose_'+x['Name'], 'theName':x['ConfigFiles'], 'title': x['Name']+' - '+x['Status'], 'isLeaf': True, 'parent': composeParentKey, 'raw':x } for x in (retval.get('output') or [])]
+        return {'key': composeParentKey, 'title': 'Composes', 'isLeaf': False, 'children': composeList, 'subMenus':[
+            {'label': 'restart', 'key': 'tree_menu_command_compose_restart', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} restart', 'icon':'ReloadOutlined', },
+            {'type': 'divider' },
+            {'label': 'start', 'key': 'tree_menu_command_compose_start', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} start', 'icon':'CaretRightOutlined', },
+            {'label': 'pause', 'key': 'tree_menu_command_compose_pause', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} pause', 'icon':'PauseOutlined', },
+            {'label': 'stop', 'key': 'tree_menu_command_compose_stop', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} stop', 'icon':'BorderOutlined', },
+            {'type': 'divider' },
+            {'label': 'up -d', 'key': 'tree_menu_command_compose_up-d', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} up -d', 'icon':'VerticalAlignTopOutlined', },
+            {'label': 'down && up -d', 'key': 'tree_menu_command_compose_down_up-d', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} down && '+self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} up -d', 'icon':'ColumnHeightOutlined', },
+            {'label': 'down', 'key': 'tree_menu_command_compose_down', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} down', 'icon':'DeleteOutlined', 'confirm': 'Are you sure you want to delete this', },
+        ]}
+
+    def dockerGetWholeTree(self):
+        # Get the whole docker tree
+        if self.dockerCommandPrefix == None:
+            retval = self.dockerCheckEnv()
+            if retval and retval.get('errinfo'): return retval
+        featureList = []
+        retval = self.dockerGetCommandResult('docker --version')
+        if retval and retval.get('errinfo'): return retval
+        output = retval.get('output')
+        # Nodes for Docker Server
+        if (output and output.strip().find('Docker version')>=0):
+            # Insert a node to show the Docker version
+            featureList.append({'key': self.serverKey+'_docker_version', 'title': output, 'isLeaf': True, 'menus':[
+                {'label': 'ps -a', 'key': 'tree_menu_command_ps_a', 'command': self.dockerCommandPrefix+'docker ps -a', 'icon':'ToolOutlined' },
+                {'label': 'images', 'key': 'tree_menu_command_images', 'command': self.dockerCommandPrefix+'docker images', },
+                {'label': 'stats', 'key': 'tree_menu_command_stats', 'command': self.dockerCommandPrefix+'docker stats --no-stream', },
+            ]})
+        featureList.append(self.dockerGetContainers())
+        featureList.append(self.dockerGetImages())
+        featureList.append(self.dockerGetComposes())
+        return {'version': output, 'featureList': featureList}
 
 
 class TerminalClient(SSHClient):

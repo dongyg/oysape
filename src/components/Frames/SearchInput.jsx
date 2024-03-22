@@ -10,12 +10,13 @@ import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
 import { getShowTitle, getPathAndName, flatFileTree, parseTaskString0, getUniqueKey, calculateMD5 } from '../Common/global';
 import CodeEditor from '../Modules/CodeEditor';
 import Terminal from '../Modules/UITerminal1';
+import IframeComponent from './IframeComponent';
 
 import './SearchInput.css';
 
 const SearchInput = () => {
   const { message } = App.useApp();
-  const { serverItems, taskItems, pipelineItems, projectFiles, tabItems, setTabItems, setTabActiveKey, userSession } = useCustomContext();
+  const { serverItems, taskItems, pipelineItems, folderFiles, tabItems, setTabItems, setTabActiveKey, userSession } = useCustomContext();
   const [options, setOptions] = useState([]);
   const [showSearch, setShowSearch] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -142,8 +143,8 @@ const SearchInput = () => {
     }) : [];
   }
   const getFilesForSearch = (query) => {
-    const flatFiles = flatFileTree(JSON.parse(JSON.stringify(projectFiles)));
-    return projectFiles ? flatFiles.filter((item) => getPathAndName(item).toLowerCase().indexOf(query) >= 0).map((item) => {
+    const flatFiles = flatFileTree(JSON.parse(JSON.stringify(folderFiles)));
+    return folderFiles ? flatFiles.filter((item) => getPathAndName(item).toLowerCase().indexOf(query) >= 0).map((item) => {
       return { value: getPathAndName(item), label: (<div>{getPathAndName(item)}</div>) }
     }) : [];
   }
@@ -165,6 +166,21 @@ const SearchInput = () => {
     // console.log('handleSearch', value, v1.length);
     setDropMenuShowed(value && v1.length > 0);
   };
+
+  const openWebpageInTab = (url, title) => {
+    let tabKey = calculateMD5(url);
+    const findItems = tabItems.filter((item) => item.key === tabKey);
+    if(findItems.length > 0) {
+      setTabActiveKey(findItems[0].key);
+    }else{
+      setTabItems([...tabItems || [], {
+        key: tabKey,
+        label: title,
+        children: <IframeComponent src={url} />,
+      }]);
+      setTabActiveKey(tabKey);
+    }
+  }
 
   const openServerTerminal = (serverKey, taskKey) => {
     const newIdx = tabItems.filter((item) => item.serverKey === serverKey).length + 1;
@@ -188,14 +204,17 @@ const SearchInput = () => {
       // console.log('executeInput', text, taskInput);
       const tasks = taskItems.filter((item) => item.name === taskInput.task && taskInput.task !== '');
       const servers = serverItems.filter((item) => item.name === taskInput.server && taskInput.server !== '');
+      const mobj = userSession.teams[userSession.team0].members.filter(item => item.email === userSession.email)[0];
       if(taskInput.server && !taskInput.task) {
         // Open a server terminal
-        openServerTerminal(taskInput.server);
+        if(mobj && mobj.access_terminal) {
+          openServerTerminal(taskInput.server);
+        }
       } else if (servers.length>0 && tasks.length>0 && tasks[0].interaction==='terminal' && tasks[0].cmds.length>0) {
         // Open a server terminal, and run a task
         openServerTerminal(taskInput.server, taskInput.task);
       } else if (tasks.length>0 && servers.length>0) {
-        // Run a task in Workspace
+        // Run a task in Workspace. Could be interactive or not
         window.callTask(tasks[0], servers[0], taskInput);
       }
     } else {
@@ -296,19 +315,22 @@ const SearchInput = () => {
     window.fillSearchPipeline = fillSearchPipeline;
     window.openProjectFile = openProjectFile;
     window.openServerTerminal = openServerTerminal;
+    window.openWebpageInTab = openWebpageInTab;
     return () => {
       window.fillSearchServer = undefined;
       window.fillSearchTask = undefined;
       window.fillSearchPipeline = undefined;
       window.openProjectFile = undefined;
       window.openServerTerminal = undefined;
+      window.openWebpageInTab = undefined;
     }
   })
+
   return (
-    <div style={{ width: '50%', margin: '0 auto' }}>
+    <div style={{ width: '100%', padding: '0 12px' }}>
       <Button icon={<SearchOutlined />} style={{ width: '100%', display: !showSearch ? 'block' : 'none', transition: 'none' }} onClick={onSearch}>
-        { userSession && userSession.work0 && userSession.teams && userSession.team0 && userSession.teams[userSession.team0] && userSession.teams[userSession.team0].workspaces && userSession.teams[userSession.team0].workspaces[userSession.work0] && userSession.teams[userSession.team0].workspaces[userSession.work0].wname ?
-          userSession.teams[userSession.team0].workspaces[userSession.work0].wname :
+        { userSession && userSession.teams && userSession.teams[userSession.team0] && userSession.teams[userSession.team0].tname ?
+          userSession.teams[userSession.team0].tname :
           'Workspace'
         }
       </Button>

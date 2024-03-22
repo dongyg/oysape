@@ -1,12 +1,15 @@
 import React, { useState, useCallback } from 'react'
-import { Tag, Steps, AutoComplete, Input } from 'antd';
-import { PlusOutlined } from "@ant-design/icons";
+import { App, Tag, Steps, AutoComplete, Input } from 'antd';
+import { PlusOutlined, SelectOutlined } from "@ant-design/icons";
 
 import { useCustomContext } from '../Contexts/CustomContext'
 import { getUniqueKey } from '../Common/global';
+import TaskEditor from '../Task/TaskEditor';
+import ServerEditor from '../Server/ServerEditor';
 
 export default function StepsComponent({steps, onChange, ...props}) {
-  const { serverItems, taskItems } = useCustomContext();
+  const { message } = App.useApp();
+  const { serverItems, taskItems, tabItems, setTabItems, setTabActiveKey, hideSidebarIfNeed } = useCustomContext();
   const [indexEditTarget, setIndexEditTarget] = useState(-1);
   const [indexEditTask, setIndexEditTask] = useState(-1);
   const [indexEditTaskIndex, setIndexEditTaskIndex] = useState(-1);
@@ -48,6 +51,43 @@ export default function StepsComponent({steps, onChange, ...props}) {
 
   const filterOption = (input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase());
 
+  const handleOpenServer = (serverKey)=>{
+    // Same with editServer in ServerList.jsx
+    const tabKey = serverKey+'-server-editor';
+    const findItems = tabItems.filter((item) => item.serverKey === tabKey);
+    if(findItems.length > 0) {
+      setTabActiveKey(findItems[0].key);
+    }else{
+      const uniqueKey = getUniqueKey();
+      setTabItems([...tabItems || [], {
+        key: uniqueKey,
+        serverKey: tabKey,
+        label: serverKey,
+        children: <ServerEditor uniqueKey={uniqueKey} serverKey={serverKey} />,
+      }]);
+      setTabActiveKey(uniqueKey);
+    }
+    hideSidebarIfNeed();
+  }
+  const handleOpenTask = (taskKey)=>{
+    // Same with editTask in TaskList.jsx
+    const tabKey = taskKey+'-task-editor';
+    const findItems = tabItems.filter((item) => item.taskKey === tabKey);
+    if(findItems.length > 0) {
+      setTabActiveKey(findItems[0].key);
+    }else{
+      const uniqueKey = getUniqueKey();
+      setTabItems([...tabItems || [], {
+        key: uniqueKey,
+        taskKey: tabKey,
+        label: taskKey,
+        children: <TaskEditor uniqueKey={uniqueKey} taskKey={taskKey} />,
+      }]);
+      setTabActiveKey(uniqueKey);
+    }
+    hideSidebarIfNeed();
+  }
+
   const getTargetPart = useCallback((item, idxStep) => {
     return <>
       <div>{
@@ -61,7 +101,7 @@ export default function StepsComponent({steps, onChange, ...props}) {
             </AutoComplete>
           </div>
         ) : (
-          <div><Tag key={getUniqueKey()} closable={true} style={{ userSelect: 'none', }} onClose={() => onCloseTarget(idxStep)} onClick={()=>onClickTarget(idxStep)}>{item.target}</Tag></div>
+          <div><Tag key={getUniqueKey()} closable={true} style={{ userSelect: 'none', }} icon={item.target?<SelectOutlined onClick={()=>{handleOpenServer(item.target)}} />:null} onClose={() => onCloseTarget(idxStep)} onDoubleClick={()=>{onClickTarget(idxStep)}}>{item.target}</Tag></div>
         )}
       </div>
       <div>{
@@ -74,7 +114,7 @@ export default function StepsComponent({steps, onChange, ...props}) {
                 <Input placeholder="Select a Task" size='small' autoComplete='off' autoCapitalize='off' autoCorrect='off' spellCheck='false' />
             </AutoComplete>
           ) : (
-            <Tag key={getUniqueKey()} closable={!!task} style={{ userSelect: 'none', }} onClose={() => onCloseTask(idxStep, idxTask)} onClick={() => onClickTask(idxStep, idxTask)}>
+            <Tag key={getUniqueKey()} closable={!!task} style={{ userSelect: 'none', }} icon={task?<SelectOutlined onClick={()=>{handleOpenTask(task)}} />:null} onClose={() => onCloseTask(idxStep, idxTask)} onDoubleClick={() => onClickTask(idxStep, idxTask)}>
               {task||'+'}
             </Tag>
           )

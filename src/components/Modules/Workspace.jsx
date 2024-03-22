@@ -21,7 +21,7 @@ const termOptions = {
 }
 
 export default function CombinedTerminal(props) {
-    const { customTheme, setTabActiveKey, tabItems, setTabItems } = useCustomContext();
+    const { customTheme, setTabActiveKey, tabItems, setTabItems, setBrowserInfo, userSession } = useCustomContext();
     const xtermRef = React.useRef(null)
     const divTerminalContainer = React.useRef(null)
     const currentWorkingChannel = React.useRef('')
@@ -47,7 +47,9 @@ export default function CombinedTerminal(props) {
                 return;
             }
             // Set the workspace's tab label if workspace is interaction
-            updateWorkspaceTabTitle(taskObj.interaction==='interactive'?serverKey:'');
+            if(userSession.teams[userSession.team0].members.find(item => item.email === userSession.email)?.access_terminal) {
+                updateWorkspaceTabTitle(taskObj.interaction==='interactive'||taskObj.interaction==='terminal'?serverKey:'');
+            }
             // xtermRef.current.write(showCursor);
             // xtermRef.current.setOption('disableStdin',false);
             setTabActiveKey('workspace');
@@ -132,8 +134,10 @@ export default function CombinedTerminal(props) {
         window.oypaseTabs = window.oypaseTabs || {}; window.oypaseTabs.tabActiveKey = uniqueKey; window.oypaseTabs[uniqueKey] = xtermRef.current;
         onResize();
         // xtermRef.current.write(hideCursor+clearTerminal);
+        setBrowserInfo(xtermRef.current._core.browser);
         writeWelcome(xtermRef.current);
         window.addEventListener('resize', onResize);
+        console.log(navigator.userAgent);
         if (window.pywebview) {
             if (!window.pywebview.workbridge) {
                 window.pywebview.workbridge = {}
@@ -151,7 +155,7 @@ export default function CombinedTerminal(props) {
             window.removeEventListener('resize', onResize);
             xtermRef.current.dispose();
         }
-    }, [uniqueKey]);
+    }, [setBrowserInfo, uniqueKey]);
 
     React.useEffect(() => {
         xtermRef.current.setOption('theme', {

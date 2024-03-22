@@ -1,11 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import hashlib, traceback, json
+import hashlib, traceback, json, random
 import urllib.request
 import urllib.parse
 import ssl
 from . import consts
+
+def getRandomString(size=8):
+    import string
+    return ''.join(random.choice(string.ascii_letters+string.digits) for i in range(size))
 
 def n10to62(value):
     stc = '0123456789abcdefghigklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -120,8 +124,11 @@ def setItemsToServer(what, items):
 def delItemOnServer(what, itemKey):
     return callServerApiDelete('/user/'+what, {'key': itemKey})
 
-def switchToWorkspace(wid):
-    return callServerApiPost('/user/workspace', {'wid': wid})
+def switchToTeam(tid):
+    return callServerApiPost('/user/team', {'tid': tid})
+
+def getOneTimeCode():
+    return callServerApiPost('/user/landing', {})
 
 # send_get_request('http://localhost:8080/oyapi/user/test', {'c': 'test@localhost'})
 # send_post_request('http://localhost:8080/oyapi/user/test', {'c': 'test@localhost'})

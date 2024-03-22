@@ -9,7 +9,7 @@ import './TaskList.css';
 
 const TaskList = () => {
   const { message, modal } = App.useApp();
-  const { taskItems, setTaskItems, pipelineItems, tabItems, setTabItems, setTabActiveKey } = useCustomContext();
+  const { hideSidebarIfNeed, taskItems, setTaskItems, pipelineItems, tabItems, setTabItems, setTabActiveKey, userSession } = useCustomContext();
   const [showTasks, setShowTasks] = useState(taskItems);
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [multipleSelect, setMultipleSelect] = useState(false);
@@ -26,22 +26,29 @@ const TaskList = () => {
     }else if(key === 'deleteTask') {
       deleteTask(selectedRowKeys[0]);
     }else if(key === 'runTask') {
-      callThisTask(selectedRowKeys[0])
+      callThisTask(selectedRowKeys[0]);
     }
   };
-  const contextItems = [
-    { key: 'runTask', label: <strong>Run this task on a Server</strong>, icon: <FiTerminal />, },
-    { type: 'divider', },
-    { key: 'editTask', label: 'Edit', icon: <EditOutlined />, },
-    { key: 'deleteTask', label: 'Delete', icon: <DeleteOutlined />, },
-  ];
+  const getContextItems = () => {
+    var retval = [
+      { key: 'runTask', label: <strong>Run this task on a Server</strong>, icon: <FiTerminal />, },
+    ];
+    if(userSession.teams[userSession.team0].members.find(item => item.email === userSession.email)?.access_writable) {
+      retval = retval.concat([
+        { type: 'divider', },
+        { key: 'editTask', label: 'Edit', icon: <EditOutlined />, },
+        { key: 'deleteTask', label: 'Delete', icon: <DeleteOutlined />, },
+      ])
+    }
+    return retval;
+  };
   const columns = [
     {
       title: "Name",
       dataIndex: "name",
       ellipsis: true,
       render: (text, record, index) => {
-        return (<Dropdown menu={{items: contextItems, onClick: onClickMenu}} trigger={['contextMenu']}>
+        return (<Dropdown menu={{items: getContextItems(), onClick: onClickMenu}} trigger={['contextMenu']}>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', whiteSpace: 'break-spaces'}}>
               <div>{getShowTitle(text)}</div>
@@ -109,6 +116,7 @@ const TaskList = () => {
       }]);
       setTabActiveKey(uniqueKey);
     }
+    hideSidebarIfNeed();
   }
   const deleteTask = (taskKey) => {
     const pipelines = pipelineItems.filter((pipeline) => pipeline.steps.filter((step) => step.tasks.includes(taskKey)).length > 0).map((pipeline) => {
@@ -138,6 +146,7 @@ const TaskList = () => {
     if(taskObj&&taskObj.name){
       window.fillSearchTask(taskObj.name);
     }
+    hideSidebarIfNeed();
   }
 
   const reloadTaskList = useCallback(() => {
@@ -176,9 +185,7 @@ const TaskList = () => {
           selectRow(record);
         },
         onDoubleClick: (event) => {
-          if(window.fillSearchTask) {
-            window.fillSearchTask(record.name);
-          }
+          callThisTask(record.key);
         },
       })}
     />

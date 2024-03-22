@@ -136,7 +136,7 @@ export default function ServerEditor(props) {
   });
 
   return (
-    <div className={customTheme.className+' withScrollContent'} style={{ backgroundColor: customTheme.colors["editor.background"], color: customTheme.colors["editor.foreground"], height: '100%', paddingTop: '24px', overflow: 'auto' }}>
+    <div className={customTheme.className+' withScrollContent'} style={{ backgroundColor: customTheme.colors["editor.background"], color: customTheme.colors["editor.foreground"], height: '100%', padding: '24px', overflowY: 'auto', overflowX: 'hidden', }}>
       <Form
         name={uniqueKey}
         form={form}
@@ -155,7 +155,7 @@ export default function ServerEditor(props) {
         <Form.Item label="Username" name="username" tooltip="The OS username will be used if not specified">
           <Input placeholder='Username' autoCapitalize='off' autoComplete='off' autoCorrect='off' />
         </Form.Item>
-        <Form.Item label="Hostname" name="address"  rules={[{required: true, message: 'Please input hostname!',},]} tooltip="The hostname or IP address">
+        <Form.Item label="Hostname" name="address" rules={[{required: true, message: 'Please input hostname!',},]} tooltip="The hostname or IP address">
           <Input placeholder='Hostname (IP Address)' autoCapitalize='off' autoComplete='off' autoCorrect='off' />
         </Form.Item>
         <Form.Item label="Port" name="port" tooltip="The port number ( default: 22 )">
@@ -165,7 +165,7 @@ export default function ServerEditor(props) {
           <Input placeholder='Password' autoCapitalize='off' autoComplete='off' autoCorrect='off' />
         </Form.Item>
         <Form.Item label="Private Key" name="prikey" validateStatus={passStatus} help={passHint} tooltip="Give the private key file. It can start with ~/. If it is not given, password will be used, or the default ssh private key will be used.">
-          <Input placeholder='Private Key' addonAfter={<Button type="text" onClick={openFile} icon={<FolderOpenOutlined />} style={{ height: "30px", borderTopLeftRadius: "0px", borderBottomLeftRadius: "0px" }} autoCapitalize='off' autoComplete='off' autoCorrect='off' ></Button>} />
+          <Input placeholder='Private Key' autoCapitalize='off' autoComplete='off' autoCorrect='off' addonAfter={<Button type="text" onClick={openFile} icon={<FolderOpenOutlined />} style={{ height: "30px", borderTopLeftRadius: "0px", borderBottomLeftRadius: "0px" }}></Button>} />
         </Form.Item>
         <Form.Item label="Passphrase" name="passphrase" tooltip="The passphrase for the private key">
           <Input placeholder='Passphrase' autoCapitalize='off' autoComplete='off' autoCorrect='off' />

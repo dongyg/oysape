@@ -17,12 +17,13 @@ const termOptions = {
 }
 
 export default function WebTerminal(props) {
-    const { customTheme } = useCustomContext();
+    const { customTheme, userSession } = useCustomContext();
     const xtermRef = React.useRef(null)
     const divTerminalContainer = React.useRef(null)
     const uniqueKey = props.uniqueKey;
     const serverKey = props.serverKey;
     const taskKey = props.taskKey;
+    const withCommand = props.withCommand;
 
     React.useEffect(() => {
         const hasTerm = !!xtermRef.current;
@@ -33,23 +34,28 @@ export default function WebTerminal(props) {
             xtermRef.current.write("\x1b[33m$\x1b[0m ");
         }
 
+        const sendData = (data) => {
+            callApi('sendTerminalInput', {uniqueKey:uniqueKey, serverKey:serverKey, input:data})
+            .then(res => {
+                if (!xtermRef.current.resized) {
+                    onResize();
+                    xtermRef.current.resized = true;
+                }
+            })
+            .catch(err => {
+                console.log(err);
+                xtermRef.current.write(data);
+                if(data === '\r') {
+                    xtermRef.current.write('\n');
+                    prompt();
+                }
+            });
+        }
         const handlerData = (data) => {
             // console.log('cmd:', data);
-            callApi('sendTerminalInput', {uniqueKey:uniqueKey, serverKey:serverKey, input:data})
-                .then(res => {
-                    if (!xtermRef.current.resized) {
-                        onResize();
-                        xtermRef.current.resized = true;
-                    }
-                })
-                .catch(err => {
-                    console.log(err);
-                    xtermRef.current.write(data);
-                    if(data === '\r') {
-                        xtermRef.current.write('\n');
-                        prompt();
-                    }
-                });
+            if(userSession.teams[userSession.team0].members.find(item => item.email === userSession.email)?.access_terminal) {
+                sendData(data);
+            }
         }
 
         const onResize = () => {
@@ -77,7 +83,13 @@ export default function WebTerminal(props) {
                 // console.log('out: '+Base64.decode(data));
                 xtermRef.current.write(Base64.decode(data));
             }
-            if(!hasTerm) callApi('createTermConnection', {serverKey:serverKey, uniqueKey:uniqueKey, taskKey:taskKey});
+            if(!hasTerm) callApi('createTermConnection', {serverKey:serverKey, uniqueKey:uniqueKey, taskKey:taskKey}).then(res => {
+                if(withCommand) {
+                    setTimeout(() => {
+                        sendData(withCommand+'\r');
+                    }, 500);
+                }
+            });
         }
         return () => {
             if (window.pywebview) {
@@ -87,7 +99,7 @@ export default function WebTerminal(props) {
             window.removeEventListener('resize', onResize);
             xtermRef.current.dispose();
         }
-    }, [uniqueKey, serverKey, taskKey]);
+    }, [uniqueKey, serverKey, taskKey, userSession.teams, userSession.team0, userSession.email, withCommand]);
 
     React.useEffect(() => {
         xtermRef.current.setOption('theme', {

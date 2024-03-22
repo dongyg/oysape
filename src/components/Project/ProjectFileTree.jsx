@@ -1,4 +1,4 @@
-import React from 'react'
+import React, {useCallback} from 'react'
 import { App, Tree, Dropdown } from 'antd';
 import { DownOutlined, QuestionCircleFilled } from '@ant-design/icons';
 
@@ -11,7 +11,7 @@ const { DirectoryTree } = Tree; // 把 Tree 赋值给 DirectoryTree, 然后使�
 
 export default function ProjectFileTree() {
   const { message, modal } = App.useApp();
-  const { customTheme, projectFiles, setProjectFiles } = useCustomContext();
+  const { hideSidebarIfNeed, customTheme, folderFiles, setFolderFiles } = useCustomContext();
   const [contextMenuItems, setContextMenuItems] = React.useState([]);
   const filetree = React.useRef(null);
   const time1 = React.useRef(0);
@@ -34,18 +34,18 @@ export default function ProjectFileTree() {
       message.info(node1.current.path);
       navigator.clipboard.writeText(node1.current.path);
     }else if(key === 'tree_menu_openfile') {
-      if(window.openProjectFile) window.openProjectFile(node1.current.path, node1.current.title);
+      handleDoubleClick(node1.current);
     }else if(key === 'tree_menu_remove_from_workspace') {
       modal.confirm({
         title: node1.current.path,
         icon: <QuestionCircleFilled />,
         content: 'Will be removed from the workspace.',
         onOk() {
-          callApi('removeFolderFromWorkspace', {path: node1.current.path}).then((data) => {
+          callApi('removeFolder', {path: node1.current.path}).then((data) => {
             if(data && data.errinfo) {
               message.error(data.errinfo);
-            }else if(data && data.projectFiles) {
-              setProjectFiles(data.projectFiles);
+            }else if(data && data.folderFiles) {
+              setFolderFiles(data.folderFiles);
             }
           })
         },
@@ -59,11 +59,11 @@ export default function ProjectFileTree() {
         icon: <QuestionCircleFilled />,
         content: node1.current.path,
         onOk() {
-          callApi('addFolderToExclude', {path: node1.current.path}).then((data) => {
+          callApi('addExcludeToFolder', {path: node1.current.path}).then((data) => {
             if(data && data.errinfo) {
               message.error(data.errinfo);
-            }else if(data && data.projectFiles) {
-              setProjectFiles(data.projectFiles);
+            }else if(data && data.folderFiles) {
+              setFolderFiles(data.folderFiles);
             }
           })
         },
@@ -74,16 +74,30 @@ export default function ProjectFileTree() {
     }
   }
 
+  const handleDoubleClick = (anode) => {
+    if(window.openProjectFile) {
+      window.openProjectFile(anode.path, anode.title);
+      hideSidebarIfNeed();
+    }
+  }
+
+  const reloadFolderFiles = useCallback(() => {
+    callApi('getFolderFiles', {refresh: true}).then((data) => {
+      setFolderFiles(data);
+    });
+  }, [setFolderFiles]);
+  window.reloadFolderFiles = reloadFolderFiles;
+
   return (
     <Dropdown menu={{items: contextMenuItems, onClick: onClickMenu}} trigger={['contextMenu']}>
-      <DirectoryTree ref={filetree} treeData={projectFiles} switcherIcon={<DownOutlined />} className={customTheme.className}
+      <DirectoryTree ref={filetree} treeData={folderFiles} switcherIcon={<DownOutlined />} className={customTheme.className}
         onSelect={(selectedKeys, info) => {
           if(Date.now() - time1.current < 500 && path1.current === info.node.path) {
             time1.current = Date.now();
             if(info.node.children&&info.node.children.length>0) {
               return;
             } else{
-              if(window.openProjectFile) window.openProjectFile(info.node.path, info.node.title);
+              handleDoubleClick(info.node);
             }
           }
           time1.current = Date.now();

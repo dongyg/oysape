@@ -1,3 +1,10 @@
+.ant-layout .ant-layout-sider {
+  left: 0;
+  top: 0;
+  z-index: 9;
+  height: 100%;
+}
+
 .ant-tabs-nav {
   z-index: 2;
 }
@@ -32,6 +39,9 @@
 .ant-tabs-left.light-theme > .ant-tabs-nav .ant-tabs-tab-active .ant-tabs-tab-btn {
   color: #584c27;
 }
+.light-theme .ant-layout-header .ant-btn-text {
+  color: #a79f84;
+}
 .ant-tabs-left.light-theme > .ant-tabs-nav .ant-tabs-extra-content .ant-btn-text {
   color: #a79f84;
 }
@@ -56,6 +66,9 @@
 }
 .ant-tabs-left.dark-theme > .ant-tabs-nav .ant-tabs-tab-active .ant-tabs-tab-btn {
   color: #ffffff;
+}
+.dark-theme .ant-layout-header .ant-btn-text {
+  color: #668791;
 }
 .ant-tabs-left.dark-theme > .ant-tabs-nav .ant-tabs-extra-content .ant-btn-text {
   color: #668791;

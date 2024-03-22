@@ -12,7 +12,7 @@ import './CodeEditor.css';
 
 export default function CodeEditor(props) {
   const { message } = App.useApp();
-  const { customTheme, tabActiveKey, tabItems, setTabItems, setCodeEditRowColText, setCodeEditCurrentLang, setFooterStatusText } = useCustomContext();
+  const { customTheme, tabActiveKey, tabItems, setTabItems, setCodeEditRowColText, setCodeEditCurrentLang, setFooterStatusText, setFolderFiles } = useCustomContext();
   const [value, setValue] = React.useState('');
   const [langExts, setLangExts] = React.useState([]);
   const [langCurr, setLangCurr] = React.useState(null);
@@ -34,8 +34,8 @@ export default function CodeEditor(props) {
   }, [uniqueKey, tabItems, setTabItems])
 
   React.useEffect(() => {
+    // console.log(props);
     const v1 = getLanguages(props.filename);
-    // console.log(props.filename);
     setLangCurr(v1&&v1.length>0?v1[0]:'plaintext');
     setCodeEditCurrentLang(v1&&v1.length>0?v1[0]:'plaintext');
     const v2 = v1.map(lang=>loadLanguage(lang));
@@ -66,9 +66,9 @@ export default function CodeEditor(props) {
     }
   })
 
-  const saveFile = (path, title, content) => {
-    callApi('save_file', {path:path, content:content}).then((data)=>{
-      if(!data) {
+  const saveFile = (path, title, content, target) => {
+    if(path === 'globalExcludes.json') {
+      callApi('updateGlobalExcludes', {'excludes':JSON.parse(content)}).then((resp)=>{
         const newItems = tabItems.map((item) => {
           if(item.key === uniqueKey) {
             item.hasSomethingNew = false;
@@ -77,15 +77,31 @@ export default function CodeEditor(props) {
           return item;
         });
         setTabItems(newItems);
-        message.success('Saved');
-        setFooterStatusText('Saved. '+path);
-      } else if(data && data.errinfo) {
-        message.error(data.errinfo);
-      }
-    });
+        if(resp && resp.folderFiles) {
+          setFolderFiles(resp.folderFiles);
+        }
+      })
+    } else {
+      callApi(target?'save_remote_file':'save_file', {path:path, content:content, target:target}).then((data)=>{
+        if(!data) {
+          const newItems = tabItems.map((item) => {
+            if(item.key === uniqueKey) {
+              item.hasSomethingNew = false;
+              item.label = title;
+            }
+            return item;
+          });
+          setTabItems(newItems);
+          setFooterStatusText('Saved. '+(target?target+':':'')+path);
+          message.success('Saved');
+        } else if(data && data.errinfo) {
+          message.error(data.errinfo);
+        }
+      });
+    }
   }
   useKeyPress(keyMapping["shortcutSave"], (event) => {
-    if(tabActiveKey === uniqueKey) saveFile(props.filename, props.tabTitle, value);
+    if(tabActiveKey === uniqueKey) saveFile(props.filename, props.tabTitle, value, props.target);
     event.preventDefault(); return;
   });
 

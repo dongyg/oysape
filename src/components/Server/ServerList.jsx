@@ -11,7 +11,7 @@ import ServerEditor from './ServerEditor';
 
 const ServerList = () => {
   const { message, modal } = App.useApp();
-  const { tabItems, setTabItems, setTabActiveKey, serverItems, setServerItems, setUserSession } = useCustomContext();
+  const { hideSidebarIfNeed, tabItems, setTabItems, setTabActiveKey, serverItems, setServerItems, userSession } = useCustomContext();
   const [showServers, setShowServers] = useState(serverItems);
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [multipleSelect, setMultipleSelect] = useState(false);
@@ -43,23 +43,38 @@ const ServerList = () => {
     }else if(key === 'runOnServer') {
       runOnServer(selectedRowKeys[0]);
     }else if(key === 'terminalServer') {
-      if(window.openServerTerminal) window.openServerTerminal(selectedRowKeys[0]);
+      if(window.openServerTerminal) {
+        window.openServerTerminal(selectedRowKeys[0]);
+        hideSidebarIfNeed();
+      }
     }
   };
-  const contextItems = [
-    { key: 'runOnServer', label: <strong>Run a task on this server</strong>, icon: <FiTerminal />, },
-    { type: 'divider', },
-    { key: 'terminalServer', label: 'Terminal', icon: <BsTerminal />, },
-    { type: 'divider', },
-    { key: 'editServer', label: 'Edit', icon: <EditOutlined />, },
-    { key: 'deleteServer', label: 'Delete', icon: <DeleteOutlined />, },
-  ];
+  const getContextItems = () => {
+    var retval = [
+      { key: 'runOnServer', label: <strong>Run a task on this server</strong>, icon: <FiTerminal />, },
+    ];
+    const mobj = userSession.teams[userSession.team0].members.filter(item => item.email === userSession.email)[0];
+    if(mobj && mobj.access_terminal) {
+      retval = retval.concat([
+        { type: 'divider', },
+        { key: 'terminalServer', label: 'Terminal', icon: <BsTerminal />, },
+      ]);
+    }
+    if(mobj && mobj.access_writable) {
+      retval = retval.concat([
+        { type: 'divider', },
+        { key: 'editServer', label: 'Edit', icon: <EditOutlined />, },
+        { key: 'deleteServer', label: 'Delete', icon: <DeleteOutlined />, },
+      ]);
+    }
+    return retval;
+  };
   const columns = [
     {
       title: "Name",
       dataIndex: "name",
       render: (text, record, index) => {
-        return (<Dropdown menu={{items: contextItems, onClick: onClickMenu}} trigger={['contextMenu']}>
+        return (<Dropdown menu={{items: getContextItems(), onClick: onClickMenu}} trigger={['contextMenu']}>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', whiteSpace: 'break-spaces'}}>
               <div>{text}</div>
@@ -114,6 +129,7 @@ const ServerList = () => {
       }]);
       setTabActiveKey(uniqueKey);
     }
+    hideSidebarIfNeed();
   }
   const deleteServer = (serverKey) => {
     modal.confirm({
@@ -140,6 +156,7 @@ const ServerList = () => {
     if(serverObj&&serverObj.name){
       window.fillSearchServer(serverObj.name);
     }
+    hideSidebarIfNeed();
   }
   const reloadServerList = useCallback(() => {
     callApi('getServerList', {refresh: true}).then((data) => {
@@ -148,13 +165,6 @@ const ServerList = () => {
     });
   }, [setServerItems, setShowServers]);
   window.reloadServerList = reloadServerList;
-  const reloadUserSession = useCallback(() => {
-    callApi('getUserSession', {refresh: true}).then((data) => {
-      console.log('reloadUserSession', JSON.stringify(data));
-      setUserSession(data);
-    });
-  }, [setUserSession]);
-  window.reloadUserSession = reloadUserSession;
 
   useEffect(() => {
     setTimeout(() => {

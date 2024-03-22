@@ -40,7 +40,7 @@ const SearchLanguage = () => {
     setSearchMode('');
   }
   return (
-    <div style={{ width: '50%', margin: '0 auto' }}>
+    <div style={{ width: '100%', padding: '0 12px' }}>
       <AutoComplete autoFocus={true} popupMatchSelectWidth={'100%'} defaultActiveFirstOption={true} open={true}
         style={{ width: '100%', transition: 'none' }}
         value={searchValue}

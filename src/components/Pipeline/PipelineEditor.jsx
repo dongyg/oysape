@@ -11,7 +11,7 @@ import './PipelineEditor.css';
 
 export default function PipelineEditor(props) {
   const { message } = App.useApp();
-  const { customTheme, tabActiveKey, pipelineItems, setPipelineItems, tabItems, setTabItems, setFooterStatusText } = useCustomContext();
+  const { customTheme, tabActiveKey, tabItems, setTabItems, setFooterStatusText, userSession, setUserSession } = useCustomContext();
   const pipelineKey = React.useRef(props.pipelineKey)
   const uniqueKey = props.uniqueKey;
   // tags
@@ -59,7 +59,7 @@ export default function PipelineEditor(props) {
         message.error(data.errinfo);
       }else if(data && data.pipelines) {
         pipelineKey.current = newobj.key;
-        setPipelineItems(data.pipelines);
+        setUserSession({...userSession, pipelines: data.pipelines});
         const newItems = tabItems.map((item) => {
           if(item.key === uniqueKey) {
             item.hasSomethingNew = false;
@@ -82,11 +82,11 @@ export default function PipelineEditor(props) {
 
   // init form
   useEffect(() => {
-    const pipelineObj = (pipelineItems||[]).filter((item) => item.key === pipelineKey.current)[0]||{};
+    const pipelineObj = (userSession.pipelines||[]).filter((item) => item.key === pipelineKey.current)[0]||{};
     setTags(pipelineObj.tags||[]);
     setSteps(JSON.parse(JSON.stringify(pipelineObj.steps||[])));
     form.setFieldsValue(pipelineObj);
-  }, [form, pipelineKey, pipelineItems]);
+  }, [form, userSession]);
 
   // shortcuts
   useKeyPress(keyMapping["shortcutSave"], (event) => {

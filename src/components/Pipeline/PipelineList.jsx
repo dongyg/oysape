@@ -10,8 +10,8 @@ import './PipelineList.css';
 
 const PipelineList = () => {
   const { message, modal } = App.useApp();
-  const { hideSidebarIfNeed, pipelineItems, setPipelineItems, tabItems, setTabItems, setTabActiveKey, userSession } = useCustomContext();
-  const [showPipelines, setShowPipelines] = useState(pipelineItems);
+  const { hideSidebarIfNeed, tabItems, setTabItems, setTabActiveKey, userSession, setUserSession } = useCustomContext();
+  const [showPipelines, setShowPipelines] = useState(userSession.pipelines);
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [multipleSelect, setMultipleSelect] = useState(false);
   const [editable, setEditable] = useState(false);
@@ -73,11 +73,11 @@ const PipelineList = () => {
   }
   const filterPipelines = useCallback((keyword) => {
     setShowPipelines(
-      (pipelineItems||[]).filter((pipeline) => {
+      (userSession.pipelines||[]).filter((pipeline) => {
         return pipeline.name.includes(keyword) || (pipeline.tags&&pipeline.tags.join(',').includes(keyword));
       })
     )
-  }, [pipelineItems]);
+  }, [userSession]);
 
   const selectRow = (record) => {
     if(editable&&multipleSelect) {
@@ -127,7 +127,7 @@ const PipelineList = () => {
           if(data && data.errinfo) {
             message.error(data.errinfo);
           }else if(data && data.pipelines) {
-            setPipelineItems(data.pipelines);
+            setUserSession({...userSession, pipelines: data.pipelines});
             setShowPipelines(showPipelines.filter((pipeline) => pipeline.key !== pipelineKey));
           }
         })
@@ -138,30 +138,16 @@ const PipelineList = () => {
     });
   }
   const callThisPipeline = (pipelineKey) => {
-    const pipelineObj = pipelineItems.filter((pipeline) => pipeline.key === pipelineKey)[0]||{};
+    const pipelineObj = userSession.pipelines.filter((pipeline) => pipeline.key === pipelineKey)[0]||{};
     if(pipelineObj&&pipelineObj.name){
       window.fillSearchPipeline(pipelineObj.name);
     }
     hideSidebarIfNeed();
   }
 
-  const reloadPipelineList = useCallback(() => {
-    callApi('getPipelineList', {refresh: true}).then((data) => {
-      setPipelineItems(data);
-      setShowPipelines(data);
-    });
-  }, [setPipelineItems, setShowPipelines]);
-  window.reloadPipelineList = reloadPipelineList;
-
-  // useEffect(() => {
-  //   setTimeout(() => {
-  //     reloadPipelineList();
-  //   }, 10)
-  // },[reloadPipelineList]);
-
   useEffect(() => {
     filterPipelines(searchKeyword);
-  }, [pipelineItems, searchKeyword, filterPipelines]);
+  }, [searchKeyword, filterPipelines]);
 
   return (
     <>

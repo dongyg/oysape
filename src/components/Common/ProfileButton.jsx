@@ -62,8 +62,6 @@ export default function ProfileButton() {
   const reloadEverything = (callDone) => {
     callApi('reloadUserSession', {}).then((res) => {
       setUserSession(res);
-      window.reloadTaskList && window.reloadTaskList();
-      window.reloadPipelineList && window.reloadPipelineList();
       window.reloadFolderFiles && window.reloadFolderFiles();
       if(callDone) callDone();
     });

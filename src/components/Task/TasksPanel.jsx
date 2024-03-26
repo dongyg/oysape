@@ -9,7 +9,7 @@ import TaskEditor from './TaskEditor';
 
 export default function TasksPanel() {
   const { message, modal } = App.useApp();
-  const { hideSidebarIfNeed, tabItems, setTabItems, setTabActiveKey, setTaskItems, userSession } = useCustomContext();
+  const { hideSidebarIfNeed, tabItems, setTabItems, setTabActiveKey, userSession, setUserSession } = useCustomContext();
   const headerHeight = '56px';
 
   const addTask = () => {
@@ -59,7 +59,7 @@ export default function TasksPanel() {
             if(data && data.errinfo) {
               message.error(data.errinfo);
             }else if(data && data.tasks) {
-              setTaskItems(data.tasks);
+              setUserSession({...userSession, tasks: data.tasks});
             }
           })
         },

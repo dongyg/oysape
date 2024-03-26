@@ -14,7 +14,7 @@ import './TaskEditor.css';
 
 export default function TaskEditor(props) {
   const { message } = App.useApp();
-  const { customTheme, tabActiveKey, taskItems, setTaskItems, setPipelineItems, tabItems, setTabItems, setFooterStatusText } = useCustomContext();
+  const { customTheme, tabActiveKey, tabItems, setTabItems, setFooterStatusText, userSession, setUserSession } = useCustomContext();
   const [isFileTransfer, setIsFileTransfer] = useState(false);
   const taskKey = React.useRef(props.taskKey);
   const uniqueKey = props.uniqueKey;
@@ -86,7 +86,7 @@ export default function TaskEditor(props) {
       }else if(data) {
         if(data.tasks) {
           taskKey.current = newobj.key;
-          setTaskItems(data.tasks);
+          setUserSession({...userSession, tasks: data.tasks});
           const newItems = tabItems.map((item) => {
             if(item.key === uniqueKey) {
               item.hasSomethingNew = false;
@@ -99,7 +99,7 @@ export default function TaskEditor(props) {
           setFooterStatusText('Task ['+form.getFieldValue('name')+'] saved');
         }
         if(data.pipelines) {
-          setPipelineItems(data.pipelines);
+          setUserSession({...userSession, pipelines: data.pipelines});
         }
       }
     })
@@ -113,12 +113,12 @@ export default function TaskEditor(props) {
 
   // init form
   useEffect(() => {
-    const taskObj = (taskItems||[]).filter((item) => item.key === taskKey.current)[0]||{};
+    const taskObj = (userSession.tasks||[]).filter((item) => item.key === taskKey.current)[0]||{};
     taskObj.cmdText = (taskObj.cmds||[]).join('\n');
     setTags(taskObj.tags||[]);
     form.setFieldsValue(taskObj);
     onInteractionChange();
-  }, [form, taskKey, taskItems, onInteractionChange]);
+  }, [form, taskKey, onInteractionChange, userSession]);
 
   // shortcuts
   useKeyPress(keyMapping["shortcutSave"], (event) => {

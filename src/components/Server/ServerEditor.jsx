@@ -11,7 +11,7 @@ import './ServerEditor.css';
 
 export default function ServerEditor(props) {
   const { message } = App.useApp();
-  const { customTheme, tabActiveKey, taskItems, serverItems, setServerItems, tabItems, setTabItems, setFooterStatusText } = useCustomContext();
+  const { customTheme, tabActiveKey, tabItems, setTabItems, setFooterStatusText, userSession, setUserSession } = useCustomContext();
   const serverKey = React.useRef(props.serverKey)
   const uniqueKey = props.uniqueKey;
   // tags
@@ -99,7 +99,7 @@ export default function ServerEditor(props) {
         message.error(data.errinfo);
       }else if(data && data.servers) {
         serverKey.current = newobj.key;
-        setServerItems(data.servers);
+        setUserSession({...userSession, servers: data.servers});
         const newItems = tabItems.map((item) => {
           if(item.key === uniqueKey) {
             item.hasSomethingNew = false;
@@ -123,11 +123,11 @@ export default function ServerEditor(props) {
 
   // init form
   useEffect(() => {
-    const serverObj = (serverItems||[]).filter((item) => item.key === serverKey.current)[0]||{};
+    const serverObj = (userSession.servers||[]).filter((item) => item.key === serverKey.current)[0]||{};
     setTags(serverObj.tags||[]);
     setTasks(serverObj.tasks||[]);
     form.setFieldsValue(serverObj);
-  }, [form, serverKey, serverItems]);
+  }, [form, serverKey, userSession]);
 
   // shortcuts
   useKeyPress(keyMapping["shortcutSave"], (event) => {
@@ -177,9 +177,9 @@ export default function ServerEditor(props) {
           {(tasks||[]).concat('').map((task, idxTask) => {
             return indexEditTaskIndex === idxTask ? (
               // <Select size='small' defaultValue={task} defaultOpen={true} style={{marginLeft: "3px"}}
-                // options={taskItems.map((item) => {return {value: item.name, label: item.name}})}
+                // options={userSession.tasks.map((item) => {return {value: item.name, label: item.name}})}
               <AutoComplete autoFocus={true} popupMatchSelectWidth={'100%'} defaultActiveFirstOption={true} open={true} style={{marginLeft: "3px"}} size='small'
-                options={taskItems.map((item) => {return {value: item.name, label: item.name}})} filterOption={filterOption}
+                options={userSession.tasks.map((item) => {return {value: item.name, label: item.name}})} filterOption={filterOption}
                 onSelect={(value) => onChangeTask(idxTask, value)} onBlur={() => {setIndexEditTaskIndex(-1);}}>
                 <Input placeholder="Select a Task" size='small' autoComplete='off' autoCapitalize='off' autoCorrect='off' spellCheck='false' />
               </AutoComplete>

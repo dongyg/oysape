@@ -22,7 +22,7 @@ import './SideFrame.css';
 const { Sider } = Layout;
 
 export default function SideFrame() {
-  const { customTheme, browserInfo, userSession, currentSideKey, setCurrentSideKey, menuWidth, sideAlign, setSideAlign, sideSplitterMoving, setSideSplitterMoving, sideWidthUse, setSideWidthUse, sideWidthBak, setSideWidthBak, setTaskItems, setPipelineItems, setFolderFiles, hideSidebar, setHideSidebar } = useCustomContext();
+  const { customTheme, browserInfo, userSession, currentSideKey, setCurrentSideKey, menuWidth, sideAlign, setSideAlign, sideSplitterMoving, setSideSplitterMoving, sideWidthUse, setSideWidthUse, sideWidthBak, setSideWidthBak, setFolderFiles, hideSidebar, setHideSidebar } = useCustomContext();
   const [currentTab, setCurrentTab] = useState('1');
 
   const handleHideSidebar = () => {
@@ -66,12 +66,9 @@ export default function SideFrame() {
   }
   React.useEffect(() => {
     setTimeout(() => {
-      // callApi('getServerList', {refresh: true}).then((data) => { setServerItems(data); })
-      callApi('getTaskList', {refresh: true}).then((data) => { setTaskItems(data); });
-      callApi('getPipelineList', {refresh: true}).then((data) => { setPipelineItems(data); });
       callApi('getFolderFiles').then((data) => { setFolderFiles(data); })
     }, 1000)
-  },[setTaskItems, setPipelineItems, setFolderFiles]);
+  },[setFolderFiles]);
 
   return (
     <Sider width={sideWidthUse} style={{ transition: sideSplitterMoving?'none':'', position: sideWidthUse==='100%'?'absolute':'relative', display: hideSidebar?'none':'block' }} className='disableHighlight'>

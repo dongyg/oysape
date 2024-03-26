@@ -16,7 +16,7 @@ import './SearchInput.css';
 
 const SearchInput = () => {
   const { message } = App.useApp();
-  const { serverItems, taskItems, pipelineItems, folderFiles, tabItems, setTabItems, setTabActiveKey, userSession } = useCustomContext();
+  const { folderFiles, tabItems, setTabItems, setTabActiveKey, userSession } = useCustomContext();
   const [options, setOptions] = useState([]);
   const [showSearch, setShowSearch] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -102,7 +102,7 @@ const SearchInput = () => {
     const v1 = query.indexOf(indexServerSign)>=0;
     const prefix = v1 ? '' : indexServerSign;
     query = v1 ? query.toLowerCase().split(indexServerSign)[1] : query;
-    return serverItems ? serverItems.filter((item) => getShowTitle(item.name).toLowerCase().includes(query) || (item.tags&&item.tags.join(',').toLowerCase().includes(query))).map((item) => {
+    return userSession.servers.filter((item) => getShowTitle(item.name).toLowerCase().includes(query) || (item.tags&&item.tags.join(',').toLowerCase().includes(query))).map((item) => {
       return { value: prefix+item.name, label: (
         <div style={{ display: 'flex', justifyContent: 'space-between'}}>
           <div>{prefix+getShowTitle(item.name)}</div>
@@ -111,13 +111,13 @@ const SearchInput = () => {
           </div>
         </div>
       )}
-    }) : [];
+    });
   }
   const getTasksForSearch = (query) => {
     const v1 = query.indexOf(indexTaskSign)>=0;
     const prefix = v1 ? '' : indexTaskSign;
     query = v1 ? query.toLowerCase().split(indexTaskSign)[1] : query;
-    return taskItems ? taskItems.filter((item) => getShowTitle(item.name).toLowerCase().includes(query) || (item.tags&&item.tags.join(',').toLowerCase().includes(query))).map((item) => {
+    return userSession.tasks.filter((item) => getShowTitle(item.name).toLowerCase().includes(query) || (item.tags&&item.tags.join(',').toLowerCase().includes(query))).map((item) => {
       return { value: prefix+item.name, label: (
         <div style={{ display: 'flex', justifyContent: 'space-between'}}>
           <div>{prefix+getShowTitle(item.name)}</div><div>
@@ -126,13 +126,13 @@ const SearchInput = () => {
           </div>
         </div>
       )}
-    }) : [];
+    });
   }
   const getPipelinesForSearch = (query) => {
     const v1 = query.indexOf(indexPipelineSign)>=0;
     const prefix = v1 ? '' : indexPipelineSign;
     query = v1 ? query.toLowerCase().split(indexPipelineSign)[1] : query;
-    return pipelineItems ? pipelineItems.filter((item) => item.name.toLowerCase().includes(query) || (item.tags&&item.tags.join(',').toLowerCase().includes(query))).map((item) => {
+    return userSession.pipelines.filter((item) => item.name.toLowerCase().includes(query) || (item.tags&&item.tags.join(',').toLowerCase().includes(query))).map((item) => {
       return { value: prefix+item.name, label: (
         <div style={{ display: 'flex', justifyContent: 'space-between'}}>
           <div>{prefix+item.name}</div><div>
@@ -140,7 +140,7 @@ const SearchInput = () => {
           </div>
         </div>
       )}
-    }) : [];
+    });
   }
   const getFilesForSearch = (query) => {
     const flatFiles = flatFileTree(JSON.parse(JSON.stringify(folderFiles)));
@@ -197,13 +197,13 @@ const SearchInput = () => {
   const executeInput = (text) => {
     if(text.indexOf(indexPipelineSign) === 0){
       const pipelineName = text.substring(1);
-      const pipelineObj = pipelineItems.filter((item) => item.name === pipelineName)[0];
+      const pipelineObj = userSession.pipelines.filter((item) => item.name === pipelineName)[0];
       window.callPipeline(pipelineObj);
     } else if (text.indexOf(indexServerSign) >= 0 || text.indexOf(indexTaskSign) >= 0) {
       const taskInput = parseTaskString0(text);
       // console.log('executeInput', text, taskInput);
-      const tasks = taskItems.filter((item) => item.name === taskInput.task && taskInput.task !== '');
-      const servers = serverItems.filter((item) => item.name === taskInput.server && taskInput.server !== '');
+      const tasks = userSession.tasks.filter((item) => item.name === taskInput.task && taskInput.task !== '');
+      const servers = userSession.servers.filter((item) => item.name === taskInput.server && taskInput.server !== '');
       if(taskInput.server && !taskInput.task) {
         // Open a server terminal
         if(userSession.teams[userSession.team0].is_creator || userSession.teams[userSession.team0].members.find(item => item.email === userSession.email)?.access_terminal) {

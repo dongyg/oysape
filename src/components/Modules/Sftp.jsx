@@ -11,7 +11,7 @@ const { DirectoryTree } = Tree; // 把 Tree 赋值给 DirectoryTree, 然后使�
 
 export default function Sftp(props) {
   const { message, modal } = App.useApp();
-  const { customTheme, serverItems, tabItems, setTabItems, setTabActiveKey } = useCustomContext();
+  const { customTheme, tabItems, setTabItems, setTabActiveKey, userSession } = useCustomContext();
   const [sftpTarget, setSftpTarget] = useState('');
   const [sftpFileTree, setSftpFileTree] = useState({});
   const [contextMenuItems, setContextMenuItems] = React.useState([]);
@@ -30,7 +30,7 @@ export default function Sftp(props) {
   const miReload = {label: 'Refresh', key: 'tree_menu_reload', icon: <ReloadOutlined />, }
 
   const switchSftpTarget = (value) => {
-    if(!value || !serverItems.map((item) => item.key).includes(value)) return;
+    if(!value || !userSession.servers.map((item) => item.key).includes(value)) return;
     setSftpTarget(value);
     if(!sftpFileTree[value]){
       setSftpFileTree({[value]:[{'title': 'Loading...', 'key': value, isLeaf: true, icon: <LoadingOutlined />}]});
@@ -153,7 +153,7 @@ export default function Sftp(props) {
     <>
       <div style={{ height: headerHeight, padding: '12px 16px', display: 'flex', flexWrap: 'nowrap', justifyContent: 'space-between' }}>
         <span style={{ flex: 'auto', paddingTop: '4px', width: '100px', }}>SFTP</span>
-        <Select options={[{value:'', label: 'Choose a Server'}].concat(serverItems.map((item) => {return {value: item.key, label: item.name}}))} value={sftpTarget} onChange={(value) => switchSftpTarget(value)} style={{ width: '100%'}}></Select>
+        <Select options={[{value:'', label: 'Choose a Server'}].concat(userSession.servers.map((item) => {return {value: item.key, label: item.name}}))} value={sftpTarget} onChange={(value) => switchSftpTarget(value)} style={{ width: '100%'}}></Select>
       </div>
       <div style={{ height: 'calc(100% - ' + headerHeight+')', overflow: 'auto' }} className='withScrollContent'>
         <Dropdown menu={{items: contextMenuItems, onClick: onClickMenu}} trigger={['contextMenu']}>

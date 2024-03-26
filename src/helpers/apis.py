@@ -18,9 +18,6 @@ folder_cache = os.path.join(folder_base, 'localcache')
 # folder_projects = os.path.join(folder_base, 'projects')
 # filename_settings = os.path.join(folder_base, 'settings.json')
 # filename_session = os.path.join(folder_base, 'session.json')
-# filename_tasks = os.path.join(folder_base, 'tasks.json')
-# filename_servers = os.path.join(folder_base, 'servers.json')
-# filename_pipelines = os.path.join(folder_base, 'pipelines.json')
 # filename_folders = os.path.join(folder_base, 'folders.json')
 # filename_excludes = os.path.join(folder_base, 'excludes.json')
 
@@ -189,9 +186,6 @@ class ApiOauth(ApiBase):
 class ApiOysape(ApiOauth):
     userToken = ''
     userSession = {}
-    listServer = []
-    listTask = []
-    listPipeline = []
     listFolder = []
     listExclude = []
 
@@ -226,21 +220,12 @@ class ApiOysape(ApiOauth):
         ff = sdata.get('folders', []) or []
         ee = sdata.get('excludes', []) or consts.defaultExclude
         self.userSession = sdata
-        self.listPipeline = pp
-        self.listServer = ss
-        self.listTask = tt
         self.listFolder = ff
         self.listExclude = ee
         # with open(filename_excludes, 'w') as f:
         #     json.dump(ee, f, indent=4)
         # with open(filename_folders, 'w') as f:
         #     json.dump(ff, f, indent=4)
-        # with open(filename_tasks, 'w') as f:
-        #     json.dump(tt, f, indent=4)
-        # with open(filename_pipelines, 'w') as f:
-        #     json.dump(pp, f, indent=4)
-        # with open(filename_servers, 'w') as f:
-        #     json.dump(ss, f, indent=4)
         # with open(filename_session, 'w') as f:
         #     json.dump(sdata, f, indent=4)
         self.userSession['clientId'] = self.clientId
@@ -258,14 +243,6 @@ class ApiOysape(ApiOauth):
             return self.update_session(retval)
         return retval
 
-    def getServerList(self, params={}):
-        # Return server list as a list
-        # if not self.listServer or params.get('refresh'):
-        #     if os.path.isfile(filename_servers):
-        #         with open(filename_servers, 'r') as f:
-        #             self.listServer = json.load(f)
-        return self.listServer
-
     def addServer(self, params):
         # Return server list in {'servers': []}
         if params.get('prikey') and not os.path.isfile(os.path.expanduser(params.get('prikey'))):
@@ -275,14 +252,11 @@ class ApiOysape(ApiOauth):
     def deleteServer(self, params):
         # Return server list in {'servers': []}
         retval = tools.delItemOnServer('servers', params.get('key'), self.userToken)
-        self.listServer = retval.get('servers') or []
-        # with open(filename_servers, 'w') as f:
-        #     json.dump(self.listServer, f, indent=4)
+        self.userSession['servers'] = retval.get('servers') or []
         return retval
 
     def getTaskObject(self, taskKey):
-        if not self.listTask: self.getServerList()
-        taskObj = [x for x in self.listTask if x.get('name') == taskKey]
+        taskObj = [x for x in self.userSession['tasks'] if x.get('name') == taskKey]
         taskObj = taskObj[0] if taskObj else {}
         return taskObj
 
@@ -291,46 +265,28 @@ class ApiOysape(ApiOauth):
         if not taskObj: return []
         return json.loads(json.dumps(taskObj.get('cmds') or []))
 
-    def getTaskList(self, params={}):
-        # Return task list as a list
-        # if not self.listTask or params.get('refresh'):
-        #     if os.path.isfile(filename_tasks):
-        #         with open(filename_tasks, 'r') as f:
-        #             self.listTask = json.load(f)
-        return self.listTask
-
     def addTask(self, params):
         # Return task list in {'tasks': []}
         retval = self.importTo({'what': 'tasks', 'items': [params]})
         # pipelines may be updated if a updated task is refered in a pipeline
         if retval.get('pipelines'):
-            self.listPipeline = retval.get('pipelines')
+            self.userSession['pipelines'] = retval.get('pipelines')
         return retval
 
     def deleteTask(self, params):
         # Return task list in {'tasks': []}
         retval = tools.delItemOnServer('tasks', params.get('key'), self.userToken)
-        self.listTask = retval.get('tasks') or []
-        # with open(filename_tasks, 'w') as f:
-        #     json.dump(self.listTask, f, indent=4)
+        self.userSession['tasks'] = retval.get('tasks') or []
         return retval
 
     def getPipelineObject(self, pipeName):
-        pipeObj = [x for x in self.listPipeline if x.get('name') == pipeName]
+        pipeObj = [x for x in self.userSession['pipelines'] if x.get('name') == pipeName]
         pipeObj = pipeObj[0] if pipeObj else {}
         return pipeObj
 
     def getPipelineSteps(self, pipeName):
         pipeObject = self.getPipelineObject(pipeName)
         return json.loads(json.dumps(pipeObject.get('steps') or []))
-
-    def getPipelineList(self, params={}):
-        # Return pipeline list as a list
-        # if not self.listPipeline or params.get('refresh'):
-        #     if os.path.isfile(filename_pipelines):
-        #         with open(filename_pipelines, 'r') as f:
-        #             self.listPipeline = json.load(f)
-        return self.listPipeline
 
     def addPipeline(self, params):
         # Return pipeline list in {'pipelines': []}
@@ -339,9 +295,7 @@ class ApiOysape(ApiOauth):
     def deletePipeline(self, params):
         # Return pipeline list in {'pipelines': []}
         retval = tools.delItemOnServer('pipelines', params.get('key'), self.userToken)
-        self.listPipeline = retval.get('pipelines') or []
-        # with open(filename_pipelines, 'w') as f:
-        #     json.dump(self.listPipeline, f, indent=4)
+        self.userSession['pipelines'] = retval.get('pipelines') or []
         return retval
 
     def getFolderFiles(self, params={}):
@@ -399,9 +353,9 @@ class ApiOysape(ApiOauth):
         # Import servers, tasks, pipelines
         what = params.get('what')
         objs = {
-            'servers': self.listServer,
-            'tasks': self.listTask,
-            'pipelines': self.listPipeline,
+            'servers': self.userSession['servers'],
+            'tasks': self.userSession['tasks'],
+            'pipelines': self.userSession['pipelines'],
             'folders': self.listFolder,
             'excludes': self.listExclude,
         }
@@ -441,9 +395,9 @@ class ApiOysape(ApiOauth):
         # Export servers, tasks, pipelines, folders, excludes
         what = params.get('what')
         objs = {
-            'servers': self.listServer,
-            'tasks': self.listTask,
-            'pipelines': self.listPipeline,
+            'servers': self.userSession['servers'],
+            'tasks': self.userSession['tasks'],
+            'pipelines': self.userSession['pipelines'],
             'folders': self.listFolder,
             'excludes': self.listExclude,
         }
@@ -463,7 +417,7 @@ class ApiTerminal(ApiOysape):
         serverKey = params.get('serverKey')
         uniqueKey = params.get('uniqueKey')
         taskKey = params.get('taskKey')
-        slist = [x for x in self.getServerList() if x["key"] == serverKey]
+        slist = [x for x in self.userSession['servers'] if x["key"] == serverKey]
         if len(slist) == 0:
             return
         if not uniqueKey in self.terminalConnections:
@@ -567,7 +521,7 @@ class ApiWorkspace(ApiTerminal):
 
     def createCombConnection(self, serverKey):
         from . import sshutils
-        slist = [x for x in self.getServerList() if x["key"] == serverKey]
+        slist = [x for x in self.userSession['servers'] if x["key"] == serverKey]
         if len(slist) == 0:
             return
         if not serverKey in self.combinedConnections:

@@ -21,7 +21,7 @@ const AntIcon = ({ name, ...props }) => {
 
 export default function ProjectsPanel() {
   const { message, modal } = App.useApp();
-  const { customTheme, serverItems, setTabActiveKey, tabItems, setTabItems,  } = useCustomContext();
+  const { customTheme, setTabActiveKey, tabItems, setTabItems, userSession } = useCustomContext();
   const [dockerTarget, setDockerTarget] = useState('');
   const [dockerTree, setDockerTree] = useState({});
   const [contextMenuItems, setContextMenuItems] = React.useState([]);
@@ -36,7 +36,7 @@ export default function ProjectsPanel() {
   const miReloadOne = {label: 'Refresh', key: 'tree_menu_reload_one', icon: <AntIcon name="ReloadOutlined" />, }
 
   const switchDockerTarget = (value) => {
-    if(!value || !serverItems.map((item) => item.key).includes(value)) return;
+    if(!value || !userSession.servers.map((item) => item.key).includes(value)) return;
     // 第1级节点使用一个 json 结构来定义有哪些 docker 操作. 可以包含: docker, container, image, compose
     setDockerTarget(value);
     if(!dockerTree[value]){
@@ -151,7 +151,7 @@ export default function ProjectsPanel() {
     <>
       <div style={{ height: headerHeight, padding: '12px 16px', display: 'flex', flexWrap: 'nowrap', justifyContent: 'space-between' }}>
         <span style={{ flex: 'auto', paddingTop: '4px', width: '100px', }}>Docker</span>
-        <Select options={[{value:'', label: 'Choose a Server'}].concat(serverItems.map((item) => {return {value: item.key, label: item.name}}))} value={dockerTarget} onChange={(value) => switchDockerTarget(value)} style={{ width: '100%'}}></Select>
+        <Select options={[{value:'', label: 'Choose a Server'}].concat(userSession.servers.map((item) => {return {value: item.key, label: item.name}}))} value={dockerTarget} onChange={(value) => switchDockerTarget(value)} style={{ width: '100%'}}></Select>
       </div>
       <div style={{ height: 'calc(100% - ' + headerHeight+')', overflow: 'auto' }} className='withScrollContent'>
         <Dropdown menu={{items: contextMenuItems, onClick: onClickMenu}} trigger={['contextMenu']}>

@@ -11,7 +11,7 @@ import './ServerPanel.css';
 
 export default function ServersPanel() {
   const { message, modal } = App.useApp();
-  const { hideSidebarIfNeed, tabItems, setTabItems, setTabActiveKey, setServerItems, userSession, setUserSession } = useCustomContext();
+  const { hideSidebarIfNeed, tabItems, setTabItems, setTabActiveKey, userSession, setUserSession } = useCustomContext();
   const headerHeight = '56px';
 
   const addServer = () => {
@@ -61,7 +61,7 @@ export default function ServersPanel() {
             if(data && data.errinfo) {
               message.error(data.errinfo);
             }else if(data && data.servers) {
-              setServerItems(data.servers);
+              setUserSession({...userSession, servers: data.servers});
             }
           })
         },

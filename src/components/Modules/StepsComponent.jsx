@@ -9,7 +9,7 @@ import ServerEditor from '../Server/ServerEditor';
 
 export default function StepsComponent({steps, onChange, ...props}) {
   const { message } = App.useApp();
-  const { serverItems, taskItems, tabItems, setTabItems, setTabActiveKey, hideSidebarIfNeed } = useCustomContext();
+  const { tabItems, setTabItems, setTabActiveKey, hideSidebarIfNeed, userSession } = useCustomContext();
   const [indexEditTarget, setIndexEditTarget] = useState(-1);
   const [indexEditTask, setIndexEditTask] = useState(-1);
   const [indexEditTaskIndex, setIndexEditTaskIndex] = useState(-1);
@@ -51,7 +51,7 @@ export default function StepsComponent({steps, onChange, ...props}) {
 
   const filterOption = (input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase());
 
-  const handleOpenServer = (serverKey)=>{
+  const handleOpenServer = useCallback((serverKey)=>{
     // Same with editServer in ServerList.jsx
     const tabKey = serverKey+'-server-editor';
     const findItems = tabItems.filter((item) => item.serverKey === tabKey);
@@ -68,8 +68,8 @@ export default function StepsComponent({steps, onChange, ...props}) {
       setTabActiveKey(uniqueKey);
     }
     hideSidebarIfNeed();
-  }
-  const handleOpenTask = (taskKey)=>{
+  }, [hideSidebarIfNeed, setTabActiveKey, setTabItems, tabItems]);
+  const handleOpenTask = useCallback((taskKey)=>{
     // Same with editTask in TaskList.jsx
     const tabKey = taskKey+'-task-editor';
     const findItems = tabItems.filter((item) => item.taskKey === tabKey);
@@ -86,7 +86,7 @@ export default function StepsComponent({steps, onChange, ...props}) {
       setTabActiveKey(uniqueKey);
     }
     hideSidebarIfNeed();
-  }
+  }, [hideSidebarIfNeed, setTabActiveKey, setTabItems, tabItems]);
 
   const getTargetPart = useCallback((item, idxStep) => {
     return <>
@@ -95,7 +95,7 @@ export default function StepsComponent({steps, onChange, ...props}) {
           <div>
             <AutoComplete autoFocus={true} popupMatchSelectWidth={'100%'} defaultActiveFirstOption={true} open={true} style={{marginLeft: "3px"}} size='small'
             // <Select autoFocus={true} defaultValue={item.target} defaultOpen={true} style={{marginLeft: "3px"}} size='small' autoComplete='off'
-              options={serverItems.map((item) => {return {value: item.name, label: item.name}})} filterOption={filterOption}
+              options={userSession.servers.map((item) => {return {value: item.name, label: item.name}})} filterOption={filterOption}
               onSelect={(value) => onChangeTarget(idxStep, value)} onBlur={() => setIndexEditTarget(-1)}>
               <Input placeholder="Select a Server" size='small' autoComplete='off' autoCapitalize='off' autoCorrect='off' spellCheck='false' />
             </AutoComplete>
@@ -109,7 +109,7 @@ export default function StepsComponent({steps, onChange, ...props}) {
           return indexEditTask === idxStep && indexEditTaskIndex === idxTask ? (
             // <Select autoFocus={true} defaultValue={task} defaultOpen={true} style={{marginLeft: "3px"}} size='small' autoComplete='off'
             <AutoComplete autoFocus={true} popupMatchSelectWidth={'100%'} defaultActiveFirstOption={true} open={true} style={{marginLeft: "3px"}} size='small'
-              options={taskItems.map((item) => {return {value: item.name, label: item.name}})} filterOption={filterOption}
+              options={userSession.tasks.map((item) => {return {value: item.name, label: item.name}})} filterOption={filterOption}
               onSelect={(value) => onChangeTask(idxStep, idxTask, value)} onBlur={() => {setIndexEditTask(-1); setIndexEditTaskIndex(-1);}}>
                 <Input placeholder="Select a Task" size='small' autoComplete='off' autoCapitalize='off' autoCorrect='off' spellCheck='false' />
             </AutoComplete>
@@ -121,7 +121,7 @@ export default function StepsComponent({steps, onChange, ...props}) {
         })}
       </div>
     </>
-  }, [indexEditTarget, indexEditTask, indexEditTaskIndex, serverItems, taskItems, onChangeTarget, onChangeTask, onCloseTarget, onCloseTask]);
+  }, [indexEditTarget, userSession, onChangeTarget, handleOpenServer, onCloseTarget, indexEditTask, indexEditTaskIndex, onChangeTask, handleOpenTask, onCloseTask]);
 
   const onClickAddStep = useCallback(() => {
     const newItems = [...steps];

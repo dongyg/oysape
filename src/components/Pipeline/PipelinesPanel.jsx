@@ -9,7 +9,7 @@ import PipelineEditor from './PipelineEditor';
 
 export default function PipelinesPanel() {
   const { message, modal } = App.useApp();
-  const { hideSidebarIfNeed, tabItems, setTabItems, setTabActiveKey, setPipelineItems, userSession } = useCustomContext();
+  const { hideSidebarIfNeed, tabItems, setTabItems, setTabActiveKey, userSession, setUserSession } = useCustomContext();
   const headerHeight = '56px';
 
   const addPipeline = () => {
@@ -59,7 +59,7 @@ export default function PipelinesPanel() {
             if(data && data.errinfo) {
               message.error(data.errinfo);
             }else if(data && data.pipelines) {
-              setPipelineItems(data.pipelines);
+              setUserSession({...userSession, pipelines: data.pipelines});
             }
           })
         },

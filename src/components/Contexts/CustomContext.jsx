@@ -27,9 +27,6 @@ export const ThemeProvider = ({ children }) => {
   const [sideWidthBak, setSideWidthBak] = useState("400");
   const [tabItems, setTabItems] = useState([]);
   const [tabActiveKey, setTabActiveKey] = useState('workspace');
-  const [serverItems, setServerItems] = useState([]);
-  const [taskItems, setTaskItems] = useState([]);
-  const [pipelineItems, setPipelineItems] = useState([]);
   const [folderFiles, setFolderFiles] = useState([]);
   const [footerStatusText, setFooterStatusText] = useState(statusDefaultText);
   const [codeEditRowColText, setCodeEditRowColText] = useState(null);
@@ -114,9 +111,6 @@ export const ThemeProvider = ({ children }) => {
         }
       }, 10);
     },
-    serverItems, setServerItems,
-    taskItems, setTaskItems,
-    pipelineItems, setPipelineItems,
     folderFiles, setFolderFiles,
     footerStatusText, setFooterStatusText: (text) => {
       setFooterStatusText(text);

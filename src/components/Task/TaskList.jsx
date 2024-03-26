@@ -9,8 +9,8 @@ import './TaskList.css';
 
 const TaskList = () => {
   const { message, modal } = App.useApp();
-  const { hideSidebarIfNeed, taskItems, setTaskItems, pipelineItems, tabItems, setTabItems, setTabActiveKey, userSession } = useCustomContext();
-  const [showTasks, setShowTasks] = useState(taskItems);
+  const { hideSidebarIfNeed, tabItems, setTabItems, setTabActiveKey, userSession, setUserSession } = useCustomContext();
+  const [showTasks, setShowTasks] = useState(userSession.tasks);
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [multipleSelect, setMultipleSelect] = useState(false);
   const [editable, setEditable] = useState(false);
@@ -74,11 +74,11 @@ const TaskList = () => {
   const filterTasks = useCallback((keyword, viewUpdate) => {
     let query = keyword.toLowerCase();
     setShowTasks(
-      (taskItems||[]).filter((task) => {
+      (userSession.tasks||[]).filter((task) => {
         return task.name.toLowerCase().includes(query) || (task.cmds||[]).join('\n').toLowerCase().includes(query) || (task.tags&&task.tags.join(',').toLowerCase().includes(query)) || (task.interaction&&task.interaction.toLowerCase().includes(query));
       })
     )
-  }, [taskItems]);
+  }, [userSession]);
 
   const selectRow = (record) => {
     if(editable&&multipleSelect) {
@@ -119,7 +119,7 @@ const TaskList = () => {
     hideSidebarIfNeed();
   }
   const deleteTask = (taskKey) => {
-    const pipelines = pipelineItems.filter((pipeline) => pipeline.steps.filter((step) => step.tasks.includes(taskKey)).length > 0).map((pipeline) => {
+    const pipelines = userSession.pipelines.filter((pipeline) => pipeline.steps.filter((step) => step.tasks.includes(taskKey)).length > 0).map((pipeline) => {
       return pipeline.name;
     })
     modal.confirm({
@@ -131,7 +131,7 @@ const TaskList = () => {
           if(data && data.errinfo) {
             message.error(data.errinfo);
           }else if(data && data.tasks) {
-            setTaskItems(data.tasks);
+            setUserSession({...userSession, tasks: data.tasks});
             setShowTasks(showTasks.filter((task) => task.key !== taskKey));
           }
         })
@@ -142,30 +142,16 @@ const TaskList = () => {
     });
   }
   const callThisTask = (taskKey) => {
-    const taskObj = taskItems.filter((task) => task.key === taskKey)[0]||{};
+    const taskObj = userSession.tasks.filter((task) => task.key === taskKey)[0]||{};
     if(taskObj&&taskObj.name){
       window.fillSearchTask(taskObj.name);
     }
     hideSidebarIfNeed();
   }
 
-  const reloadTaskList = useCallback(() => {
-    callApi('getTaskList', {refresh: true}).then((data) => {
-      setTaskItems(data);
-      setShowTasks(data);
-    });
-  }, [setTaskItems, setShowTasks]);
-  window.reloadTaskList = reloadTaskList;
-
-  // useEffect(() => {
-  //   setTimeout(() => {
-  //     reloadTaskList();
-  //   }, 10)
-  // },[reloadTaskList]);
-
   useEffect(() => {
     filterTasks(searchKeyword);
-  }, [taskItems, searchKeyword, filterTasks]);
+  }, [searchKeyword, filterTasks]);
 
   return (
     <>

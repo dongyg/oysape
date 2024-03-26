@@ -3,7 +3,7 @@ import { App, Dropdown, Space, Switch, Avatar, theme } from 'antd';
 import { CheckOutlined, ReloadOutlined, SettingOutlined, LogoutOutlined, QuestionCircleFilled, UserOutlined } from "@ant-design/icons";
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { callApi } from './global';
+import { callApi, delTokenFromCookie } from './global';
 
 const { useToken } = theme;
 
@@ -61,7 +61,7 @@ export default function ProfileButton() {
   }
   const reloadEverything = (callDone) => {
     callApi('reloadUserSession', {}).then((res) => {
-      window.reloadServerList && window.reloadServerList();
+      setUserSession(res);
       window.reloadTaskList && window.reloadTaskList();
       window.reloadPipelineList && window.reloadPipelineList();
       window.reloadFolderFiles && window.reloadFolderFiles();
@@ -92,9 +92,8 @@ export default function ProfileButton() {
         message.success('Reloaded');
       });
     }else if(key === 'menuSignIn') {
-      callApi('clearCookies', {}).then((res) => {
-        setUserSession({});
-      });
+      delTokenFromCookie();
+      setUserSession({});
     } else if(key === 'menuAccount') {
       callApi('gotoAccountDashboard', {}).then((res) => {});
     } else if(key === 'menuSignOut') {
@@ -103,9 +102,8 @@ export default function ProfileButton() {
         icon: <QuestionCircleFilled />,
         content: 'Are you sure you want to sign out?',
         onOk() {
-          callApi('clearCookies', {}).then((res) => {
-            setUserSession({});
-          });
+          delTokenFromCookie();
+          setUserSession({});
         },
         onCancel() {
           console.log('Cancel');

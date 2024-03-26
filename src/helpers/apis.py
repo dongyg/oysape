@@ -3,7 +3,7 @@
 
 import os, traceback, json, json, time, threading, fnmatch, platform
 import webview
-from . import tools, oauth, consts
+from . import auth, tools, consts
 
 BUF_SIZE = 1024
 CR = '\r'
@@ -23,8 +23,6 @@ folder_cache = os.path.join(folder_base, 'localcache')
 # filename_pipelines = os.path.join(folder_base, 'pipelines.json')
 # filename_folders = os.path.join(folder_base, 'folders.json')
 # filename_excludes = os.path.join(folder_base, 'excludes.json')
-themeType = 'dark'
-
 
 def get_files(apath, recurse=True, exclude=[], ignore=None):
     if os.path.isdir(apath):
@@ -81,50 +79,24 @@ def colorizeText(text, fore=None, back=None):
         text = backgrounds[back]%text
     return text
 
-def loadEntrypointWindow(window=None):
+def loadEntrypointWindow(window=None, apiObject=None):
     if not window:
-        window = webview.create_window('Oysape', consts.homeEntry, js_api=apiInstance, width=1280, height=768, confirm_close=True)
+        window = webview.create_window('Oysape', consts.homeEntry, js_api=apiObject, width=1280, height=800, confirm_close=True)
     else:
         window.load_url(consts.homeEntry)
     return window
 
-def check_token(window):
-    # time.sleep(2)
-    cookies = window.get_cookies()
-    if (cookies and cookies[0].get('token') and cookies[0]['token'].value) or consts.userToken:
-        consts.userToken = cookies[0]['token'].value if (cookies and cookies[0].get('token') and cookies[0]['token'].value) else consts.userToken
-        # loadEntrypointWindow(window)
-        retval = tools.callServerApiPost('/user/test', {'token': consts.userToken})
-        if retval and not retval.get('errcode'):
-            # Success
-            apiInstance.update_session(retval)
-            return True
-        elif retval:
-            # Has error
-            window.evaluate_js('''showMessageOnSigninPage("%s", "error");'''%(retval.get('errinfo') or 'Unknown error.'))
-        else:
-            # Network error
-            window.evaluate_js('''showMessageOnSigninPage("Network error. Please try again later.", "error");''')
-            return True
-    else:
-        window.evaluate_js('''setShowSigninButtons(true);''')
-
 def mainloop(window):
-    if not check_token(window):
-        while True: # Wait for sign in callback. The callback will set the token
-            if check_token(window):
-                break
-            # time.sleep(1)
+    window.load_url(consts.homeEntry)
 
 
 ################################################################################
 class ApiBase:
-    def __init__(self, _debug=False):
+    def __init__(self, clientId='', clientUserAgent='', _debug=False):
+        self.themeType = 'dark'
+        self.clientId = clientId
+        self.clientUserAgent = clientUserAgent
         self._debug = _debug
-        # if not os.path.isfile(filename_session):
-        #     json.dump({
-        #         'client': getpass.getuser()+'@'+socket.gethostname(),
-        #     }, open(filename_session, 'w'), indent=4)
 
     def isDebug(self):
         return self._debug
@@ -183,9 +155,7 @@ class ApiBase:
             f.write(content)
 
     def setTheme(self, params):
-        global themeType
-        themeType = (params or {}).get('type', themeType)
-        # print('theme', themeType)
+        self.themeType = (params or {}).get('type', self.themeType)
 
     def execute(self, functionName, args=None):
         if hasattr(self, functionName):
@@ -202,20 +172,22 @@ class ApiBase:
 
 
 class ApiOauth(ApiBase):
-    def clearCookies(self, params):
-        consts.windowObj.evaluate_js('''document.cookie = `token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;''')
-
     def signInWithEmail(self, params):
-        oauth.openEmailOAuthWindow()
+        return auth.openEmailOAuthWindow(self.clientId, self.clientUserAgent)
 
     def signInWithGithub(self, params):
-        oauth.openGithubOAuthWindow()
+        print(self.clientId, self.clientUserAgent)
+        return auth.openGithubOAuthWindow(self.clientId, self.clientUserAgent)
 
     def signInWithGoogle(self, params):
-        oauth.openGoogleOAuthWindow()
+        return auth.openGoogleOAuthWindow(self.clientId, self.clientUserAgent)
+
+    def querySigninResult(self, params):
+        return {'token': self.userToken}
 
 
 class ApiOysape(ApiOauth):
+    userToken = ''
     userSession = {}
     listServer = []
     listTask = []
@@ -227,31 +199,38 @@ class ApiOysape(ApiOauth):
         print('ApiOysape.testApi', params)
         return {'errinfo': 'test called'}
 
+    def hasPermission(self, params):
+        perm = params.get('perm') if isinstance(params, dict) else params
+        return self.userSession['teams'][self.userSession['team0']]['is_creator'] or next((x for x in self.userSession['teams'][self.userSession['team0']]['members'] if x['email'] == self.userSession['email'] and x.get(perm)), None)
+
     def gotoAccountDashboard(self, params):
-        oneCode = tools.getOneTimeCode()
+        oneCode = tools.getOneTimeCode(self.userToken)
         if oneCode and oneCode.get('otp'):
-            oauth.openAccountDashboard(oneCode.get('otp'))
+            auth.openAccountDashboard(oneCode.get('otp'))
         elif oneCode and oneCode.get('errinfo'):
             return oneCode
 
     def reloadUserSession(self, params={}):
-        retval = tools.callServerApiPost('/user/test', {'token': consts.userToken})
-        if retval and not retval.get('errcode'):
-            self.update_session(retval)
+        if not self.userToken and params.get('token'):
+            self.userToken = params.get('token')
+        retval = tools.callServerApiPost('/user/test', {}, self.userToken)
+        if retval and not retval.get('errinfo'):
+            return self.update_session(retval)
+        else:
+            return retval
 
     def update_session(self, sdata):
-        tt = sdata.pop('tasks', []) or []
-        pp = sdata.pop('pipelines', []) or []
-        ss = sdata.pop('servers', []) or []
-        ff = sdata.pop('folders', []) or []
-        ee = sdata.pop('excludes', []) or consts.defaultExclude
+        tt = sdata.get('tasks', []) or []
+        pp = sdata.get('pipelines', []) or []
+        ss = sdata.get('servers', []) or []
+        ff = sdata.get('folders', []) or []
+        ee = sdata.get('excludes', []) or consts.defaultExclude
         self.userSession = sdata
         self.listPipeline = pp
         self.listServer = ss
         self.listTask = tt
         self.listFolder = ff
         self.listExclude = ee
-        consts.windowObj.evaluate_js('''window.reloadUserSession && window.reloadUserSession(); window.reloadServerList && window.reloadServerList(); window.reloadTaskList && window.reloadTaskList(); window.reloadPipelineList && window.reloadPipelineList();''')
         # with open(filename_excludes, 'w') as f:
         #     json.dump(ee, f, indent=4)
         # with open(filename_folders, 'w') as f:
@@ -264,19 +243,19 @@ class ApiOysape(ApiOauth):
         #     json.dump(ss, f, indent=4)
         # with open(filename_session, 'w') as f:
         #     json.dump(sdata, f, indent=4)
+        self.userSession['clientId'] = self.clientId
+        return self.userSession
 
     def getUserSession(self, params={}):
-        # if not self.userSession or params.get('refresh'):
-        #     if os.path.isfile(filename_session):
-        #         with open(filename_session, 'r') as f:
-        #             self.userSession = json.load(f)
+        if not self.userSession or params.get('refresh'):
+            return self.reloadUserSession(params)
         return self.userSession
 
     def switchToTeam(self, params):
         if not params.get('tid'): return {"errinfo": "No team"}
-        retval = tools.switchToTeam(params.get('tid'))
+        retval = tools.switchToTeam(params.get('tid'), self.userToken)
         if retval and not retval.get('errcode'):
-            self.update_session(retval)
+            return self.update_session(retval)
         return retval
 
     def getServerList(self, params={}):
@@ -295,7 +274,7 @@ class ApiOysape(ApiOauth):
 
     def deleteServer(self, params):
         # Return server list in {'servers': []}
-        retval = tools.delItemOnServer('servers', params.get('key'))
+        retval = tools.delItemOnServer('servers', params.get('key'), self.userToken)
         self.listServer = retval.get('servers') or []
         # with open(filename_servers, 'w') as f:
         #     json.dump(self.listServer, f, indent=4)
@@ -330,7 +309,7 @@ class ApiOysape(ApiOauth):
 
     def deleteTask(self, params):
         # Return task list in {'tasks': []}
-        retval = tools.delItemOnServer('tasks', params.get('key'))
+        retval = tools.delItemOnServer('tasks', params.get('key'), self.userToken)
         self.listTask = retval.get('tasks') or []
         # with open(filename_tasks, 'w') as f:
         #     json.dump(self.listTask, f, indent=4)
@@ -359,7 +338,7 @@ class ApiOysape(ApiOauth):
 
     def deletePipeline(self, params):
         # Return pipeline list in {'pipelines': []}
-        retval = tools.delItemOnServer('pipelines', params.get('key'))
+        retval = tools.delItemOnServer('pipelines', params.get('key'), self.userToken)
         self.listPipeline = retval.get('pipelines') or []
         # with open(filename_pipelines, 'w') as f:
         #     json.dump(self.listPipeline, f, indent=4)
@@ -443,7 +422,7 @@ class ApiOysape(ApiOauth):
                     with open(fname, 'r') as f1:
                         import_list = json.load(f1)
             elif isinstance(import_list, list):
-                retval = tools.setItemsToServer(what, import_list)
+                retval = tools.setItemsToServer(what, import_list, self.userToken)
                 if retval and retval.get('errinfo'):
                     return retval
                 return_list = retval.get(what, []) or []
@@ -488,16 +467,17 @@ class ApiTerminal(ApiOysape):
         if len(slist) == 0:
             return
         if not uniqueKey in self.terminalConnections:
-            # print('createTermConnection', serverKey, uniqueKey)
+            print('createTermConnection', serverKey, uniqueKey)
             conn_str = sshutils.create_ssh_string(slist[0].get("address"), slist[0].get("username"), slist[0].get("port"))
             self.terminalConnections[uniqueKey] = sshutils.TerminalClient(conn_str, private_key=slist[0].get("prikey"), serverKey=serverKey, startup=slist[0].get("tasks"))
+            self.terminalConnections[uniqueKey].parentApi = self
             self.terminalConnections[uniqueKey].uniqueKey = uniqueKey
             if not self.terminalConnections[uniqueKey].client:
                 self.terminalConnections[uniqueKey].onChannelString(colorizeText(self.terminalConnections[uniqueKey].message,'red'))
             elif taskKey:
                 taskObj = self.getTaskObject(taskKey)
                 taskCmds = self.getTaskCommands(taskKey)
-                execTask(taskKey, taskObj, taskCmds, self.terminalConnections[uniqueKey])
+                self.execTask(taskKey, taskObj, taskCmds, self.terminalConnections[uniqueKey])
 
     def closeTermConnection(self, params={}):
         uniqueKey = params.get('uniqueKey')
@@ -514,7 +494,6 @@ class ApiTerminal(ApiOysape):
     def sendTerminalInput(self, params):
         uniqueKey = params.get('uniqueKey')
         input = params.get('input')
-        # print('sendTerminalInput', uniqueKey, input)
         if uniqueKey in self.terminalConnections:
             self.terminalConnections[uniqueKey].send_to_channel(input)
 
@@ -523,16 +502,68 @@ class ApiTerminal(ApiOysape):
         if uniqueKey in self.terminalConnections:
             return self.terminalConnections[uniqueKey].channel.exit_status_ready()
 
+    def execTask(self, taskKey, taskObj, taskCmds, client, output=True):
+        bgColor = 'gray' if self.themeType == 'dark' else 'white'
+        if not taskObj:
+            client.onChannelString((CRLF+'No such task defined: %s'%taskKey+CRLF))
+        elif taskObj.get('interaction') == 'upload':
+            # Upload a file/directory
+            if output: client.onChannelString((CRLF+CRLF+colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF))
+            if taskObj.get('source') and taskObj.get('destination'):
+                retdata = client.upload(taskObj.get('source'), taskObj.get('destination'), taskObj.get('excludes'))
+                number, transfered = retdata.get('count', 0), retdata.get('size', 0)
+                if output: client.onChannelString(CRLF+'Uploaded %s file(s). %s transfered'%(number, tools.convert_bytes(transfered))+CRLF)
+            else:
+                client.onChannelString((CRLF+'No source or destination defined: %s'%taskObj.get('name')+CRLF))
+        elif taskObj.get('interaction') == 'download':
+            # Download a file/directory
+            if output: client.onChannelString((CRLF+CRLF+colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF))
+            if taskObj.get('source') and taskObj.get('destination'):
+                retdat = client.download(taskObj.get('source'), taskObj.get('destination'), taskObj.get('excludes'))
+                number, transfered = retdat.get('count', 0), retdat.get('size', 0)
+                if output: client.onChannelString(CRLF+'Downloaded %s file(s). %s transfered'%(number, tools.convert_bytes(transfered))+CRLF)
+            else:
+                client.onChannelString((CRLF+'No source or destination defined: %s'%taskObj.get('name')+CRLF))
+        elif not taskCmds:
+            client.onChannelString((CRLF+'No commands defined: %s'%taskKey+CRLF))
+        else:
+            # Execute the task's commands
+            runmode = taskObj.get('runmode') or ''
+            if output and runmode!='script': client.onChannelString((CRLF+CRLF+colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF))
+            if runmode.startswith('batch'):
+                # Send commands to the channel once for all
+                str_join = '&' if platform.system() == 'Windows' else ' && '
+                command = (str_join if runmode.endswith('join') else LF).join(taskCmds)
+                if len(taskCmds)>1 and runmode.endswith('escape'):
+                    command = es_home + command + es_end
+                print('execTask', client.serverKey, json.dumps(command))
+                client.send_to_channel(command + LF, human=False)
+            elif runmode=='script':
+                # Save the commands to a script file, then execute it
+                filename = tools.get_key(taskKey)+'.sh'
+                filepath = os.path.join(folder_cache, filename)
+                content = LF.join(taskCmds)
+                if not os.path.exists(folder_cache):
+                    os.makedirs(folder_cache)
+                with open(filepath, 'w') as f:
+                    f.write(content)
+                number, transfered = client.upload_file(filepath, '~/.oysape/cache/%s'%filename)
+                if number==1 and transfered>0:
+                    client.client.exec_command(f'chmod +x ~/.oysape/cache/%s'%filename)
+                    client.send_to_channel('source ~/.oysape/cache/%s'%filename+LF, human=False)
+            else:
+                # Send commands to the channel line-by-line
+                print('execTask', client.serverKey, json.dumps(taskCmds))
+                while taskCmds:
+                    data = taskCmds.pop(0)
+                    data = data.strip()+LF
+                    if data.strip() and not data.startswith('#'):
+                        client.send_to_channel(data, human=False)
+                        time.sleep(0.01)
+
 class ApiWorkspace(ApiTerminal):
     workspaceWorkingChannel = ''
     combinedConnections = {}
-
-    _instance = None
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(ApiWorkspace, cls).__new__(cls)
-        return cls._instance
 
     def createCombConnection(self, serverKey):
         from . import sshutils
@@ -544,6 +575,7 @@ class ApiWorkspace(ApiTerminal):
             conn_str = sshutils.create_ssh_string(slist[0].get("address"), slist[0].get("username"), slist[0].get("port"))
             self.combinedConnections[serverKey] = sshutils.WorkspaceClient(conn_str, private_key=slist[0].get("prikey"), serverKey=serverKey, startup=slist[0].get("tasks"))
             self.combinedConnections[serverKey].parentApi = self
+            self.combinedConnections[serverKey].uniqueKey = 'workspace'
 
     def closeCombConnections(self, params={}):
         for serverKey in self.combinedConnections.keys():
@@ -579,20 +611,17 @@ class ApiWorkspace(ApiTerminal):
             taskCmds = self.getTaskCommands(taskKey)
             # Set the workspace's current server if want the workspace to be interactive
             if taskObj.get('interaction') in ('interactive', 'terminal'):
-                if next((x for x in self.userSession['teams'][self.userSession['team0']]['members'] if x['email'] == self.userSession['email'] and x.get('access_terminal')), None):
+                if self.hasPermission('access_terminal'):
                     self.workspaceWorkingChannel = serverKey
-                    if len(webview.windows) > 0:
-                        webview.windows[0].evaluate_js('window.updateWorkspaceTabTitle && window.updateWorkspaceTabTitle("%s")'%(serverKey))
+                    self.combinedConnections[serverKey].updateWorkspaceTabTitle(self.workspaceWorkingChannel)
                 else:
                     self.combinedConnections[serverKey].onChannelString((CRLF+CRLF+colorizeText('This task is designated as interactive; however, you lack the permission to interact with terminals. It will still execute, but you will be unable to interact with it.', 'yellow') + CRLF+CRLF))
                     self.workspaceWorkingChannel = ''
-                    if len(webview.windows) > 0:
-                        webview.windows[0].evaluate_js('window.updateWorkspaceTabTitle && window.updateWorkspaceTabTitle("%s")'%(''))
+                    self.combinedConnections[serverKey].updateWorkspaceTabTitle(self.workspaceWorkingChannel)
             else:
                 self.workspaceWorkingChannel = ''
-                if len(webview.windows) > 0:
-                    webview.windows[0].evaluate_js('window.updateWorkspaceTabTitle && window.updateWorkspaceTabTitle("%s")'%(''))
-            execTask(taskKey, taskObj, taskCmds, self.combinedConnections[serverKey])
+                self.combinedConnections[serverKey].updateWorkspaceTabTitle(self.workspaceWorkingChannel)
+            self.execTask(taskKey, taskObj, taskCmds, self.combinedConnections[serverKey])
         elif self.combinedConnections[serverKey].message:
             outmsg = colorizeText(serverKey,None,'gray') + ' ' + colorizeText(self.combinedConnections[serverKey].message,'red')
             self.combinedConnections[serverKey].onChannelString(outmsg)
@@ -649,7 +678,7 @@ class ApiWorkspace(ApiTerminal):
 
 class ApiSftp(ApiWorkspace):
     def sftpGetFileTree(self, params={}):
-        if not next((x for x in self.userSession['teams'][self.userSession['team0']]['members'] if x['email'] == self.userSession['email'] and x.get('access_terminal')), None):
+        if not self.hasPermission('access_terminal'):
             return {'errinfo': 'SFTP access denied'}
         serverKey = params.get('target')
         thisPath = params.get('path') or '/'
@@ -659,7 +688,7 @@ class ApiSftp(ApiWorkspace):
         return retval
 
     def open_remote_file(self, params={}):
-        if not next((x for x in self.userSession['teams'][self.userSession['team0']]['members'] if x['email'] == self.userSession['email'] and x.get('access_terminal')), None):
+        if not self.hasPermission('access_terminal'):
             return {'errinfo': 'SFTP access denied'}
         serverKey = params.get('target')
         thisPath = params.get('path') or '/'
@@ -669,7 +698,7 @@ class ApiSftp(ApiWorkspace):
         return retval
 
     def save_remote_file(self, params={}):
-        if not next((x for x in self.userSession['teams'][self.userSession['team0']]['members'] if x['email'] == self.userSession['email'] and x.get('access_terminal')), None):
+        if not self.hasPermission('access_terminal'):
             return {'errinfo': 'SFTP access denied'}
         serverKey = params.get('target')
         thisPath = params.get('path') or '/'
@@ -680,7 +709,7 @@ class ApiSftp(ApiWorkspace):
         return retval
 
     def download_remote_file(self, params={}):
-        if not next((x for x in self.userSession['teams'][self.userSession['team0']]['members'] if x['email'] == self.userSession['email'] and x.get('access_terminal')), None):
+        if not self.hasPermission('access_terminal'):
             return {'errinfo': 'SFTP access denied'}
         serverKey = params.get('target')
         thisPath = params.get('path')
@@ -694,7 +723,7 @@ class ApiSftp(ApiWorkspace):
             return retdata
 
     def upload_remote_file(self, params={}):
-        if not next((x for x in self.userSession['teams'][self.userSession['team0']]['members'] if x['email'] == self.userSession['email'] and x.get('access_terminal')), None):
+        if not self.hasPermission('access_terminal'):
             return {'errinfo': 'SFTP access denied'}
         serverKey = params.get('target')
         thisPath = params.get('path')
@@ -708,7 +737,7 @@ class ApiSftp(ApiWorkspace):
             return retdata
 
     def upload_remote_folder(self, params={}):
-        if not next((x for x in self.userSession['teams'][self.userSession['team0']]['members'] if x['email'] == self.userSession['email'] and x.get('access_terminal')), None):
+        if not self.hasPermission('access_terminal'):
             return {'errinfo': 'SFTP access denied'}
         serverKey = params.get('target')
         thisPath = params.get('path')
@@ -724,14 +753,14 @@ class ApiSftp(ApiWorkspace):
 
 class ApiDockerManager(ApiSftp):
     def dockerGetWholeTree(self, params={}):
-        if not next((x for x in self.userSession['teams'][self.userSession['team0']]['members'] if x['email'] == self.userSession['email'] and x.get('access_docker')), None):
+        if not self.hasPermission('access_docker'):
             return {'errinfo': 'Docker access denied'}
         serverKey = params.get('target')
         if not serverKey in self.combinedConnections:
             self.createCombConnection(serverKey)
         return self.combinedConnections[serverKey].dockerGetWholeTree()
     def dockerGetTreeNode(self, params={}):
-        if not next((x for x in self.userSession['teams'][self.userSession['team0']]['members'] if x['email'] == self.userSession['email'] and x.get('access_docker')), None):
+        if not self.hasPermission('access_docker'):
             return {'errinfo': 'Docker access denied'}
         serverKey = params.get('target')
         nodeKey = params.get('nodeKey')
@@ -746,99 +775,41 @@ class ApiDockerManager(ApiSftp):
         else:
             return {'errinfo': 'Invalid node'}
     def dockerExecCommand(self, params={}):
-        if not next((x for x in self.userSession['teams'][self.userSession['team0']]['members'] if x['email'] == self.userSession['email'] and x.get('access_docker')), None):
+        if not self.hasPermission('access_docker'):
             return {'errinfo': 'Docker access denied'}
         serverKey = params.get('target')
         command = params.get('command')
         if not serverKey in self.combinedConnections:
             self.createCombConnection(serverKey)
         # Build a virtual Task to run the command
-        self.workspaceWorkingChannel = serverKey
-        # 根据用户权限, 是否可连接指定服务器的终端, 来决定是否设置为 interaction:interaction
-        interaction = '' if not next((x for x in self.userSession['teams'][self.userSession['team0']]['members'] if x['email'] == self.userSession['email'] and x.get('access_terminal')), None) else 'interaction'
+        interaction = 'interaction' if self.hasPermission('access_terminal') else ''
         if interaction and len(webview.windows) > 0:
-            webview.windows[0].evaluate_js('window.updateWorkspaceTabTitle && window.updateWorkspaceTabTitle("%s")'%(serverKey))
-        execTask('docker', {'interaction':interaction}, [command], self.combinedConnections[serverKey], output=False)
+            self.workspaceWorkingChannel = serverKey
+            self.combinedConnections[serverKey].updateWorkspaceTabTitle(self.workspaceWorkingChannel)
+        self.execTask('docker', {'interaction':interaction}, [command], self.combinedConnections[serverKey], output=False)
         while not self.combinedConnections[serverKey].areAllTasksDone():
             time.sleep(0.1)
     def dockerSetDockerCommand(self, params={}):
-        if not next((x for x in self.userSession['teams'][self.userSession['team0']]['members'] if x['email'] == self.userSession['email'] and x.get('access_docker')), None):
+        if not self.hasPermission('access_docker'):
             return {'errinfo': 'Docker access denied'}
         serverKey = params.get('target')
         command = params.get('command')
         if not serverKey in self.combinedConnections:
             self.createCombConnection(serverKey)
         self.combinedConnections[serverKey].dockerCommandPrefix = command
-        #TODO: 把用户设置的 docker 命令位置保存到服务器上用户配置中
+        #TODO: save the docker command path on the server
     def dockerSetComposeCommand(self, params={}):
-        if not next((x for x in self.userSession['teams'][self.userSession['team0']]['members'] if x['email'] == self.userSession['email'] and x.get('access_docker')), None):
+        if not self.hasPermission('access_docker'):
             return {'errinfo': 'Docker access denied'}
         serverKey = params.get('target')
         command = params.get('command')
         if not serverKey in self.combinedConnections:
             self.createCombConnection(serverKey)
         self.combinedConnections[serverKey].dockerComposePrefix = command
-        #TODO: 把用户设置的 docker compose 命令位置保存到服务器上用户配置中
-
-def execTask(taskKey, taskObj, taskCmds, client, output=True):
-    global themeType
-    bgColor = 'gray' if themeType == 'dark' else 'white'
-    if not taskObj:
-        client.onChannelString((CRLF+'No such task defined: %s'%taskKey+CRLF))
-    elif taskObj.get('interaction') == 'upload':
-        # Upload a file/directory
-        if output: client.onChannelString((CRLF+CRLF+colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF))
-        if taskObj.get('source') and taskObj.get('destination'):
-            retdata = client.upload(taskObj.get('source'), taskObj.get('destination'), taskObj.get('excludes'))
-            number, transfered = retdata.get('count', 0), retdata.get('size', 0)
-            if output: client.onChannelString(CRLF+'Uploaded %s file(s). %s transfered'%(number, tools.convert_bytes(transfered))+CRLF)
-        else:
-            client.onChannelString((CRLF+'No source or destination defined: %s'%taskObj.get('name')+CRLF))
-    elif taskObj.get('interaction') == 'download':
-        # Download a file/directory
-        if output: client.onChannelString((CRLF+CRLF+colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF))
-        if taskObj.get('source') and taskObj.get('destination'):
-            retdat = client.download(taskObj.get('source'), taskObj.get('destination'), taskObj.get('excludes'))
-            number, transfered = retdat.get('count', 0), retdat.get('size', 0)
-            if output: client.onChannelString(CRLF+'Downloaded %s file(s). %s transfered'%(number, tools.convert_bytes(transfered))+CRLF)
-        else:
-            client.onChannelString((CRLF+'No source or destination defined: %s'%taskObj.get('name')+CRLF))
-    elif not taskCmds:
-        client.onChannelString((CRLF+'No commands defined: %s'%taskKey+CRLF))
-    else:
-        # Execute the task's commands
-        runmode = taskObj.get('runmode') or ''
-        if output and runmode!='script': client.onChannelString((CRLF+CRLF+colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF))
-        if runmode.startswith('batch'):
-            # Send commands to the channel once for all
-            str_join = '&' if platform.system() == 'Windows' else ' && '
-            command = (str_join if runmode.endswith('join') else LF).join(taskCmds)
-            if len(taskCmds)>1 and runmode.endswith('escape'):
-                command = es_home + command + es_end
-            print('execTask', client.serverKey, json.dumps(command))
-            client.send_to_channel(command + LF, human=False)
-        elif runmode=='script':
-            # Save the commands to a script file, then execute it
-            filename = tools.get_key(taskKey)+'.sh'
-            filepath = os.path.join(folder_cache, filename)
-            content = LF.join(taskCmds)
-            if not os.path.exists(folder_cache):
-                os.makedirs(folder_cache)
-            with open(filepath, 'w') as f:
-                f.write(content)
-            number, transfered = client.upload_file(filepath, '~/.oysape/cache/%s'%filename)
-            if number==1 and transfered>0:
-                client.client.exec_command(f'chmod +x ~/.oysape/cache/%s'%filename)
-                client.send_to_channel('source ~/.oysape/cache/%s'%filename+LF, human=False)
-        else:
-            # Send commands to the channel line-by-line
-            print('execTask', client.serverKey, json.dumps(taskCmds))
-            while taskCmds:
-                data = taskCmds.pop(0)
-                data = data.strip()+LF
-                if data.strip() and not data.startswith('#'):
-                    client.send_to_channel(data, human=False)
-                    time.sleep(0.01)
+        #TODO: save the docker command path on the server
 
 
-apiInstance = ApiDockerManager()
+class ApiOverHttp(ApiDockerManager):
+    socketConnections = {}
+
+apiInstances = {}

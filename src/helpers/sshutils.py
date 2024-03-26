@@ -4,7 +4,7 @@
 import os, base64, traceback, json, re, json, _thread, time, getpass, stat
 import webview
 import paramiko
-from . import tools
+from . import tools, apis
 
 BUF_SIZE = 1024
 CR = '\r'
@@ -217,9 +217,9 @@ class SSHClient:
                 if self.startup:
                     print('startup', self.startup)
                     for taskKey in self.startup:
-                        taskObj = apis.apiInstance.getTaskObject(taskKey)
-                        taskCmds = apis.apiInstance.getTaskCommands(taskKey)
-                        apis.execTask(taskKey, taskObj, taskCmds, self, output=False)
+                        taskObj = self.parentApi.getTaskObject(taskKey)
+                        taskCmds = self.parentApi.getTaskCommands(taskKey)
+                        self.parentApi.execTask(taskKey, taskObj, taskCmds, self, output=False)
             except:
                 pass
         return self.channel
@@ -716,29 +716,40 @@ class SSHClient:
         featureList.append(self.dockerGetComposes())
         return {'version': output, 'featureList': featureList}
 
+class WebSocketSSHClient(SSHClient):
+    def sendWebSocketData(self, data1, tabKey=''):
+        tabKey = tabKey or self.uniqueKey
+        if tabKey in self.parentApi.socketConnections:
+            wsock = self.parentApi.socketConnections[tabKey]
+            try:
+                wsock.send(data1)
+            except Exception as e:
+                self.parentApi.socketConnections.pop(tabKey, None)
 
-class TerminalClient(SSHClient):
+    def updateWorkspaceTabTitle(self, serverKey):
+        # serverKey = '' means to clear the title of the tab
+        self.parentApi.workspaceWorkingChannel = serverKey
+        pack1 = base64.b64encode(json.dumps({'serverKey': serverKey, 'action': 'updateWorkspaceTabTitle'}).encode()).decode()
+        self.sendWebSocketData(pack1)
+
+
+class TerminalClient(WebSocketSSHClient):
     def onChannelData(self, bdata):
-        # print('out:',bdata)
         data1 = base64.b64encode(bdata).decode()
-        if len(webview.windows) > 0:
-            webview.windows[0].evaluate_js('window.pywebview.termbridge.onChannelData_%s && window.pywebview.termbridge.onChannelData_%s("%s")'%(self.uniqueKey, self.uniqueKey, data1))
+        self.sendWebSocketData(data1)
 
     def onChannelClose(self):
         super().onChannelClose()
-        if self.sentChannelCloseEvent and len(webview.windows) > 0:
-            webview.windows[0].evaluate_js('window.closeThisTab && window.closeThisTab("'+self.uniqueKey+'", true)')
+        pack1 = base64.b64encode(json.dumps({'uniqueKey': self.uniqueKey, 'action': 'closeThisTab'}).encode()).decode()
+        self.sendWebSocketData(pack1, 'workspace')
 
 
-class WorkspaceClient(SSHClient):
+class WorkspaceClient(WebSocketSSHClient):
     def onChannelData(self, bdata):
         data1 = base64.b64encode(bdata).decode()
-        if len(webview.windows) > 0:
-            webview.windows[0].evaluate_js('window.pywebview.workbridge.onChannelData && window.pywebview.workbridge.onChannelData("%s")'%(data1))
+        pack1 = base64.b64encode(json.dumps({'data': data1, 'action': 'data'}).encode()).decode()
+        self.sendWebSocketData(pack1)
 
     def onChannelClose(self):
         super().onChannelClose()
-        self.parentApi.workspaceWorkingChannel = ''
-        if self.sentChannelCloseEvent and len(webview.windows) > 0:
-            webview.windows[0].evaluate_js('window.closeWorkspaceChannel && window.closeWorkspaceChannel("'+self.serverKey+'")')
-
+        self.updateWorkspaceTabTitle('')

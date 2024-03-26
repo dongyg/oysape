@@ -83,6 +83,7 @@
   "scripts": {
     "dev": "node scripts/start.js",
     "build": "yarn run clean && run-script-os",
+    "compile": "BUILD_PATH='./gui' node scripts/build.js",
     "build:macos": "BUILD_PATH='./gui' node scripts/build.js && yarn run pack",
     "build:windows": "set BUILD_PATH=gui&node scripts/build.js & yarn run pack",
     "build:linux": "BUILD_PATH='./gui' node scripts/build.js && yarn run pack",

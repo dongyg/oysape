@@ -1,30 +1,155 @@
 import CryptoJS from 'crypto-js';
 
 export const calculateMD5 = function(str) {
-    const hash = CryptoJS.MD5(str);
-    return hash.toString();
-  }
+  const hash = CryptoJS.MD5(str);
+  return hash.toString();
+}
+
+export const isDesktopVersion = navigator.userAgent.indexOf('Oysape') !== -1;
+export var uniqueClientID = null;
+
+export const setClientId = (id) => {
+  uniqueClientID = id;
+}
+
+export const API_HOST = 'http://127.0.0.1:19790';
 
 export const callApi = (functionName, params) => {
-    // console.log('callApi:', functionName, params);
-    if(window.pywebview && window.pywebview.api) {
-        if(window.pywebview.api[functionName]) {
-            if(params){
-                return window.pywebview.api[functionName](params);
-            } else {
-                return window.pywebview.api[functionName]();
-            }
-        } else {
-            return new Promise((resolve, reject) => {
-                reject(new Error('Api not found: ' + functionName));
-            });
-        }
+  if(window.pywebview && window.pywebview.api) {
+    console.log('callApi - pywebview: ' + functionName);
+    if(window.pywebview.api[functionName]) {
+      if(params){
+        return window.pywebview.api[functionName](params);
+      } else {
+        return window.pywebview.api[functionName]();
+      }
     } else {
-        return new Promise((resolve, reject) => {
-            resolve(null);
-        });
+      return new Promise((resolve, reject) => {
+          reject(new Error('Api not found: ' + functionName));
+      });
     }
+  } else {
+    console.log('callApi - http: ' + functionName);
+    const token = getTokenFromCookie();
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    if(token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    if(uniqueClientID) {
+      headers['Client-Id'] = uniqueClientID;
+    }
+    var options = {
+      method: 'POST',
+      headers: headers,
+      credentials: 'include',
+    }
+    if(params) {
+      options.body = JSON.stringify(params);
+    }
+    return fetch(API_HOST+'/api/' + functionName, options).then(response => {
+      return response.json()
+    }).catch(error => {
+      console.error('API call failed:', error);
+      // throw error;
+    });
+  }
 };
+
+export function setTokenToCookie(token) {
+  const now = new Date();
+  now.setMonth(now.getMonth() + 1);
+  const cookieValue = `client_token=${token}; path=/; expires=${now.toUTCString()};`;
+  document.cookie = cookieValue;
+}
+
+export function delTokenFromCookie() {
+  document.cookie = `client_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+}
+
+export function getTokenFromCookie() {
+  const cookies = document.cookie.split(';');
+  for (let cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === 'client_token') {
+      return value;
+    }
+  }
+  return '';
+}
+
+export async function fetchData(url = '', data = {}) {
+  const queryParams = new URLSearchParams(data).toString();
+  const absUrl = url.startsWith('http') ? url : (API_HOST + url) + (queryParams ? `?${queryParams}` : '');
+  const token = getTokenFromCookie();
+  const options = {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+  };
+  try {
+    const response = await fetch(absUrl, options);
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    const responseData = await response.json();
+    return responseData;
+  } catch (error) {
+    console.error('Error fetching data:', absUrl, error);
+    throw error;
+  }
+}
+
+export async function requestDelete(url = '', data = {}) {
+  const queryParams = new URLSearchParams(data).toString();
+  const absUrl = url.startsWith('http') ? url : (API_HOST + url) + (queryParams ? `?${queryParams}` : '');
+  const token = getTokenFromCookie();
+  const options = {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+  };
+  try {
+    const response = await fetch(absUrl, options);
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    const responseData = await response.json();
+    return responseData;
+  } catch (error) {
+    console.error('Error fetching data:', absUrl, error);
+    throw error;
+  }
+}
+
+export async function postData(url = '', data = {}) {
+  const absUrl = url.startsWith('http') ? url : (API_HOST + url);
+  const token = getTokenFromCookie();
+  const options = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(data)
+  };
+  try {
+    const response = await fetch(absUrl, options);
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    const responseData = await response.json();
+    return responseData;
+  } catch (error) {
+    console.error('Error posting data:', absUrl, error);
+    throw error;
+  }
+}
 
 export const getInitials = (str) => {
     const words = str.match(/[A-Za-z]+/g);
@@ -94,7 +219,7 @@ export const parseTaskString2 = function(str) {
 export const generateUUID = function() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
     var r = Math.random() * 16 | 0,
-      v = c === 'x' ? r : (r & 0x3 | 0x8);
+      v = c === 'x' ? r : ((r & 0x3) | 0x8);
     return v.toString(16);
   });
 }
@@ -165,7 +290,7 @@ export const writeWelcome = function(xterm) {
     // xterm.write('\x1b[35m'+text+'\x1b[0m '); // purple text
     // xterm.write('\x1b[36m'+text+'\x1b[0m '); // cyan text
     // xterm.write('\x1b[37m'+text+'\x1b[0m \r\n'); // white text
-    xterm.write(colorizeText('Welcome!\r\n\r\n', 'green'));
+    xterm.write(colorizeText('Welcome! '+uniqueClientID+'\r\n\r\n', 'green'));
     xterm.write(colorizeText(ctrlOrMeta+'+K','cyan') + ' - Clear the workspace/terminal\r\n\r\n');
     xterm.write(colorizeText(ctrlOrMeta+'+P','cyan') + ' - Search for Servers/Tasks/Pipelines/Files\r\n\r\n');
     xterm.write(colorizeText(ctrlOrMeta+'+Shift+@','cyan') + ' - Search for Servers\r\n\r\n');

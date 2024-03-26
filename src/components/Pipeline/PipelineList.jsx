@@ -34,7 +34,7 @@ const PipelineList = () => {
     var retval = [
       { key: 'runPipeline', label: <strong>Run</strong>, icon: <FiTerminal />, },
     ];
-    if(userSession.teams[userSession.team0].members.find(item => item.email === userSession.email)?.access_writable) {
+    if(userSession.teams[userSession.team0].is_creator || userSession.teams[userSession.team0].members.find(item => item.email === userSession.email)?.access_writable) {
       retval = retval.concat([
         { type: 'divider', },
         { key: 'editPipeline', label: 'Edit', icon: <EditOutlined />, },

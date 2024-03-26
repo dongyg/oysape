@@ -1,8 +1,8 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import { ConfigProvider, App, theme, Layout } from 'antd';
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { callApi } from '../Common/global';
+import { callApi, uniqueClientID, setClientId } from '../Common/global';
 import BodyContainer from './BodyContainer';
 import SignIn from './SignIn';
 
@@ -10,11 +10,19 @@ import SignIn from './SignIn';
 const AppRoot = () => {
   const { customTheme, userSession, setUserSession } = useCustomContext();
 
-  const reloadUserSession = useCallback(() => {
-    callApi('getUserSession', {refresh: true}).then((data) => {
-      setUserSession(data);
+  const reloadUserSession = (token) => {
+    callApi('getUserSession', {refresh: true, token:token}).then((data) => {
+      console.log('getUserSession', data);
+      if(data?.uid) {
+        setUserSession(data);
+        if(!uniqueClientID) {
+          setClientId(data.clientId);
+        }
+      }else if(data?.errinfo) {
+        window.showMessageOnSigninPage && window.showMessageOnSigninPage(data.errinfo);
+      }
     });
-  }, [setUserSession]);
+  };
   window.reloadUserSession = reloadUserSession;
 
   return (
@@ -30,7 +38,7 @@ const AppRoot = () => {
             footerBg: customTheme.colors["sideBar.background"],
             footerPadding: '2px',
             headerHeight: '56px',
-            algorithm: true, // 启用算法
+            algorithm: true,
           },
           Tabs: {
             verticalItemPadding: '8px 16px'

@@ -204,10 +204,9 @@ const SearchInput = () => {
       // console.log('executeInput', text, taskInput);
       const tasks = taskItems.filter((item) => item.name === taskInput.task && taskInput.task !== '');
       const servers = serverItems.filter((item) => item.name === taskInput.server && taskInput.server !== '');
-      const mobj = userSession.teams[userSession.team0].members.filter(item => item.email === userSession.email)[0];
       if(taskInput.server && !taskInput.task) {
         // Open a server terminal
-        if(mobj && mobj.access_terminal) {
+        if(userSession.teams[userSession.team0].is_creator || userSession.teams[userSession.team0].members.find(item => item.email === userSession.email)?.access_terminal) {
           openServerTerminal(taskInput.server);
         }
       } else if (servers.length>0 && tasks.length>0 && tasks[0].interaction==='terminal' && tasks[0].cmds.length>0) {

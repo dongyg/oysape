@@ -11,8 +11,8 @@ import ServerEditor from './ServerEditor';
 
 const ServerList = () => {
   const { message, modal } = App.useApp();
-  const { hideSidebarIfNeed, tabItems, setTabItems, setTabActiveKey, serverItems, setServerItems, userSession } = useCustomContext();
-  const [showServers, setShowServers] = useState(serverItems);
+  const { hideSidebarIfNeed, tabItems, setTabItems, setTabActiveKey, userSession, setUserSession } = useCustomContext();
+  const [showServers, setShowServers] = useState(userSession.servers||[]);
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [multipleSelect, setMultipleSelect] = useState(false);
   const [editable, setEditable] = useState(false);
@@ -25,11 +25,11 @@ const ServerList = () => {
 
   const filterServers = React.useCallback((keyword, viewUpdate) => {
     setShowServers(
-      (serverItems||[]).filter((server) => {
+      (userSession.servers||[]).filter((server) => {
         return server.name.includes(keyword) || server.address.includes(keyword) || (server.username||'').includes(keyword)|| (server.tags&&server.tags.join(',').includes(keyword));
       })
     )
-  }, [serverItems])
+  }, [userSession])
 
   const onClickMenu = ({ key }) => {
     if(!selectedRowKeys[0]) {
@@ -53,14 +53,14 @@ const ServerList = () => {
     var retval = [
       { key: 'runOnServer', label: <strong>Run a task on this server</strong>, icon: <FiTerminal />, },
     ];
-    const mobj = userSession.teams[userSession.team0].members.filter(item => item.email === userSession.email)[0];
-    if(mobj && mobj.access_terminal) {
+    const mobj = userSession.teams[userSession.team0].members.find(item => item.email === userSession.email);
+    if(userSession.teams[userSession.team0].is_creator || mobj?.access_terminal) {
       retval = retval.concat([
         { type: 'divider', },
         { key: 'terminalServer', label: 'Terminal', icon: <BsTerminal />, },
       ]);
     }
-    if(mobj && mobj.access_writable) {
+    if(userSession.teams[userSession.team0].is_creator || mobj?.access_writable) {
       retval = retval.concat([
         { type: 'divider', },
         { key: 'editServer', label: 'Edit', icon: <EditOutlined />, },
@@ -141,7 +141,7 @@ const ServerList = () => {
           if(data && data.errinfo) {
             message.error(data.errinfo);
           }else if(data && data.servers) {
-            setServerItems(data.servers);
+            setUserSession({...userSession, servers: data.servers});
             setShowServers(showServers.filter((server) => server.key !== serverKey));
           }
         })
@@ -152,30 +152,16 @@ const ServerList = () => {
     });
   }
   const runOnServer = (serverKey) => {
-    const serverObj = serverItems.filter((server) => server.key === serverKey)[0]||{};
+    const serverObj = userSession.servers.filter((server) => server.key === serverKey)[0]||{};
     if(serverObj&&serverObj.name){
       window.fillSearchServer(serverObj.name);
     }
     hideSidebarIfNeed();
   }
-  const reloadServerList = useCallback(() => {
-    callApi('getServerList', {refresh: true}).then((data) => {
-      setServerItems(data);
-      setShowServers(data);
-    });
-  }, [setServerItems, setShowServers]);
-  window.reloadServerList = reloadServerList;
-
-  useEffect(() => {
-    setTimeout(() => {
-      reloadServerList();
-      window.reloadUserSession && window.reloadUserSession();
-    }, 10)
-  },[reloadServerList]);
 
   useEffect(() => {
     filterServers(searchKeyword);
-  }, [serverItems, searchKeyword, filterServers]);
+  }, [searchKeyword, filterServers]);
 
   return (
     <>

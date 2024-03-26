@@ -3,12 +3,13 @@
 
 import webview
 
-from helpers import consts, apis, oauth
+from helpers import server, consts, apis
 
 if __name__ == '__main__':
-    oauth.start_http_server()
-    consts.windowObj = apis.loadEntrypointWindow()
     print(webview.token)
+    server.start_http_server()
+    apis.apiInstances[webview.token] = apis.ApiOverHttp(clientId=webview.token, clientUserAgent='Oysape/0.1.0')
+    windowObj = apis.loadEntrypointWindow(apiObject=apis.apiInstances[webview.token])
     # Give private_mode=False to save cookies persistently
-    webview.start(apis.mainloop, consts.windowObj, debug=consts.IS_DEBUG, private_mode=False, user_agent='Oysape/0.1.0')
+    webview.start(apis.mainloop, windowObj, debug=consts.IS_DEBUG, private_mode=False, user_agent='Oysape/0.1.0')
     print('Bye.')

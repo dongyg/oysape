@@ -11,7 +11,7 @@ import './ServerPanel.css';
 
 export default function ServersPanel() {
   const { message, modal } = App.useApp();
-  const { hideSidebarIfNeed, tabItems, setTabItems, setTabActiveKey, setServerItems, userSession } = useCustomContext();
+  const { hideSidebarIfNeed, tabItems, setTabItems, setTabActiveKey, setServerItems, userSession, setUserSession } = useCustomContext();
   const headerHeight = '56px';
 
   const addServer = () => {
@@ -42,7 +42,7 @@ export default function ServersPanel() {
         if(data && data.errinfo) {
           message.error(data.errinfo);
         }else{
-          window.reloadServerList();
+          setUserSession({...userSession, servers: data.servers});
         }
       })
     }else if(key === 'menuExportServer') {
@@ -77,7 +77,7 @@ export default function ServersPanel() {
     <div style={{ height: headerHeight, padding: '12px 16px', display: 'flex', flexWrap: 'nowrap', alignItems: 'flex-start' }}>
       <span style={{ flex: 'auto', paddingTop: '4px' }}>Servers</span>
       {
-        userSession.teams[userSession.team0].members.find(item => item.email === userSession.email)?.access_writable ?
+        userSession.teams[userSession.team0].is_creator || userSession.teams[userSession.team0].members.find(item => item.email === userSession.email)?.access_writable ?
         <div>
           <Dropdown menu={{ items: menuItems, onClick: onClickMenu }} placement="topRight">
             <Button type='text' icon={<BsThreeDots />}></Button>

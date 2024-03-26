@@ -53,11 +53,11 @@ export default function SideFrame() {
       { key: 'sidePipeline', label: <Tooltip placement="right" title={'Pipelines ('+(browserInfo&&browserInfo.isMac ? 'Command' : 'Ctrl')+'+Shift+X)'}><UnorderedListOutlined style={{fontSize:'2em', marginRight: '0px'}} /></Tooltip>, children: <PipelinesPanel /> },
       // { key: 'sideHistory', label: <HistoryOutlined style={{fontSize:'2em', marginRight: '0px'}} />, children: `5` },
     ];
-    const mobj = userSession.teams[userSession.team0].members.filter(item => item.email === userSession.email)[0];
-    if(mobj && mobj.access_sftp){
+    const mobj = userSession.teams[userSession.team0].members.find(item => item.email === userSession.email);
+    if(userSession.teams[userSession.team0].is_creator || mobj?.access_sftp){
       buttons.push({ key: 'sideSftp', label: <Tooltip placement="right" title={'SFTP ('+(browserInfo&&browserInfo.isMac ? 'Command' : 'Ctrl')+'+Shift+F)'}><AiOutlineCloudServer style={{fontSize:'2em', marginRight: '0px'}} /></Tooltip>, children: <Sftp /> });
     }
-    if(mobj && mobj.access_docker){
+    if(userSession.teams[userSession.team0].is_creator || mobj?.access_docker){
       buttons.push({ key: 'sideDocker', label: <Tooltip placement="right" title={'Docker ('+(browserInfo&&browserInfo.isMac ? 'Command' : 'Ctrl')+'+Shift+D)'}><FaDocker style={{fontSize:'2em', marginRight: '0px'}} /></Tooltip>, children: <DockersPanel /> });
     }
     // access_files will not affect the Desktop version
@@ -70,7 +70,7 @@ export default function SideFrame() {
       callApi('getTaskList', {refresh: true}).then((data) => { setTaskItems(data); });
       callApi('getPipelineList', {refresh: true}).then((data) => { setPipelineItems(data); });
       callApi('getFolderFiles').then((data) => { setFolderFiles(data); })
-    }, 50)
+    }, 1000)
   },[setTaskItems, setPipelineItems, setFolderFiles]);
 
   return (

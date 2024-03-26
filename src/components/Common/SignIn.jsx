@@ -1,36 +1,86 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { Layout, Button, Image, Alert, } from 'antd';
 import { GithubOutlined, GoogleOutlined, GlobalOutlined, LoadingOutlined } from "@ant-design/icons";
 
-import { useCustomContext } from '../Contexts/CustomContext'
-import { callApi } from '../Common/global';
+import { isDesktopVersion, setClientId, callApi, getTokenFromCookie, setTokenToCookie } from '../Common/global';
 
 export default function BodyContainer() {
-  const { userSession, setUserSession } = useCustomContext();
   const [ messageType, setMessageType ] = useState('info');
   const [ messageContent, setMessageContent ] = useState('');
+  const [ loading, setLoading ] = useState(true);
 
   const handleSigninWithEmail = () => {
-    callApi('signInWithEmail', {}).then((data) => {});
+    setLoading(true);
+    callApi('signInWithEmail', {}).then((data) => {
+      callWaitForSigninResult(data);
+    });
   }
   const handleSigninWithGithub = () => {
-    callApi('signInWithGithub', {}).then((data) => {});
+    setLoading(true);
+    callApi('signInWithGithub', {}).then((data) => {
+      callWaitForSigninResult(data);
+    });
   }
   const handleSigninWithGoogle = () => {
-    callApi('signInWithGoogle', {}).then((data) => {});
+    setLoading(true);
+    callApi('signInWithGoogle', {}).then((data) => {
+      callWaitForSigninResult(data);
+    });
   }
-  window.showMessageOnSigninPage = (message, type) => {
-    setMessageType(type);
-    setMessageContent(message);
-  };
-  window.setShowSigninButtons = (value) => {
-    if(value) {
-      setUserSession({...userSession, loading: false});
-    } else {
-      setUserSession({...userSession, loading: true});
+  const callWaitForSigninResult = (waitData) => {
+    if(waitData?.clientId) {
+      setClientId(waitData.clientId);
+      const waitForSigninResultTimer = setInterval(() => {
+        callApi('querySigninResult', {}).then((loginData) => {
+          if(loginData && loginData.token) {
+            clearInterval(waitForSigninResultTimer);
+            setTokenToCookie(loginData.token);
+            window.reloadUserSession(loginData.token);
+          }else if(loginData && loginData.errinfo) {
+            clearInterval(waitForSigninResultTimer);
+            showMessageOnSigninPage(loginData.errinfo, 'error');
+          }
+        })
+      }, 1000);
+    }
+    if(waitData?.url) {
+      window.open(waitData.url);
+    }
+    if(waitData?.errinfo) {
+      showMessageOnSigninPage(waitData.errinfo, 'error');
+      setLoading(false);
     }
   }
+
+  const showMessageOnSigninPage = (message, type) => {
+    setMessageType(type);
+    setMessageContent(message);
+    setLoading(false);
+  };
+  window.showMessageOnSigninPage = showMessageOnSigninPage;
+
+  useEffect(() => {
+    const runMeFirst = () => {
+      const token = getTokenFromCookie();
+      if(token) {
+        window.reloadUserSession(token);
+      } else if (loading) {
+        setLoading(false);
+      }
+    }
+
+    if(isDesktopVersion) {
+      const waitForPywebivewTimer = setInterval(() => {
+        if(window.pywebview && window.pywebview.token) {
+          clearInterval(waitForPywebivewTimer);
+          runMeFirst();
+        }
+      })
+    } else {
+      runMeFirst();
+    }
+  }, [loading]);
 
   return (
     <>
@@ -38,10 +88,10 @@ export default function BodyContainer() {
         <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', paddingBottom: '60px' }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '24px', marginBottom: '8px' }}><Image src="/logo192.png" width={128} height={128} preview={false} /><br />Oysape</div>
-            <div style={{ marginBottom: '8px' }} hidden={userSession.loading}><Button type="default" size='large' onClick={handleSigninWithEmail} icon={<GlobalOutlined />} style={{ width: '200px' }}>Sign in with Email&nbsp;&nbsp;</Button></div>
-            <div style={{ marginBottom: '8px' }} hidden={userSession.loading}><Button type="default" size='large' onClick={handleSigninWithGithub} icon={<GithubOutlined />} style={{ width: '200px' }}>Sign in with Github</Button></div>
-            <div style={{ marginBottom: '8px' }} hidden={userSession.loading}><Button type="default" size='large' onClick={handleSigninWithGoogle} icon={<GoogleOutlined />} style={{ width: '200px' }}>Sign in with Google</Button></div>
-            <div style={{ fontSize: '92px' }} hidden={!userSession.loading}><LoadingOutlined /></div>
+            <div style={{ marginBottom: '8px' }} hidden={loading}><Button type="default" size='large' onClick={handleSigninWithEmail} icon={<GlobalOutlined />} style={{ width: '200px' }}>Sign in with Email&nbsp;&nbsp;</Button></div>
+            <div style={{ marginBottom: '8px' }} hidden={loading}><Button type="default" size='large' onClick={handleSigninWithGithub} icon={<GithubOutlined />} style={{ width: '200px' }}>Sign in with Github</Button></div>
+            <div style={{ marginBottom: '8px' }} hidden={loading}><Button type="default" size='large' onClick={handleSigninWithGoogle} icon={<GoogleOutlined />} style={{ width: '200px' }}>Sign in with Google</Button></div>
+            <div style={{ fontSize: '92px' }} hidden={!loading}><LoadingOutlined /></div>
             <div style={{ marginBottom: '8px' }} hidden={!messageContent}><Alert type={messageType||'info'} message={messageContent}></Alert></div>
           </div>
         </div>

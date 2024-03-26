@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 __all__ = [
-    'IS_DEBUG', 'windowObj', 'homeEntry', 'userToken', 'API_HOST', 'API_ROOT',
+    'IS_DEBUG', 'homeEntry', 'API_HOST', 'API_ROOT',
 ]
 
 import os
@@ -22,13 +22,12 @@ IS_DEBUG = True
 
 
 # Variables for local app
-windowObj = None
-windowAccount = None
-homeEntry = 'http://localhost:3000' if IS_DEBUG else get_home_entry()
+# homeEntry = 'http://localhost:3000' if IS_DEBUG else get_home_entry()
+homeEntry = 'http://localhost:3000' if IS_DEBUG else 'http://127.0.0.1:19790/index.html'
+# homeEntry = 'http://127.0.0.1:19790/index.html'
 
 
 # Variables for server conmunication
-userToken = ''
 API_HOST = 'http://localhost:8080' if IS_DEBUG else 'https://oysape.aifetel.cc'
 API_ROOT = '/oyapi'
 

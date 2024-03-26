@@ -18,7 +18,7 @@ const statusDefaultText = 'Oysape';
 export const ThemeProvider = ({ children }) => {
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
   const [currentTheme, setCurrentTheme] = useState(customThemes.light);
-  const [userSession, setUserSession] = useState({loading: true});
+  const [userSession, setUserSession] = useState({});
   const [browserInfo, setBrowserInfo] = useState({});
   const [currentSideKey, setCurrentSideKey] = useState('sideServer');
   const [sideAlign, setSideAlign] = useState('left');
@@ -43,10 +43,10 @@ export const ThemeProvider = ({ children }) => {
     // Set the first color theme
     if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
       setCurrentTheme(customThemes.dark);
-      callApi('setTheme', customThemes.dark).then((data) => {});
+      // callApi('setTheme', customThemes.dark).then((data) => {});
     } else {
       setCurrentTheme(customThemes.light);
-      callApi('setTheme', customThemes.light).then((data) => {});
+      // callApi('setTheme', customThemes.light).then((data) => {});
     }
     // Monitoring system color theme changes
     const handleColorSchemeChange = (event) => {

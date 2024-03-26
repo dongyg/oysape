@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Base64 } from 'js-base64';
 import { Terminal } from "xterm";
 import { FitAddon } from "xterm-addon-fit";
@@ -7,7 +7,7 @@ import "xterm/css/xterm.css";
 
 import { useCustomContext } from '../Contexts/CustomContext'
 import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
-import { callApi, writeWelcome, colorizeText } from '../Common/global';
+import { uniqueClientID, callApi, API_HOST, getTokenFromCookie, writeWelcome, colorizeText } from '../Common/global';
 import "./Terminal.css";
 import { message } from 'antd';
 
@@ -20,17 +20,14 @@ const termOptions = {
     cursorBlink: true,
 }
 
-export default function CombinedTerminal(props) {
+export default function WorkspaceTerminal(props) {
     const { customTheme, setTabActiveKey, tabItems, setTabItems, setBrowserInfo, userSession } = useCustomContext();
     const xtermRef = React.useRef(null)
     const divTerminalContainer = React.useRef(null)
     const currentWorkingChannel = React.useRef('')
     const uniqueKey = props.uniqueKey;
-    // const clearTerminal = '\x1b[2J\r';
-    // const ctrl_c = '\x03';
-    // const ctrl_d = '\x04';
-    // const hideCursor = '\x1b[?25l';
-    // const showCursor = '\x1b[?25h';
+    const socketObject = React.useRef(null);
+    const token = getTokenFromCookie();
 
     const updateWorkspaceTabTitle = (serverKey) => {
         currentWorkingChannel.current = serverKey;
@@ -47,7 +44,7 @@ export default function CombinedTerminal(props) {
                 return;
             }
             // Set the workspace's tab label if workspace is interaction
-            if(userSession.teams[userSession.team0].members.find(item => item.email === userSession.email)?.access_terminal) {
+            if(userSession.teams[userSession.team0].is_creator || userSession.teams[userSession.team0].members.find(item => item.email === userSession.email)?.access_terminal) {
                 updateWorkspaceTabTitle(taskObj.interaction==='interactive'||taskObj.interaction==='terminal'?serverKey:'');
             }
             // xtermRef.current.write(showCursor);
@@ -83,47 +80,30 @@ export default function CombinedTerminal(props) {
     window.callTask = callTask;
     window.callPipeline = callPipeline;
     window.updateWorkspaceTabTitle = updateWorkspaceTabTitle;
-    window.closeWorkspaceChannel = (serverKey) => {
-        currentWorkingChannel.current = '';
-        tabItems[0].label = 'Workspace';
-        setTabItems([...tabItems]);
-    }
 
     React.useEffect(() => {
         xtermRef.current = new Terminal(termOptions);
         xtermRef.current.fitAddon = new FitAddon();
         xtermRef.current.searchAddon = new SearchAddon();
 
-        const prompt = () => {
-            xtermRef.current.write("\x1b[33m$\x1b[0m ");
+        const sendData = (data) => {
+            socketObject.current.send(JSON.stringify({clientId: uniqueClientID, uniqueKey:uniqueKey, token:token, input:data}));
+            if (!xtermRef.current.resized) {
+                onResize();
+                xtermRef.current.resized = true;
+            }
         }
-
         const handlerData = (data) => {
-            // console.log('cmd:', data);
             if(!currentWorkingChannel.current) return;
-            callApi('sendCombinedInput', {input:data})
-                .then(res => {
-                    if (!xtermRef.current.resized) {
-                        onResize();
-                        xtermRef.current.resized = true;
-                    }
-                })
-                .catch(err => {
-                    console.log(err);
-                    xtermRef.current.write(data);
-                    if(data === '\r') {
-                        xtermRef.current.write('\n');
-                        prompt();
-                    }
-                });
+            sendData(data);
         }
 
         const onResize = () => {
             if(window.oypaseTabs.tabActiveKey !== uniqueKey) return;
             // console.log('cols: ' + xtermRef.current._core._bufferService.cols, 'rows: ' + xtermRef.current._core._bufferService.rows);
             xtermRef.current.fitAddon.fit();
-            if (window.pywebview) {
-                callApi('resizeAllCombChannel', {cols:xtermRef.current._core._bufferService.cols, rows:xtermRef.current._core._bufferService.rows});
+            if(socketObject.current && socketObject.current.readyState === WebSocket.OPEN) {
+                socketObject.current.send(JSON.stringify({action:'resize', uniqueKey:uniqueKey, token:token, cols:xtermRef.current._core._bufferService.cols, rows:xtermRef.current._core._bufferService.rows}));
             }
         }
 
@@ -136,26 +116,49 @@ export default function CombinedTerminal(props) {
         // xtermRef.current.write(hideCursor+clearTerminal);
         setBrowserInfo(xtermRef.current._core.browser);
         writeWelcome(xtermRef.current);
+        xtermRef.current.write(userSession.team0);
         window.addEventListener('resize', onResize);
         console.log(navigator.userAgent);
-        if (window.pywebview) {
-            if (!window.pywebview.workbridge) {
-                window.pywebview.workbridge = {}
-            }
-            window.pywebview.workbridge['onChannelData'] = (data) => {
-                // console.log('out: '+Base64.decode(data));
-                xtermRef.current.write(Base64.decode(data));
-            }
-        }
         return () => {
-            if (window.pywebview) {
-                callApi('closeCombConnections', {});
-                delete window.pywebview.workbridge['onChannelData'];
-            }
+            callApi('closeCombConnections', {});
             window.removeEventListener('resize', onResize);
             xtermRef.current.dispose();
         }
-    }, [setBrowserInfo, uniqueKey]);
+    }, [setBrowserInfo, uniqueKey, token]);
+
+    React.useEffect(() => {
+        const hasSocket = !!socketObject.current;
+        if(!hasSocket) {
+            socketObject.current = new WebSocket(API_HOST.replace('http', 'ws')+'/websocket');
+            socketObject.current.onopen = () => {
+                // console.log('WebSocket Connected');
+                socketObject.current.send(JSON.stringify({clientId: uniqueClientID, action: 'init', token:token, uniqueKey:uniqueKey }));
+            }
+            socketObject.current.onmessage = function(event) {
+                const message = event.data;
+                const pack1 = JSON.parse(Base64.decode(message));
+                if(pack1.action === 'data') {
+                    xtermRef.current.write(Base64.decode(pack1.data));
+                }else if(pack1.action === 'closeThisTab') {
+                    window.closeThisTab && window.closeThisTab(pack1.uniqueKey);
+                }else if(pack1.action === 'updateWorkspaceTabTitle') {
+                    window.updateWorkspaceTabTitle && window.updateWorkspaceTabTitle(pack1.serverKey);
+                }
+            }
+            socketObject.current.onclose = () => {
+                // console.log('WebSocket Disconnected');
+            };
+            socketObject.current.onerror = (error) => {
+                // console.error('WebSocket Error: ', error);
+            };
+        }
+        return () => {
+            if(socketObject.current) {
+                socketObject.current.close();
+                socketObject.current = null;
+            }
+        }
+    }, [setTabItems, tabItems, uniqueKey, token]);
 
     React.useEffect(() => {
         xtermRef.current.setOption('theme', {

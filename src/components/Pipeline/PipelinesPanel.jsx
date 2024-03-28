@@ -39,8 +39,8 @@ export default function PipelinesPanel() {
       callApi('importTo', {what: 'pipelines'}).then((data) => {
         if(data && data.errinfo) {
           message.error(data.errinfo);
-        }else{
-          window.reloadPipelineList();
+        }else if(data && data.pipelines) {
+          setUserSession({...userSession, pipelines: data.pipelines});
         }
       })
     }else if(key === 'menuExportPipeline') {

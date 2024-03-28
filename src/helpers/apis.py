@@ -101,9 +101,19 @@ class ApiBase:
     def fullscreen(self):
         webview.windows[0].toggle_fullscreen()
 
-    def choose_file(self):
-        filename = webview.windows[0].create_file_dialog(webview.OPEN_DIALOG)
-        return filename[0] if filename else ''
+    def choose_file_read(self, params={}):
+        if self.isDesktopVersion():
+            filename = webview.windows[0].create_file_dialog(webview.OPEN_DIALOG)
+            return filename[0] if filename else ''
+        else:
+            return 'Give the file path directly'
+
+    def choose_file_write(self, params={}):
+        filename = webview.windows[0].create_file_dialog(webview.SAVE_DIALOG)
+        return filename
+
+    def isDesktopVersion(self):
+        return self.clientUserAgent.find('Oysape') >= 0
 
     def get_absolute_path(self, params):
         tpath = params.get('path', '')
@@ -143,14 +153,6 @@ class ApiBase:
         with open(path, 'w') as f:
             f.write(content)
 
-    def save_content(self, content):
-        # Save content to the file given by save dialog
-        filename = webview.windows[0].create_file_dialog(webview.SAVE_DIALOG)
-        if not filename:
-            return
-        with open(filename, 'w') as f:
-            f.write(content)
-
     def setTheme(self, params):
         self.themeType = (params or {}).get('type', self.themeType)
 
@@ -170,14 +172,13 @@ class ApiBase:
 
 class ApiOauth(ApiBase):
     def signInWithEmail(self, params):
-        return auth.openEmailOAuthWindow(self.clientId, self.clientUserAgent)
+        return auth.openOAuthWindow('email', self.clientId, self.clientUserAgent, params.get('srh'))
 
     def signInWithGithub(self, params):
-        print(self.clientId, self.clientUserAgent)
-        return auth.openGithubOAuthWindow(self.clientId, self.clientUserAgent)
+        return auth.openOAuthWindow('github', self.clientId, self.clientUserAgent, params.get('srh'))
 
     def signInWithGoogle(self, params):
-        return auth.openGoogleOAuthWindow(self.clientId, self.clientUserAgent)
+        return auth.openOAuthWindow('google', self.clientId, self.clientUserAgent, params.get('srh'))
 
     def querySigninResult(self, params):
         return {'token': self.userToken}
@@ -194,6 +195,7 @@ class ApiOysape(ApiOauth):
         return {'errinfo': 'test called'}
 
     def hasPermission(self, params):
+        # Return True if the user has permission indicated by params.perm
         perm = params.get('perm') if isinstance(params, dict) else params
         return self.userSession['teams'][self.userSession['team0']]['is_creator'] or next((x for x in self.userSession['teams'][self.userSession['team0']]['members'] if x['email'] == self.userSession['email'] and x.get(perm)), None)
 
@@ -314,13 +316,16 @@ class ApiOysape(ApiOauth):
         return retval
 
     def addFolder(self, params={}):
-        foldername = webview.windows[0].create_file_dialog(webview.FOLDER_DIALOG)
-        if foldername and foldername[0] and foldername[0] not in [x['path'] for x in self.listFolder]:
-            self.listFolder.append({'path':foldername[0]})
-            self.importTo({'what': 'folders', 'items': self.listFolder})
-            # with open(filename_folders, 'w') as f:
-            #     json.dump(self.listFolder, f, indent=4)
-        return {'folderFiles':self.getFolderFiles()}
+        if self.isDesktopVersion():
+            foldername = webview.windows[0].create_file_dialog(webview.FOLDER_DIALOG)
+            if foldername and foldername[0] and foldername[0] not in [x['path'] for x in self.listFolder]:
+                self.listFolder.append({'path':foldername[0]})
+                self.importTo({'what': 'folders', 'items': self.listFolder})
+                # with open(filename_folders, 'w') as f:
+                #     json.dump(self.listFolder, f, indent=4)
+            return {'folderFiles':self.getFolderFiles()}
+        else:
+            return {'errinfo': "Please give a folder to add"}
 
     def removeFolder(self, params={}):
         path = params.get('path', '')
@@ -371,10 +376,18 @@ class ApiOysape(ApiOauth):
         try:
             import_list = params.get('items')
             if import_list is None:
-                fname = self.choose_file()
-                if fname:
-                    with open(fname, 'r') as f1:
-                        import_list = json.load(f1)
+                if self.isDesktopVersion():
+                    fname = self.choose_file_read()
+                    if fname:
+                        with open(fname, 'r') as f1:
+                            import_list = json.load(f1)
+                elif params.get('filename'):
+                    fname = params.get('filename')
+                    if os.path.isfile(fname):
+                        with open(fname, 'r') as f1:
+                            import_list = json.load(f1)
+                else:
+                    return {"errinfo": "Please give a file to import"}
             elif isinstance(import_list, list):
                 retval = tools.setItemsToServer(what, import_list, self.userToken)
                 if retval and retval.get('errinfo'):
@@ -404,7 +417,18 @@ class ApiOysape(ApiOauth):
         if what not in objs.keys():
             return {"errinfo": "Invalid operation"}
         try:
-            self.save_content(json.dumps(objs[what], indent=4))
+            if self.isDesktopVersion():
+                fname = self.choose_file_write()
+                if fname:
+                    with open(fname, 'w') as f1:
+                        json.dump(objs[what], f1, indent=4)
+            elif params.get('filename'):
+                fname = params.get('filename')
+                if os.path.isfile(fname):
+                    with open(fname, 'w') as f1:
+                        json.dump(objs[what], f1, indent=4)
+            else:
+                return {"errinfo": "Please give a file to export"}
         except Exception as e:
             return {"errinfo": str(e)}
 
@@ -417,11 +441,13 @@ class ApiTerminal(ApiOysape):
         serverKey = params.get('serverKey')
         uniqueKey = params.get('uniqueKey')
         taskKey = params.get('taskKey')
+        if not self.userSession.get('servers'):
+            return {"errinfo": "Session expired, please re-open the app."}
         slist = [x for x in self.userSession['servers'] if x["key"] == serverKey]
         if len(slist) == 0:
             return
         if not uniqueKey in self.terminalConnections:
-            print('createTermConnection', serverKey, uniqueKey)
+            print('createTermConnection [%s] [%s]'%(serverKey, uniqueKey))
             conn_str = sshutils.create_ssh_string(slist[0].get("address"), slist[0].get("username"), slist[0].get("port"))
             self.terminalConnections[uniqueKey] = sshutils.TerminalClient(conn_str, private_key=slist[0].get("prikey"), serverKey=serverKey, startup=slist[0].get("tasks"))
             self.terminalConnections[uniqueKey].parentApi = self
@@ -439,6 +465,11 @@ class ApiTerminal(ApiOysape):
             # print('closeTermConnection', uniqueKey)
             self.terminalConnections[uniqueKey].close()
             del self.terminalConnections[uniqueKey]
+
+    def closeAllTerminals(self, params={}):
+        v1 = self.terminalConnections.keys()
+        for uniqueKey in v1:
+            self.closeTermConnection({'uniqueKey':uniqueKey})
 
     def resizeTermChannel(self, params):
         uniqueKey, width, height = params.get('uniqueKey'), params.get('cols'), params.get('rows')

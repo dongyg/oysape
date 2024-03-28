@@ -39,8 +39,8 @@ export default function TasksPanel() {
       callApi('importTo', {what: 'tasks'}).then((data) => {
         if(data && data.errinfo) {
           message.error(data.errinfo);
-        }else{
-          window.reloadTaskList();
+        }else if(data && data.tasks) {
+          setUserSession({...userSession, tasks: data.tasks});
         }
       })
     }else if(key === 'menuExportTask') {

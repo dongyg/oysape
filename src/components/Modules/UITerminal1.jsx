@@ -1,12 +1,13 @@
 import React from 'react';
 import { Base64 } from 'js-base64';
+import { App } from "antd";
 import { Terminal } from "xterm";
 import { FitAddon } from "xterm-addon-fit";
 import "xterm/css/xterm.css";
 
 import { useCustomContext } from '../Contexts/CustomContext'
 import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
-import { callApi, API_HOST, getTokenFromCookie } from '../Common/global';
+import { uniqueClientID, callApi, getTokenFromCookie } from '../Common/global';
 import "./Terminal.css";
 
 const termOptions = {
@@ -17,6 +18,7 @@ const termOptions = {
 }
 
 export default function WebTerminal(props) {
+    const { message } = App.useApp();
     const { customTheme, userSession } = useCustomContext();
     const xtermRef = React.useRef(null)
     const divTerminalContainer = React.useRef(null)
@@ -33,7 +35,7 @@ export default function WebTerminal(props) {
         xtermRef.current.fitAddon = new FitAddon();
 
         const sendData = (data) => {
-            socketObject.current.send(JSON.stringify({uniqueKey:uniqueKey, serverKey:serverKey, token:token, input:data}));
+            socketObject.current.send(JSON.stringify({clientId: uniqueClientID, uniqueKey:uniqueKey, serverKey:serverKey, token:token, input:data}));
             if (!xtermRef.current.resized) {
                 onResize();
                 xtermRef.current.resized = true;
@@ -50,7 +52,7 @@ export default function WebTerminal(props) {
             // console.log('cols: ' + xtermRef.current._core._bufferService.cols, 'rows: ' + xtermRef.current._core._bufferService.rows);
             xtermRef.current.fitAddon.fit();
             if(socketObject.current && socketObject.current.readyState === WebSocket.OPEN) {
-                socketObject.current.send(JSON.stringify({action:'resize', uniqueKey:uniqueKey, token:token, cols:xtermRef.current._core._bufferService.cols, rows:xtermRef.current._core._bufferService.rows}));
+                socketObject.current.send(JSON.stringify({clientId: uniqueClientID, action:'resize', uniqueKey:uniqueKey, token:token, cols:xtermRef.current._core._bufferService.cols, rows:xtermRef.current._core._bufferService.rows}));
             }
         }
 
@@ -64,7 +66,10 @@ export default function WebTerminal(props) {
         window.addEventListener('resize', onResize);
         if(!hasTerm) {
             callApi('createTermConnection', {serverKey:serverKey, uniqueKey:uniqueKey, taskKey:taskKey}).then(res => {
-                if(withCommand) {
+                if(res?.errinfo) {
+                    if(xtermRef.current) { xtermRef.current.write(res.errinfo); }
+                    else { message.error(res.errinfo); }
+                }else if(withCommand) {
                     setTimeout(() => {
                         sendData(withCommand+'\r');
                     }, 500);
@@ -76,15 +81,15 @@ export default function WebTerminal(props) {
             window.removeEventListener('resize', onResize);
             if(xtermRef.current) xtermRef.current.dispose();
         }
-    }, [uniqueKey, serverKey, taskKey, userSession.teams, userSession.team0, userSession.email, withCommand, token, userSession]);
+    }, [uniqueKey, serverKey, taskKey, userSession.teams, userSession.team0, userSession.email, withCommand, token, userSession, message]);
 
     React.useEffect(() => {
         const hasSocket = !!socketObject.current;
         if(!hasSocket) {
-            socketObject.current = new WebSocket(API_HOST.replace('http', 'ws')+'/websocket');
+            socketObject.current = new WebSocket((window.OYSAPE_BACKEND_HOST||'').replace('http', 'ws')+'/websocket');
             socketObject.current.onopen = () => {
                 // console.log('WebSocket Connected');
-                socketObject.current.send(JSON.stringify({ action: 'init', uniqueKey:uniqueKey, token:token }));
+                socketObject.current.send(JSON.stringify({ clientId: uniqueClientID, action: 'init', uniqueKey:uniqueKey, token:token }));
             }
             socketObject.current.onmessage = function(event) {
                 const message = event.data;

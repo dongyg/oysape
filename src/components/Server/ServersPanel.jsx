@@ -41,7 +41,7 @@ export default function ServersPanel() {
       callApi('importTo', {what: 'servers'}).then((data) => {
         if(data && data.errinfo) {
           message.error(data.errinfo);
-        }else{
+        }else if(data.servers) {
           setUserSession({...userSession, servers: data.servers});
         }
       })

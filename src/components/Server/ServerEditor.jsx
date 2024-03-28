@@ -72,7 +72,7 @@ export default function ServerEditor(props) {
     checkAuthFields(errorInfo.values);
   }
   const openFile = (e) => {
-    callApi('choose_file').then((data) => {
+    callApi('choose_file_read').then((data) => {
       if(data) {
         form.setFieldsValue({prikey: data});
       }

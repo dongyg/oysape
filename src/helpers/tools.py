@@ -125,21 +125,21 @@ def callServerApiGet(url, params, token=''):
     custom_headers = {}
     if token:
         custom_headers['Authorization'] = 'Bearer ' + token
-    data = send_get_request(consts.API_HOST + consts.API_ROOT + url, params, )
+    data = send_get_request(consts.OYSAPE_HOST + consts.API_ROOT + url, params, )
     return data
 
 def callServerApiPost(url, params, token=''):
     custom_headers = {}
     if token:
         custom_headers['Authorization'] = 'Bearer ' + token
-    data = send_post_request(consts.API_HOST + consts.API_ROOT + url, params, custom_headers)
+    data = send_post_request(consts.OYSAPE_HOST + consts.API_ROOT + url, params, custom_headers)
     return data
 
 def callServerApiDelete(url, params, token=''):
     custom_headers = {}
     if token:
         custom_headers['Authorization'] = 'Bearer ' + token
-    data = send_delete_request(consts.API_HOST + consts.API_ROOT + url, params, custom_headers)
+    data = send_delete_request(consts.OYSAPE_HOST + consts.API_ROOT + url, params, custom_headers)
     return data
 
 def setItemsToServer(what, items, token=''):

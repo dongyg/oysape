@@ -8,7 +8,7 @@ import { AiOutlineCloudServer } from "react-icons/ai";
 import { UnorderedListOutlined, DoubleLeftOutlined, DoubleRightOutlined, MenuFoldOutlined } from "@ant-design/icons";
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { callApi } from '../Common/global';
+import { callApi, isDesktopVersion } from '../Common/global';
 // import ProfileButton from '../Common/ProfileButton'
 import ServersPanel from '../Server/ServersPanel';
 import ProjectsPanel from '../Project/ProjectsPanel';
@@ -60,8 +60,10 @@ export default function SideFrame() {
     if(userSession.teams[userSession.team0].is_creator || mobj?.access_docker){
       buttons.push({ key: 'sideDocker', label: <Tooltip placement="right" title={'Docker ('+(browserInfo&&browserInfo.isMac ? 'Command' : 'Ctrl')+'+Shift+D)'}><FaDocker style={{fontSize:'2em', marginRight: '0px'}} /></Tooltip>, children: <DockersPanel /> });
     }
-    // access_files will not affect the Desktop version
-    buttons.push({ key: 'sideExplorer', label: <Tooltip placement="right" title={'File Explorer ('+(browserInfo&&browserInfo.isMac ? 'Command' : 'Ctrl')+'+Shift+E)'}><BsFiles style={{fontSize:'2em', marginRight: '0px'}} /></Tooltip>, children: <ProjectsPanel /> })
+    // access_files will not affect the Desktop version. This is invisible on the web version.
+    if(isDesktopVersion){
+      buttons.push({ key: 'sideExplorer', label: <Tooltip placement="right" title={'File Explorer ('+(browserInfo&&browserInfo.isMac ? 'Command' : 'Ctrl')+'+Shift+E)'}><BsFiles style={{fontSize:'2em', marginRight: '0px'}} /></Tooltip>, children: <ProjectsPanel /> })
+    }
     return buttons;
   }
   React.useEffect(() => {

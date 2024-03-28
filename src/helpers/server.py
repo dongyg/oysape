@@ -8,7 +8,7 @@ from gevent.pywsgi import WSGIServer
 from geventwebsocket.handler import WebSocketHandler
 import webview
 from . import tools, apis
-from .templs import template_signin_success
+from .templs import template_signin_success_close, template_signin_success_redirect
 
 KVStore = {}
 app = Bottle()
@@ -25,30 +25,47 @@ def handle_websocket():
             init_message = wsock.receive()
             if not init_message:
                 break
-            recvData = json.loads(init_message)
+            try:
+                recvData = json.loads(init_message)
+            except Exception as e:
+                print('SocketError:', (request.headers.get('X-Forwarded-For') or request.remote_addr), init_message)
+                break
             print(recvData)
             clientId = recvData.get('clientId')
             action = recvData.get('action')
             uniqueKey = recvData.get('uniqueKey')
             token = recvData.get('token')
-            if clientId not in apis.apiInstances:
-                apis.apiInstances[clientId] = apis.ApiOverHttp(clientId=clientId, clientUserAgent=request.headers.get('User-Agent'))
-            if action == 'init':
-                apis.apiInstances[clientId].socketConnections[uniqueKey] = wsock
-            elif action == 'resize':
-                if token == apis.apiInstances[clientId].userToken:
-                    apis.apiInstances[clientId].resizeAllCombChannel(recvData) if uniqueKey == 'workspace' else apis.apiInstances[clientId].resizeTermChannel(recvData)
+            apiObject = apis.apiInstances.get(clientId) if clientId else None
+            if apiObject and uniqueKey and token and token == apiObject.userToken:
+                if action == 'init':
+                    print('Init socket', clientId, uniqueKey)
+                    apiObject.socketConnections[uniqueKey] = wsock
+                elif action == 'resize':
+                    apiObject.resizeAllCombChannel(recvData) if uniqueKey == 'workspace' else apiObject.resizeTermChannel(recvData)
+                elif action == 'ping':
+                    pass
+                else:
+                    apiObject.sendCombinedInput(recvData) if uniqueKey == 'workspace' else apiObject.sendTerminalInput(recvData)
             else:
-                if token == apis.apiInstances[clientId].userToken:
-                    apis.apiInstances[clientId].sendCombinedInput(recvData) if uniqueKey == 'workspace' else apis.apiInstances[clientId].sendTerminalInput(recvData)
+                break
     except WebSocketError:
         traceback.print_exc()
     finally:
-        if clientId and clientId in apis.apiInstances and uniqueKey in apis.apiInstances[clientId].socketConnections:
-            del apis.apiInstances[clientId].socketConnections[uniqueKey]
         wsock.close()
+        if clientId and clientId in apis.apiInstances:
+            if uniqueKey in apis.apiInstances[clientId].socketConnections:
+                print('Close socket', clientId, uniqueKey)
+                del apis.apiInstances[clientId].socketConnections[uniqueKey]
+            if uniqueKey == 'workspace':
+                print('Close all terminals', 'workspace:', len(apis.apiInstances[clientId].terminalConnections), 'terminal:', len(apis.apiInstances[clientId].combinedConnections))
+                apis.apiInstances[clientId].closeCombConnections()
+                apis.apiInstances[clientId].closeAllTerminals()
+                print('Remove API object', clientId)
+                del apis.apiInstances[clientId]
+
 
 def processSigninResponse(retval):
+    print(retval)
     if retval and retval.get('data') and retval.get('data').get('token') and retval.get('data').get('clientId'):
         # check clientId
         clientId = retval.get('data').get('clientId')
@@ -56,9 +73,15 @@ def processSigninResponse(retval):
             return 'Client not found.'
         # Set the token to this client. The sign page will get the token and reload the user session
         apis.apiInstances[clientId].userToken = retval.get('data').get('token')
-        # PS: Cannot save the token into the cookie here. Because the browser is the system default browser, not the webview inside the Oysape.
         # Return the success page
-        rendered_template = template_signin_success
+        if apis.apiInstances[clientId].isDesktopVersion():
+            # PS: Cannot save the token into the cookie here. Because the browser is the system default browser, not the webview inside the Oysape.
+            rendered_template = template_signin_success_close
+        else:
+            # In the web version, can set the cookie here
+            print('Set cookie')
+            response.set_cookie("client_token", retval.get('data').get('token'), path="/", max_age=3600*24*30)
+            rendered_template = template_signin_success_redirect.replace('{url}', 'http://192.168.0.2:19790/index.html')
         return rendered_template
     elif retval and retval.get('errinfo'):
         return retval.get('errinfo')
@@ -110,10 +133,8 @@ def add_cors_headers():
 
 @app.route('/api/<functionName>', method='POST')
 def api(functionName):
-    response.headers['Access-Control-Allow-Origin'] = 'http://localhost:3000'
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Origin, Accept, Content-Type, X-Requested-With, X-CSRF-Token, Client-Id, Authorization'
-    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    print(request.urlparts)
+    add_cors_headers()
     data = request.json
     clientIpAddress = request.headers.get('X-Forwarded-For') or request.remote_addr
     authorization_header = (request.headers.get('Authorization') or '').replace('Bearer', '').strip()
@@ -136,7 +157,8 @@ def api(functionName):
     elif not authorization_header:
         return json.dumps({"errinfo": "Unauthorized."})
     elif authorization_header:
-        clientId = hashlib.md5(authorization_header.encode('utf-8')).hexdigest()
+        # clientId = hashlib.md5(authorization_header.encode('utf-8')).hexdigest()
+        clientId = request.headers.get('Client-Id') or hashlib.md5((request.headers.get('User-Agent') + '@' + clientIpAddress + tools.getRandomString(64)).encode('utf-8')).hexdigest()
         if not clientId in apis.apiInstances:
             apis.apiInstances[clientId] = apis.ApiOverHttp(clientId=clientId, clientUserAgent=request.headers.get('User-Agent'))
             apis.apiInstances[clientId].userToken = authorization_header
@@ -170,16 +192,16 @@ def serve_static(filename):
     return static_file(filename, root=aroot)
 
 
-def open_http_server():
+def open_http_server(host=''):
     # run(app, host='127.0.0.1', port=19790)
-    server = WSGIServer(("127.0.0.1", 19790), app, handler_class=WebSocketHandler)
+    server = WSGIServer((host or "127.0.0.1", 19790), app, handler_class=WebSocketHandler)
     server.serve_forever()
 
 
-def start_http_server():
+def start_http_server(host=''):
     try:
         # Start a thread with the server
-        http_server_thread = threading.Thread(target=open_http_server)
+        http_server_thread = threading.Thread(target=open_http_server, kwargs={'host': host})
         http_server_thread.daemon = True  # Set as a daemon thread
         http_server_thread.start()
     except:

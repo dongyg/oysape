@@ -12,44 +12,49 @@ export default function BodyContainer() {
 
   const handleSigninWithEmail = () => {
     setLoading(true);
-    callApi('signInWithEmail', {}).then((data) => {
+    callApi('signInWithEmail', {srh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
       callWaitForSigninResult(data);
     });
   }
   const handleSigninWithGithub = () => {
     setLoading(true);
-    callApi('signInWithGithub', {}).then((data) => {
+    callApi('signInWithGithub', {srh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
       callWaitForSigninResult(data);
     });
   }
   const handleSigninWithGoogle = () => {
     setLoading(true);
-    callApi('signInWithGoogle', {}).then((data) => {
+    callApi('signInWithGoogle', {srh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
       callWaitForSigninResult(data);
     });
   }
   const callWaitForSigninResult = (waitData) => {
-    if(waitData?.clientId) {
-      setClientId(waitData.clientId);
-      const waitForSigninResultTimer = setInterval(() => {
-        callApi('querySigninResult', {}).then((loginData) => {
-          if(loginData && loginData.token) {
-            clearInterval(waitForSigninResultTimer);
-            setTokenToCookie(loginData.token);
-            window.reloadUserSession(loginData.token);
-          }else if(loginData && loginData.errinfo) {
-            clearInterval(waitForSigninResultTimer);
-            showMessageOnSigninPage(loginData.errinfo, 'error');
-          }
-        })
-      }, 1000);
-    }
-    if(waitData?.url) {
-      window.open(waitData.url);
-    }
     if(waitData?.errinfo) {
       showMessageOnSigninPage(waitData.errinfo, 'error');
       setLoading(false);
+    } else {
+      if(waitData?.clientId) {
+        setClientId(waitData.clientId);
+        const waitForSigninResultTimer = setInterval(() => {
+          callApi('querySigninResult', {}).then((loginData) => {
+            if(loginData && loginData.token) {
+              clearInterval(waitForSigninResultTimer);
+              setTokenToCookie(loginData.token);
+              window.reloadUserSession(loginData.token);
+            }else if(loginData && loginData.errinfo) {
+              clearInterval(waitForSigninResultTimer);
+              showMessageOnSigninPage(loginData.errinfo, 'error');
+            }
+          })
+        }, 1000);
+      }
+      if(waitData?.url) {
+        if(isDesktopVersion){
+          window.open(waitData.url);
+        } else {
+          window.location.href = waitData.url;
+        }
+      }
     }
   }
 

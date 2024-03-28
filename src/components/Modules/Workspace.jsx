@@ -7,7 +7,7 @@ import "xterm/css/xterm.css";
 
 import { useCustomContext } from '../Contexts/CustomContext'
 import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
-import { uniqueClientID, callApi, API_HOST, getTokenFromCookie, writeWelcome, colorizeText } from '../Common/global';
+import { uniqueClientID, callApi, getTokenFromCookie, writeWelcome, colorizeText } from '../Common/global';
 import "./Terminal.css";
 import { message } from 'antd';
 
@@ -27,6 +27,7 @@ export default function WorkspaceTerminal(props) {
     const currentWorkingChannel = React.useRef('')
     const uniqueKey = props.uniqueKey;
     const socketObject = React.useRef(null);
+    const socketPinger = React.useRef(null);
     const token = getTokenFromCookie();
 
     const updateWorkspaceTabTitle = (serverKey) => {
@@ -103,7 +104,7 @@ export default function WorkspaceTerminal(props) {
             // console.log('cols: ' + xtermRef.current._core._bufferService.cols, 'rows: ' + xtermRef.current._core._bufferService.rows);
             xtermRef.current.fitAddon.fit();
             if(socketObject.current && socketObject.current.readyState === WebSocket.OPEN) {
-                socketObject.current.send(JSON.stringify({action:'resize', uniqueKey:uniqueKey, token:token, cols:xtermRef.current._core._bufferService.cols, rows:xtermRef.current._core._bufferService.rows}));
+                socketObject.current.send(JSON.stringify({clientId: uniqueClientID, action:'resize', uniqueKey:uniqueKey, token:token, cols:xtermRef.current._core._bufferService.cols, rows:xtermRef.current._core._bufferService.rows}));
             }
         }
 
@@ -116,7 +117,6 @@ export default function WorkspaceTerminal(props) {
         // xtermRef.current.write(hideCursor+clearTerminal);
         setBrowserInfo(xtermRef.current._core.browser);
         writeWelcome(xtermRef.current);
-        xtermRef.current.write(userSession.team0);
         window.addEventListener('resize', onResize);
         console.log(navigator.userAgent);
         return () => {
@@ -124,15 +124,18 @@ export default function WorkspaceTerminal(props) {
             window.removeEventListener('resize', onResize);
             xtermRef.current.dispose();
         }
-    }, [setBrowserInfo, uniqueKey, token]);
+    }, [setBrowserInfo, uniqueKey, token, userSession]);
 
     React.useEffect(() => {
         const hasSocket = !!socketObject.current;
         if(!hasSocket) {
-            socketObject.current = new WebSocket(API_HOST.replace('http', 'ws')+'/websocket');
+            socketObject.current = new WebSocket((window.OYSAPE_BACKEND_HOST||'').replace('http', 'ws')+'/websocket');
             socketObject.current.onopen = () => {
                 // console.log('WebSocket Connected');
-                socketObject.current.send(JSON.stringify({clientId: uniqueClientID, action: 'init', token:token, uniqueKey:uniqueKey }));
+                socketObject.current.send(JSON.stringify({clientId: uniqueClientID, action: 'init', uniqueKey:uniqueKey, token:token }));
+                socketPinger.current = setInterval(() => {
+                    socketObject.current.send(JSON.stringify({clientId: uniqueClientID, action: 'ping', uniqueKey:uniqueKey, token:token }));
+                }, 60*1000);
             }
             socketObject.current.onmessage = function(event) {
                 const message = event.data;
@@ -147,9 +150,11 @@ export default function WorkspaceTerminal(props) {
             }
             socketObject.current.onclose = () => {
                 // console.log('WebSocket Disconnected');
+                socketPinger.current && clearInterval(socketPinger.current);
             };
             socketObject.current.onerror = (error) => {
                 // console.error('WebSocket Error: ', error);
+                socketPinger.current && clearInterval(socketPinger.current);
             };
         }
         return () => {
@@ -158,7 +163,7 @@ export default function WorkspaceTerminal(props) {
                 socketObject.current = null;
             }
         }
-    }, [setTabItems, tabItems, uniqueKey, token]);
+    }, [token, uniqueKey]);
 
     React.useEffect(() => {
         xtermRef.current.setOption('theme', {

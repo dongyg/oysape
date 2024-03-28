@@ -12,8 +12,6 @@ export const setClientId = (id) => {
   uniqueClientID = id;
 }
 
-export const API_HOST = 'http://127.0.0.1:19790';
-
 export const callApi = (functionName, params) => {
   if(window.pywebview && window.pywebview.api) {
     console.log('callApi - pywebview: ' + functionName);
@@ -48,7 +46,7 @@ export const callApi = (functionName, params) => {
     if(params) {
       options.body = JSON.stringify(params);
     }
-    return fetch(API_HOST+'/api/' + functionName, options).then(response => {
+    return fetch((window.OYSAPE_BACKEND_HOST||'')+'/api/' + functionName, options).then(response => {
       return response.json()
     }).catch(error => {
       console.error('API call failed:', error);
@@ -81,7 +79,7 @@ export function getTokenFromCookie() {
 
 export async function fetchData(url = '', data = {}) {
   const queryParams = new URLSearchParams(data).toString();
-  const absUrl = url.startsWith('http') ? url : (API_HOST + url) + (queryParams ? `?${queryParams}` : '');
+  const absUrl = url.startsWith('http') ? url : ((window.OYSAPE_BACKEND_HOST||'') + url) + (queryParams ? `?${queryParams}` : '');
   const token = getTokenFromCookie();
   const options = {
     method: 'GET',
@@ -105,7 +103,7 @@ export async function fetchData(url = '', data = {}) {
 
 export async function requestDelete(url = '', data = {}) {
   const queryParams = new URLSearchParams(data).toString();
-  const absUrl = url.startsWith('http') ? url : (API_HOST + url) + (queryParams ? `?${queryParams}` : '');
+  const absUrl = url.startsWith('http') ? url : ((window.OYSAPE_BACKEND_HOST||'') + url) + (queryParams ? `?${queryParams}` : '');
   const token = getTokenFromCookie();
   const options = {
     method: 'DELETE',
@@ -128,7 +126,7 @@ export async function requestDelete(url = '', data = {}) {
 }
 
 export async function postData(url = '', data = {}) {
-  const absUrl = url.startsWith('http') ? url : (API_HOST + url);
+  const absUrl = url.startsWith('http') ? url : ((window.OYSAPE_BACKEND_HOST||'') + url);
   const token = getTokenFromCookie();
   const options = {
     method: 'POST',
@@ -290,7 +288,7 @@ export const writeWelcome = function(xterm) {
     // xterm.write('\x1b[35m'+text+'\x1b[0m '); // purple text
     // xterm.write('\x1b[36m'+text+'\x1b[0m '); // cyan text
     // xterm.write('\x1b[37m'+text+'\x1b[0m \r\n'); // white text
-    xterm.write(colorizeText('Welcome! '+uniqueClientID+'\r\n\r\n', 'green'));
+    xterm.write(colorizeText('Welcome! \r\n\r\n', 'green'));
     xterm.write(colorizeText(ctrlOrMeta+'+K','cyan') + ' - Clear the workspace/terminal\r\n\r\n');
     xterm.write(colorizeText(ctrlOrMeta+'+P','cyan') + ' - Search for Servers/Tasks/Pipelines/Files\r\n\r\n');
     xterm.write(colorizeText(ctrlOrMeta+'+Shift+@','cyan') + ' - Search for Servers\r\n\r\n');

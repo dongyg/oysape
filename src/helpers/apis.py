@@ -410,7 +410,7 @@ class ApiOysape(ApiOauth):
                             import_list = json.load(f1)
                 else:
                     return {"errinfo": "Please give a file to import"}
-            elif isinstance(import_list, list):
+            if isinstance(import_list, list):
                 retval = tools.setItemsToServer(what, import_list, self.userToken)
                 if retval and retval.get('errinfo'):
                     return retval

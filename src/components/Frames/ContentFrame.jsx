@@ -21,7 +21,7 @@ const defaultPanes = [
 
 const ContentFrame = () => {
   const { modal, notification } = App.useApp();
-  const { customTheme, tabItems, setTabItems, tabActiveKey, setTabActiveKey } = useCustomContext();
+  const { customTheme, tabItems, setTabItems, tabActiveKey, setTabActiveKey, userSession } = useCustomContext();
 
   const getTabTitle = (key) => {
     const { label } = tabItems.find((pane) => pane.key === key) || '';
@@ -76,7 +76,12 @@ const ContentFrame = () => {
 
   useEffect(() => {
     setTabItems(defaultPanes);
-  }, [setTabItems]);
+    if(userSession.last_login_agent === 'Email' && !userSession.mfa_enabled) {
+      setTimeout(() => {
+        notification.warning({message: 'Some features are unavailable because you are signing in with Email and without MFA'});
+      }, 1000);
+    }
+  }, [notification, setTabItems, userSession.last_login_agent, userSession.mfa_enabled]);
 
   useKeyPress(keyMapping["closeTab"], (event) => {
     closeThisTab(tabActiveKey);

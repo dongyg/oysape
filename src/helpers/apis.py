@@ -93,10 +93,21 @@ class ApiBase:
         self.themeType = 'dark'
         self.clientId = clientId
         self.clientUserAgent = clientUserAgent
+        self.backendHost = 'http://127.0.0.1:19790'
+        self.signInMessage = ''
         self._debug = _debug
 
     def isDebug(self):
         return self._debug
+
+    def callApi(self, functionName, params={}):
+        if hasattr(self, functionName):
+            method = getattr(self, functionName)
+            retval = method(params=params)
+            print('ApiBase.callApi', self.clientId, functionName)
+            return retval
+        else:
+            return {"errinfo": "Function not found."}
 
     def fullscreen(self):
         webview.windows[0].toggle_fullscreen()
@@ -172,16 +183,26 @@ class ApiBase:
 
 class ApiOauth(ApiBase):
     def signInWithEmail(self, params):
-        return auth.openOAuthWindow('email', self.clientId, self.clientUserAgent, params.get('srh'))
+        self.backendHost = params.get('obh', self.backendHost)
+        return auth.openOAuthWindow('email', self.clientId, self.clientUserAgent, self.backendHost)
 
     def signInWithGithub(self, params):
-        return auth.openOAuthWindow('github', self.clientId, self.clientUserAgent, params.get('srh'))
+        self.backendHost = params.get('obh', self.backendHost)
+        return auth.openOAuthWindow('github', self.clientId, self.clientUserAgent, self.backendHost)
 
     def signInWithGoogle(self, params):
-        return auth.openOAuthWindow('google', self.clientId, self.clientUserAgent, params.get('srh'))
+        self.backendHost = params.get('obh', self.backendHost)
+        return auth.openOAuthWindow('google', self.clientId, self.clientUserAgent, self.backendHost)
 
-    def querySigninResult(self, params):
-        return {'token': self.userToken}
+    def querySigninResult(self, params={}):
+        outmsg = self.signInMessage
+        self.signInMessage = ''
+        return {'token': self.userToken, 'errinfo': outmsg}
+
+    def signout(self, params):
+        self.userToken = ''
+        self.userSession = {}
+        return {}
 
 
 class ApiOysape(ApiOauth):
@@ -197,7 +218,7 @@ class ApiOysape(ApiOauth):
     def hasPermission(self, params):
         # Return True if the user has permission indicated by params.perm
         perm = params.get('perm') if isinstance(params, dict) else params
-        return self.userSession['teams'][self.userSession['team0']]['is_creator'] or next((x for x in self.userSession['teams'][self.userSession['team0']]['members'] if x['email'] == self.userSession['email'] and x.get(perm)), None)
+        return self.userSession['accesses'].get(perm, False)
 
     def gotoAccountDashboard(self, params):
         oneCode = tools.getOneTimeCode(self.userToken)
@@ -213,6 +234,7 @@ class ApiOysape(ApiOauth):
         if retval and not retval.get('errinfo'):
             return self.update_session(retval)
         else:
+            self.userToken = ''
             return retval
 
     def update_session(self, sdata):
@@ -313,6 +335,7 @@ class ApiOysape(ApiOauth):
         folders = [x for x in self.listFolder if x.get('path')]
         folders = [{"root":True, "title":os.path.basename(x['path']), "key":tools.get_key(x['path']), "path":x['path'], "children":get_files(x['path'], True, exclude+(x.get('exclude') or []), ignore)} for x in folders if x.get('path') and not ignore(x['path'],exclude)]
         retval.extend(folders)
+        print(retval)
         return retval
 
     def addFolder(self, params={}):
@@ -447,7 +470,7 @@ class ApiTerminal(ApiOysape):
         if len(slist) == 0:
             return
         if not uniqueKey in self.terminalConnections:
-            print('createTermConnection [%s] [%s]'%(serverKey, uniqueKey))
+            # print('createTermConnection [%s] [%s]'%(serverKey, uniqueKey))
             conn_str = sshutils.create_ssh_string(slist[0].get("address"), slist[0].get("username"), slist[0].get("port"))
             self.terminalConnections[uniqueKey] = sshutils.TerminalClient(conn_str, private_key=slist[0].get("prikey"), serverKey=serverKey, startup=slist[0].get("tasks"))
             self.terminalConnections[uniqueKey].parentApi = self
@@ -596,7 +619,7 @@ class ApiWorkspace(ApiTerminal):
             taskCmds = self.getTaskCommands(taskKey)
             # Set the workspace's current server if want the workspace to be interactive
             if taskObj.get('interaction') in ('interactive', 'terminal'):
-                if self.hasPermission('access_terminal'):
+                if self.hasPermission('terminal'):
                     self.workspaceWorkingChannel = serverKey
                     self.combinedConnections[serverKey].updateWorkspaceTabTitle(self.workspaceWorkingChannel)
                 else:
@@ -663,7 +686,7 @@ class ApiWorkspace(ApiTerminal):
 
 class ApiSftp(ApiWorkspace):
     def sftpGetFileTree(self, params={}):
-        if not self.hasPermission('access_terminal'):
+        if not self.hasPermission('terminal'):
             return {'errinfo': 'SFTP access denied'}
         serverKey = params.get('target')
         thisPath = params.get('path') or '/'
@@ -673,7 +696,7 @@ class ApiSftp(ApiWorkspace):
         return retval
 
     def open_remote_file(self, params={}):
-        if not self.hasPermission('access_terminal'):
+        if not self.hasPermission('terminal'):
             return {'errinfo': 'SFTP access denied'}
         serverKey = params.get('target')
         thisPath = params.get('path') or '/'
@@ -683,7 +706,7 @@ class ApiSftp(ApiWorkspace):
         return retval
 
     def save_remote_file(self, params={}):
-        if not self.hasPermission('access_terminal'):
+        if not self.hasPermission('terminal'):
             return {'errinfo': 'SFTP access denied'}
         serverKey = params.get('target')
         thisPath = params.get('path') or '/'
@@ -694,7 +717,7 @@ class ApiSftp(ApiWorkspace):
         return retval
 
     def download_remote_file(self, params={}):
-        if not self.hasPermission('access_terminal'):
+        if not self.hasPermission('terminal'):
             return {'errinfo': 'SFTP access denied'}
         serverKey = params.get('target')
         thisPath = params.get('path')
@@ -708,7 +731,7 @@ class ApiSftp(ApiWorkspace):
             return retdata
 
     def upload_remote_file(self, params={}):
-        if not self.hasPermission('access_terminal'):
+        if not self.hasPermission('terminal'):
             return {'errinfo': 'SFTP access denied'}
         serverKey = params.get('target')
         thisPath = params.get('path')
@@ -722,7 +745,7 @@ class ApiSftp(ApiWorkspace):
             return retdata
 
     def upload_remote_folder(self, params={}):
-        if not self.hasPermission('access_terminal'):
+        if not self.hasPermission('terminal'):
             return {'errinfo': 'SFTP access denied'}
         serverKey = params.get('target')
         thisPath = params.get('path')
@@ -738,14 +761,14 @@ class ApiSftp(ApiWorkspace):
 
 class ApiDockerManager(ApiSftp):
     def dockerGetWholeTree(self, params={}):
-        if not self.hasPermission('access_docker'):
+        if not self.hasPermission('docker'):
             return {'errinfo': 'Docker access denied'}
         serverKey = params.get('target')
         if not serverKey in self.combinedConnections:
             self.createCombConnection(serverKey)
         return self.combinedConnections[serverKey].dockerGetWholeTree()
     def dockerGetTreeNode(self, params={}):
-        if not self.hasPermission('access_docker'):
+        if not self.hasPermission('docker'):
             return {'errinfo': 'Docker access denied'}
         serverKey = params.get('target')
         nodeKey = params.get('nodeKey')
@@ -760,14 +783,14 @@ class ApiDockerManager(ApiSftp):
         else:
             return {'errinfo': 'Invalid node'}
     def dockerExecCommand(self, params={}):
-        if not self.hasPermission('access_docker'):
+        if not self.hasPermission('docker'):
             return {'errinfo': 'Docker access denied'}
         serverKey = params.get('target')
         command = params.get('command')
         if not serverKey in self.combinedConnections:
             self.createCombConnection(serverKey)
         # Build a virtual Task to run the command
-        interaction = 'interaction' if self.hasPermission('access_terminal') else ''
+        interaction = 'interaction' if self.hasPermission('terminal') else ''
         if interaction and len(webview.windows) > 0:
             self.workspaceWorkingChannel = serverKey
             self.combinedConnections[serverKey].updateWorkspaceTabTitle(self.workspaceWorkingChannel)
@@ -775,7 +798,7 @@ class ApiDockerManager(ApiSftp):
         while not self.combinedConnections[serverKey].areAllTasksDone():
             time.sleep(0.1)
     def dockerSetDockerCommand(self, params={}):
-        if not self.hasPermission('access_docker'):
+        if not self.hasPermission('docker'):
             return {'errinfo': 'Docker access denied'}
         serverKey = params.get('target')
         command = params.get('command')
@@ -784,7 +807,7 @@ class ApiDockerManager(ApiSftp):
         self.combinedConnections[serverKey].dockerCommandPrefix = command
         #TODO: save the docker command path on the server
     def dockerSetComposeCommand(self, params={}):
-        if not self.hasPermission('access_docker'):
+        if not self.hasPermission('docker'):
             return {'errinfo': 'Docker access denied'}
         serverKey = params.get('target')
         command = params.get('command')

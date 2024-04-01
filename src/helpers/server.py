@@ -2,16 +2,24 @@
 # -*- coding: utf-8 -*-
 
 import threading, traceback, os, json, hashlib
-from bottle import Bottle, request, static_file, abort, response, hook
+from bottle import Bottle, request, static_file, abort, response, hook, redirect
 from geventwebsocket import WebSocketError
 from gevent.pywsgi import WSGIServer
 from geventwebsocket.handler import WebSocketHandler
 import webview
-from . import tools, apis
-from .templs import template_signin_success_close, template_signin_success_redirect
+from . import tools, apis, consts
+from .templs import template_signin_success_close, template_signin_success_redirect, template_signin_failed_close
 
 KVStore = {}
 app = Bottle()
+
+@app.error(404)
+def not_found(error):
+    return 'Not found'
+
+@app.error(405)
+def not_allowed(error):
+    return 'not found'
 
 @app.route('/websocket')
 def handle_websocket():
@@ -38,7 +46,7 @@ def handle_websocket():
             apiObject = apis.apiInstances.get(clientId) if clientId else None
             if apiObject and uniqueKey and token and token == apiObject.userToken:
                 if action == 'init':
-                    print('Init socket', clientId, uniqueKey)
+                    # print('Init socket', clientId, uniqueKey)
                     apiObject.socketConnections[uniqueKey] = wsock
                 elif action == 'resize':
                     apiObject.resizeAllCombChannel(recvData) if uniqueKey == 'workspace' else apiObject.resizeTermChannel(recvData)
@@ -54,56 +62,54 @@ def handle_websocket():
         wsock.close()
         if clientId and clientId in apis.apiInstances:
             if uniqueKey in apis.apiInstances[clientId].socketConnections:
-                print('Close socket', clientId, uniqueKey)
+                # print('Close socket', clientId, uniqueKey)
                 del apis.apiInstances[clientId].socketConnections[uniqueKey]
             if uniqueKey == 'workspace':
-                print('Close all terminals', 'workspace:', len(apis.apiInstances[clientId].terminalConnections), 'terminal:', len(apis.apiInstances[clientId].combinedConnections))
+                # print('Close all terminals', 'workspace:', len(apis.apiInstances[clientId].terminalConnections), 'terminal:', len(apis.apiInstances[clientId].combinedConnections))
                 apis.apiInstances[clientId].closeCombConnections()
                 apis.apiInstances[clientId].closeAllTerminals()
-                print('Remove API object', clientId)
-                del apis.apiInstances[clientId]
+                if clientId != webview.token:
+                    print('Remove API object', clientId)
+                    del apis.apiInstances[clientId]
 
 
 def processSigninResponse(retval):
-    print(retval)
-    if retval and retval.get('data') and retval.get('data').get('token') and retval.get('data').get('clientId'):
-        # check clientId
-        clientId = retval.get('data').get('clientId')
-        if not clientId in apis.apiInstances:
-            return 'Client not found.'
-        # Set the token to this client. The sign page will get the token and reload the user session
-        apis.apiInstances[clientId].userToken = retval.get('data').get('token')
-        # Return the success page
-        if apis.apiInstances[clientId].isDesktopVersion():
-            # PS: Cannot save the token into the cookie here. Because the browser is the system default browser, not the webview inside the Oysape.
-            rendered_template = template_signin_success_close
-        else:
-            # In the web version, can set the cookie here
-            print('Set cookie')
-            response.set_cookie("client_token", retval.get('data').get('token'), path="/", max_age=3600*24*30)
-            rendered_template = template_signin_success_redirect.replace('{url}', 'http://192.168.0.2:19790/index.html')
-        return rendered_template
-    elif retval and retval.get('errinfo'):
-        return retval.get('errinfo')
+    # print(retval)
+    #TODO: 如果有错误, 暂存起来, 让前端 querySigninResult 能够拿到
+    # check clientId
+    if not retval: return 'Something wrong'
+    clientId = retval.get('clientId')
+    if not clientId in apis.apiInstances: return 'Client not found'
+    if retval.get('errinfo'):
+        apis.apiInstances[clientId].signInMessage = retval.get('errinfo')
+        return template_signin_failed_close.replace('{msg}', apis.apiInstances[clientId].signInMessage)
+    if not retval.get('data'):
+        apis.apiInstances[clientId].signInMessage = 'Invalid response'
+        return template_signin_failed_close.replace('{msg}', apis.apiInstances[clientId].signInMessage)
+    if not retval.get('data').get('token'):
+        apis.apiInstances[clientId].signInMessage = 'Authentication failed'
+        return template_signin_failed_close.replace('{msg}', apis.apiInstances[clientId].signInMessage)
+    # Set the token to this client. The sign page will get the token and reload the user session
+    apis.apiInstances[clientId].userToken = retval.get('data').get('token')
+    apis.apiInstances[clientId].signInMessage = ''
+    # Return the success page
+    if apis.apiInstances[clientId].isDesktopVersion():
+        # PS: Cannot save the token into the cookie here. Because the browser is the system default browser, not the webview inside the Oysape.
+        rendered_template = template_signin_success_close
     else:
-        return 'Unknown error. Please try again later.'
+        # In the web version, can set the cookie here
+        response.set_cookie("client_token", retval.get('data').get('token'), path="/", max_age=3600*24*30)
+        rendered_template = template_signin_success_redirect.replace('{url}', apis.apiInstances[clientId].backendHost+'/index.html')
+    return rendered_template
 
-@app.route('/callback/email')
+@app.route('/callback/oauth')
 def githubOauthCallback():
     code = request.query.get('code')
     state = request.query.get('state')
-    # Send the code to backend to get the token
-    retval = tools.callServerApiPost('/signin/email', {'code': code, 'state': state})
+    cid = request.query.get('cid')
+    # Send the code to backend to finish the OAuth process and finish the sign in process. Get the token.
+    retval = tools.callServerApiPost('/signin/finish', {'code': code, 'state': state, 'cid': cid})
     return processSigninResponse(retval)
-
-@app.route('/callback/github')
-def githubOauthCallback():
-    code = request.query.get('code')
-    state = request.query.get('state')
-    # Send the code to backend to finish the OAuth process and finish the sign in/sign up process
-    retval = tools.callServerApiPost('/signin/github', {'code': code, 'state': state})
-    return processSigninResponse(retval)
-
 
 @app.route('/<:re:.*>', method='OPTIONS')
 def enable_cors_generic_route():
@@ -123,18 +129,20 @@ def enable_cors_after_request_hook():
     This executes after every route. We use it to attach CORS headers when
     applicable.
     """
-    add_cors_headers()
+    if consts.IS_DEBUG:
+        add_cors_headers()
 
 def add_cors_headers():
-    response.headers['Access-Control-Allow-Origin'] = 'http://localhost:3000'
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Origin, Accept, Content-Type, X-Requested-With, X-CSRF-Token, Client-Id, Authorization'
-    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    if consts.IS_DEBUG:
+        response.headers['Access-Control-Allow-Origin'] = 'http://localhost:3000'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Origin, Accept, Content-Type, X-Requested-With, X-CSRF-Token, Client-Id, Authorization'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
 
 @app.route('/api/<functionName>', method='POST')
 def api(functionName):
-    print(request.urlparts)
-    add_cors_headers()
+    if consts.IS_DEBUG:
+        add_cors_headers()
     data = request.json
     clientIpAddress = request.headers.get('X-Forwarded-For') or request.remote_addr
     authorization_header = (request.headers.get('Authorization') or '').replace('Bearer', '').strip()
@@ -148,8 +156,8 @@ def api(functionName):
         else:
             # Generate a clientId, it should be different every time
             clientId = hashlib.md5((request.headers.get('User-Agent') + '@' + clientIpAddress + tools.getRandomString(64)).encode('utf-8')).hexdigest()
-            if not clientId in apis.apiInstances:
-                apis.apiInstances[clientId] = apis.ApiOverHttp(clientId=clientId, clientUserAgent=request.headers.get('User-Agent'))
+        if not clientId in apis.apiInstances:
+            apis.apiInstances[clientId] = apis.ApiOverHttp(clientId=clientId, clientUserAgent=request.headers.get('User-Agent'))
         data['user-agent'] = request.headers.get('User-Agent')
     elif functionName in ['querySigninResult']:
         # Get the clientId from request headers, Use the correct api object

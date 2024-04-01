@@ -42,7 +42,7 @@ const HeadFrame = () => {
     event.preventDefault(); return;
   });
   useKeyPress(keyMapping["gotoSideSftp"], (event) => {
-    if(userSession.teams[userSession.team0].is_creator || userSession.teams[userSession.team0].members.find(item => item.email === userSession.email)?.access_sftp){
+    if(userSession.accesses.sftp){
       if((currentSideKey==='sideSftp' && !hideSidebar) || hideSidebar){
         handleShowSidebar();
       }
@@ -51,7 +51,7 @@ const HeadFrame = () => {
     }
   });
   useKeyPress(keyMapping["gotoSideDocker"], (event) => {
-    if(userSession.teams[userSession.team0].is_creator || userSession.teams[userSession.team0].members.find(item => item.email === userSession.email)?.access_docker){
+    if(userSession.accesses.docker){
       if((currentSideKey==='sideDocker' && !hideSidebar) || hideSidebar){
         handleShowSidebar();
       }
@@ -60,7 +60,7 @@ const HeadFrame = () => {
     }
   });
   useKeyPress(keyMapping["gotoSideExplorer"], (event) => {
-    if(userSession.teams[userSession.team0].is_creator || userSession.teams[userSession.team0].members.find(item => item.email === userSession.email)?.access_files){
+    if(userSession.accesses.files){
       if((currentSideKey==='sideExplorer' && !hideSidebar) || hideSidebar){
         handleShowSidebar();
       }

@@ -28,6 +28,7 @@ export default function WebTerminal(props) {
     const withCommand = props.withCommand;
     const socketObject = React.useRef(null);
     const token = getTokenFromCookie();
+    const access_terminal = userSession.accesses.terminal;
 
     React.useEffect(() => {
         const hasTerm = !!xtermRef.current;
@@ -42,7 +43,7 @@ export default function WebTerminal(props) {
             }
         }
         const handlerData = (data) => {
-            if(userSession.teams[userSession.team0].is_creator || userSession.teams[userSession.team0].members.find(item => item.email === userSession.email)?.access_terminal) {
+            if(access_terminal) {
                 sendData(data);
             }
         }
@@ -81,7 +82,7 @@ export default function WebTerminal(props) {
             window.removeEventListener('resize', onResize);
             if(xtermRef.current) xtermRef.current.dispose();
         }
-    }, [uniqueKey, serverKey, taskKey, userSession.teams, userSession.team0, userSession.email, withCommand, token, userSession, message]);
+    }, [uniqueKey, serverKey, taskKey, withCommand, token, message, access_terminal]);
 
     React.useEffect(() => {
         const hasSocket = !!socketObject.current;

@@ -53,14 +53,13 @@ const ServerList = () => {
     var retval = [
       { key: 'runOnServer', label: <strong>Run a task on this server</strong>, icon: <FiTerminal />, },
     ];
-    const mobj = userSession.teams[userSession.team0].members.find(item => item.email === userSession.email);
-    if(userSession.teams[userSession.team0].is_creator || mobj?.access_terminal) {
+    if(userSession.accesses.terminal) {
       retval = retval.concat([
         { type: 'divider', },
         { key: 'terminalServer', label: 'Terminal', icon: <BsTerminal />, },
       ]);
     }
-    if(userSession.teams[userSession.team0].is_creator || mobj?.access_writable) {
+    if(userSession.accesses.writable) {
       retval = retval.concat([
         { type: 'divider', },
         { key: 'editServer', label: 'Edit', icon: <EditOutlined />, },

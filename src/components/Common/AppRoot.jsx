@@ -2,7 +2,7 @@ import React from 'react';
 import { ConfigProvider, App, theme, Layout } from 'antd';
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { callApi, uniqueClientID, setClientId } from '../Common/global';
+import { callApi, uniqueClientID, setClientId, delTokenFromCookie } from '../Common/global';
 import BodyContainer from './BodyContainer';
 import SignIn from './SignIn';
 
@@ -20,6 +20,10 @@ const AppRoot = () => {
         }
       }else if(data?.errinfo) {
         window.showMessageOnSigninPage && window.showMessageOnSigninPage(data.errinfo);
+        delTokenFromCookie();
+      }else{
+        window.showMessageOnSigninPage && window.showMessageOnSigninPage('Unknown error', 'error');
+        delTokenFromCookie();
       }
     });
   };

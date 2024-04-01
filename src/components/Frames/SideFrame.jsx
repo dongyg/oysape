@@ -53,11 +53,10 @@ export default function SideFrame() {
       { key: 'sidePipeline', label: <Tooltip placement="right" title={'Pipelines ('+(browserInfo&&browserInfo.isMac ? 'Command' : 'Ctrl')+'+Shift+X)'}><UnorderedListOutlined style={{fontSize:'2em', marginRight: '0px'}} /></Tooltip>, children: <PipelinesPanel /> },
       // { key: 'sideHistory', label: <HistoryOutlined style={{fontSize:'2em', marginRight: '0px'}} />, children: `5` },
     ];
-    const mobj = userSession.teams[userSession.team0].members.find(item => item.email === userSession.email);
-    if(userSession.teams[userSession.team0].is_creator || mobj?.access_sftp){
+    if(userSession.accesses.sftp){
       buttons.push({ key: 'sideSftp', label: <Tooltip placement="right" title={'SFTP ('+(browserInfo&&browserInfo.isMac ? 'Command' : 'Ctrl')+'+Shift+F)'}><AiOutlineCloudServer style={{fontSize:'2em', marginRight: '0px'}} /></Tooltip>, children: <Sftp /> });
     }
-    if(userSession.teams[userSession.team0].is_creator || mobj?.access_docker){
+    if(userSession.accesses.docker){
       buttons.push({ key: 'sideDocker', label: <Tooltip placement="right" title={'Docker ('+(browserInfo&&browserInfo.isMac ? 'Command' : 'Ctrl')+'+Shift+D)'}><FaDocker style={{fontSize:'2em', marginRight: '0px'}} /></Tooltip>, children: <DockersPanel /> });
     }
     // access_files will not affect the Desktop version. This is invisible on the web version.

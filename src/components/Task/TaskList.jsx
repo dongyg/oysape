@@ -33,7 +33,7 @@ const TaskList = () => {
     var retval = [
       { key: 'runTask', label: <strong>Run this task on a Server</strong>, icon: <FiTerminal />, },
     ];
-    if(userSession.teams[userSession.team0].is_creator || userSession.teams[userSession.team0].members.find(item => item.email === userSession.email)?.access_writable) {
+    if(userSession.accesses.writable) {
       retval = retval.concat([
         { type: 'divider', },
         { key: 'editTask', label: 'Edit', icon: <EditOutlined />, },

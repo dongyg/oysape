@@ -83,6 +83,7 @@ export default function ProjectFileTree() {
 
   const reloadFolderFiles = useCallback(() => {
     callApi('getFolderFiles', {refresh: true}).then((data) => {
+      console.log('getFolderFiles', data)
       setFolderFiles(data);
     });
   }, [setFolderFiles]);

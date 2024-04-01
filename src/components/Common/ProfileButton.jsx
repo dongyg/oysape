@@ -21,12 +21,12 @@ export default function ProfileButton() {
   };
 
   const getAvatar = (size) => {
-    if(userSession && userSession.github_user && userSession.github_user.avatar_url) {
-      return <Avatar src={userSession.github_user.avatar_url} size={size} />
-    } else if(userSession && userSession.google_user && userSession.google_user.picture) {
-      return <Avatar src={userSession.google_user.picture} size={size} />
+    if (userSession.last_login_agent === 'GitHub') {
+      return <Avatar src={userSession.github_user.avatar_url} size={size} />;
+    } else if (userSession.last_login_agent === 'Google') {
+      return <Avatar src={userSession.google_user.picture} size={size} />;
     } else {
-      return <Avatar icon={<UserOutlined />} size={size} />
+      return <Avatar icon={<UserOutlined />} size={size} />;
     }
   }
   const getTeamMenus = function() {
@@ -49,15 +49,7 @@ export default function ProfileButton() {
     return menus;
   };
   const getSignInTitle = () => {
-    if(userSession && userSession.email && userSession.github_user) {
-      return userSession.email + ' (GitHub)'
-    } else if(userSession && userSession.email && userSession.google_user) {
-      return userSession.email + ' (Google)'
-    } else if(userSession && userSession.email) {
-      return userSession.email
-    } else {
-      return 'Sign In'
-    }
+    return userSession.last_login_agent ? userSession.email + ' (' + userSession.last_login_agent + ')' : 'Sign In';
   }
   const reloadEverything = (callDone) => {
     callApi('reloadUserSession', {}).then((res) => {
@@ -100,8 +92,10 @@ export default function ProfileButton() {
         icon: <QuestionCircleFilled />,
         content: 'Are you sure you want to sign out?',
         onOk() {
-          delTokenFromCookie();
-          setUserSession({});
+          callApi('signout', {}).then((res) => {
+            delTokenFromCookie();
+            setUserSession({});
+          })
         },
         onCancel() {
           console.log('Cancel');

@@ -6,29 +6,34 @@ import { GithubOutlined, GoogleOutlined, GlobalOutlined, LoadingOutlined } from 
 import { isDesktopVersion, setClientId, callApi, getTokenFromCookie, setTokenToCookie } from '../Common/global';
 
 export default function BodyContainer() {
-  const [ messageType, setMessageType ] = useState('info');
-  const [ messageContent, setMessageContent ] = useState('');
+  const queryParams = new URLSearchParams(window.location.search);
+  const [ messageType, setMessageType ] = useState('error');
+  const [ messageContent, setMessageContent ] = useState(queryParams.get('msg')||'');
   const [ loading, setLoading ] = useState(true);
 
   const handleSigninWithEmail = () => {
     setLoading(true);
-    callApi('signInWithEmail', {srh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
+    showMessageOnSigninPage('');
+    callApi('signInWithEmail', {obh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
       callWaitForSigninResult(data);
     });
   }
   const handleSigninWithGithub = () => {
     setLoading(true);
-    callApi('signInWithGithub', {srh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
+    showMessageOnSigninPage('');
+    callApi('signInWithGithub', {obh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
       callWaitForSigninResult(data);
     });
   }
   const handleSigninWithGoogle = () => {
     setLoading(true);
-    callApi('signInWithGoogle', {srh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
+    showMessageOnSigninPage('');
+    callApi('signInWithGoogle', {obh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
       callWaitForSigninResult(data);
     });
   }
   const callWaitForSigninResult = (waitData) => {
+    let secondPassed = 0;
     if(waitData?.errinfo) {
       showMessageOnSigninPage(waitData.errinfo, 'error');
       setLoading(false);
@@ -45,7 +50,13 @@ export default function BodyContainer() {
               clearInterval(waitForSigninResultTimer);
               showMessageOnSigninPage(loginData.errinfo, 'error');
             }
-          })
+          });
+          secondPassed += 1;
+          if (secondPassed >= 60) {
+            clearInterval(waitForSigninResultTimer);
+            showMessageOnSigninPage('Timeout', 'error');
+            setLoading(false);
+          }
         }, 1000);
       }
       if(waitData?.url) {
@@ -59,9 +70,9 @@ export default function BodyContainer() {
   }
 
   const showMessageOnSigninPage = (message, type) => {
-    setMessageType(type);
     setMessageContent(message);
-    setLoading(false);
+    if(type) setMessageType(type);
+    if(message) setLoading(false);
   };
   window.showMessageOnSigninPage = showMessageOnSigninPage;
 
@@ -70,7 +81,7 @@ export default function BodyContainer() {
       const token = getTokenFromCookie();
       if(token) {
         window.reloadUserSession(token);
-      } else if (loading) {
+      } else {
         setLoading(false);
       }
     }
@@ -85,12 +96,12 @@ export default function BodyContainer() {
     } else {
       runMeFirst();
     }
-  }, [loading]);
+  }, []);
 
   return (
     <>
       <Layout className='disableHighlight' style={{ height: '100%' }}>
-        <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', paddingBottom: '60px' }}>
+        <div style={{ height: '100%', display: 'flex', justifyContent: 'center', paddingTop: 'calc(50vh - 200px)' }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '24px', marginBottom: '8px' }}><Image src="/logo192.png" width={128} height={128} preview={false} /><br />Oysape</div>
             <div style={{ marginBottom: '8px' }} hidden={loading}><Button type="default" size='large' onClick={handleSigninWithEmail} icon={<GlobalOutlined />} style={{ width: '200px' }}>Sign in with Email&nbsp;&nbsp;</Button></div>

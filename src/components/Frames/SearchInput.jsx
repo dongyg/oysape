@@ -143,6 +143,7 @@ const SearchInput = () => {
     });
   }
   const getFilesForSearch = (query) => {
+    console.log('getFilesForSearch', folderFiles)
     const flatFiles = flatFileTree(JSON.parse(JSON.stringify(folderFiles)));
     return folderFiles ? flatFiles.filter((item) => getPathAndName(item).toLowerCase().indexOf(query) >= 0).map((item) => {
       return { value: getPathAndName(item), label: (<div>{getPathAndName(item)}</div>) }
@@ -206,7 +207,7 @@ const SearchInput = () => {
       const servers = userSession.servers.filter((item) => item.name === taskInput.server && taskInput.server !== '');
       if(taskInput.server && !taskInput.task) {
         // Open a server terminal
-        if(userSession.teams[userSession.team0].is_creator || userSession.teams[userSession.team0].members.find(item => item.email === userSession.email)?.access_terminal) {
+        if(userSession.accesses.terminal) {
           openServerTerminal(taskInput.server);
         }
       } else if (servers.length>0 && tasks.length>0 && tasks[0].interaction==='terminal' && tasks[0].cmds.length>0) {

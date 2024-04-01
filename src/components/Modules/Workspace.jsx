@@ -45,7 +45,7 @@ export default function WorkspaceTerminal(props) {
                 return;
             }
             // Set the workspace's tab label if workspace is interaction
-            if(userSession.teams[userSession.team0].is_creator || userSession.teams[userSession.team0].members.find(item => item.email === userSession.email)?.access_terminal) {
+            if(userSession.accesses.terminal) {
                 updateWorkspaceTabTitle(taskObj.interaction==='interactive'||taskObj.interaction==='terminal'?serverKey:'');
             }
             // xtermRef.current.write(showCursor);
@@ -124,7 +124,7 @@ export default function WorkspaceTerminal(props) {
             window.removeEventListener('resize', onResize);
             xtermRef.current.dispose();
         }
-    }, [setBrowserInfo, uniqueKey, token, userSession]);
+    }, [setBrowserInfo, uniqueKey, token]);
 
     React.useEffect(() => {
         const hasSocket = !!socketObject.current;

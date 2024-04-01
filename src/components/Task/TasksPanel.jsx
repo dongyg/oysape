@@ -75,7 +75,7 @@ export default function TasksPanel() {
     <div style={{ height: headerHeight, padding: '12px 16px', display: 'flex', flexWrap: 'nowrap', alignItems: 'flex-start' }}>
       <span style={{ flex: 'auto', paddingTop: '4px' }}>Tasks</span>
       {
-        userSession.teams[userSession.team0].is_creator || userSession.teams[userSession.team0].members.find(item => item.email === userSession.email)?.access_writable ?
+        userSession.accesses.writable ?
         <div>
           <Dropdown menu={{ items: menuItems, onClick: onClickMenu }} placement="topRight">
             <Button type='text' icon={<BsThreeDots />}></Button>

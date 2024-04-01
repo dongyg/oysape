@@ -17,9 +17,9 @@ export const callApi = (functionName, params) => {
     console.log('callApi - pywebview: ' + functionName);
     if(window.pywebview.api[functionName]) {
       if(params){
-        return window.pywebview.api[functionName](params);
+        return window.pywebview.api.callApi(functionName, params);
       } else {
-        return window.pywebview.api[functionName]();
+        return window.pywebview.api.callApi(functionName);
       }
     } else {
       return new Promise((resolve, reject) => {
@@ -166,6 +166,7 @@ export const getPathAndName = (item) => {
 }
 
 export const flatFileTree = (tree, path) => {
+    console.log(tree);
     return (tree||[]).reduce((acc, item) => {
         item.path = path || '';
         item.name = item.title;

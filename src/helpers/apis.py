@@ -104,7 +104,7 @@ class ApiBase:
         if hasattr(self, functionName):
             method = getattr(self, functionName)
             retval = method(params=params)
-            print('ApiBase.callApi', self.clientId, functionName)
+            # print('ApiBase.callApi', self.clientId, functionName)
             return retval
         else:
             return {"errinfo": "Function not found."}
@@ -212,7 +212,7 @@ class ApiOysape(ApiOauth):
     listExclude = []
 
     def testApi(self, params):
-        print('ApiOysape.testApi', params)
+        # print('ApiOysape.testApi', params)
         return {'errinfo': 'test called'}
 
     def hasPermission(self, params):
@@ -335,7 +335,6 @@ class ApiOysape(ApiOauth):
         folders = [x for x in self.listFolder if x.get('path')]
         folders = [{"root":True, "title":os.path.basename(x['path']), "key":tools.get_key(x['path']), "path":x['path'], "children":get_files(x['path'], True, exclude+(x.get('exclude') or []), ignore)} for x in folders if x.get('path') and not ignore(x['path'],exclude)]
         retval.extend(folders)
-        print(retval)
         return retval
 
     def addFolder(self, params={}):

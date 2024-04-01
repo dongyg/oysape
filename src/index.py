@@ -6,7 +6,6 @@ import webview
 from helpers import server, consts, apis
 
 if __name__ == '__main__':
-    print(webview.token)
     server.start_http_server()
     apis.apiInstances[webview.token] = apis.ApiOverHttp(clientId=webview.token, clientUserAgent='Oysape/0.1.0')
     windowObj = apis.loadEntrypointWindow(apiObject=apis.apiInstances[webview.token])

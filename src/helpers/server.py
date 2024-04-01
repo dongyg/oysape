@@ -38,7 +38,7 @@ def handle_websocket():
             except Exception as e:
                 print('SocketError:', (request.headers.get('X-Forwarded-For') or request.remote_addr), init_message)
                 break
-            print(recvData)
+            # print(recvData)
             clientId = recvData.get('clientId')
             action = recvData.get('action')
             uniqueKey = recvData.get('uniqueKey')
@@ -69,13 +69,11 @@ def handle_websocket():
                 apis.apiInstances[clientId].closeCombConnections()
                 apis.apiInstances[clientId].closeAllTerminals()
                 if clientId != webview.token:
-                    print('Remove API object', clientId)
+                    # print('Remove API object', clientId)
                     del apis.apiInstances[clientId]
 
 
 def processSigninResponse(retval):
-    # print(retval)
-    #TODO: 如果有错误, 暂存起来, 让前端 querySigninResult 能够拿到
     # check clientId
     if not retval: return 'Something wrong'
     clientId = retval.get('clientId')
@@ -173,7 +171,7 @@ def api(functionName):
     if not clientId in apis.apiInstances:
         return json.dumps({"errinfo": "Client not found."})
     apis.apiInstances[clientId].clientUserAgent = request.headers.get('User-Agent')
-    print(functionName, clientId)
+    # print(functionName, clientId)
     # Get the token, and check the token
     if functionName not in ['signInWithEmail', 'signInWithGithub', 'signInWithGoogle', 'querySigninResult']:
         if not authorization_header or authorization_header != apis.apiInstances[clientId].userToken:

@@ -215,7 +215,7 @@ class SSHClient:
                 self.channel_available = True
                 self.send_to_channel(LF, human=False)
                 if self.startup:
-                    print('startup', self.startup)
+                    # print('startup', self.startup)
                     for taskKey in self.startup:
                         taskObj = self.parentApi.getTaskObject(taskKey)
                         taskCmds = self.parentApi.getTaskCommands(taskKey)
@@ -584,7 +584,7 @@ class SSHClient:
 
     def dockerGetCommandResult(self, command):
         command = (self.dockerCommandPrefix or '') + command
-        print(command)
+        # print(command)
         try:
             stdin, stdout, stderr = self.client.exec_command(command)
             output = stdout.read().decode()
@@ -608,7 +608,7 @@ class SSHClient:
 
     def dockerGetComposeResult(self, command):
         command = (self.dockerCommandPrefix or '') + (self.dockerComposePrefix or '') + command
-        print(command)
+        # print(command)
         try:
             stdin, stdout, stderr = self.client.exec_command(command)
             output = stdout.read().decode()

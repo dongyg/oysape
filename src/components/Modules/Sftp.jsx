@@ -107,7 +107,7 @@ export default function Sftp(props) {
       if(!(v1&&v1.length>0)) {
         modal.confirm({
           title: anode.title,
-          content: 'This file may not be abele to edit. Do you want to edit this file?',
+          content: 'Unknown file type. Do you want to edit this file?',
           onOk() {
             openIt();
           },

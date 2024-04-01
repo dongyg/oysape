@@ -469,10 +469,9 @@ class ApiTerminal(ApiOysape):
         if len(slist) == 0:
             return
         if not uniqueKey in self.terminalConnections:
-            # print('createTermConnection [%s] [%s]'%(serverKey, uniqueKey))
+            # print('createTermConnection', slist)
             conn_str = sshutils.create_ssh_string(slist[0].get("address"), slist[0].get("username"), slist[0].get("port"))
-            self.terminalConnections[uniqueKey] = sshutils.TerminalClient(conn_str, private_key=slist[0].get("prikey"), serverKey=serverKey, startup=slist[0].get("tasks"))
-            self.terminalConnections[uniqueKey].parentApi = self
+            self.terminalConnections[uniqueKey] = sshutils.TerminalClient(conn_str, private_key=slist[0].get("prikey"), serverKey=serverKey, parentApi=self, startup=slist[0].get("tasks"))
             self.terminalConnections[uniqueKey].uniqueKey = uniqueKey
             if not self.terminalConnections[uniqueKey].client:
                 self.terminalConnections[uniqueKey].onChannelString(colorizeText(self.terminalConnections[uniqueKey].message,'red'))
@@ -580,8 +579,7 @@ class ApiWorkspace(ApiTerminal):
         if not serverKey in self.combinedConnections:
             # print('createCombConnection', serverKey)
             conn_str = sshutils.create_ssh_string(slist[0].get("address"), slist[0].get("username"), slist[0].get("port"))
-            self.combinedConnections[serverKey] = sshutils.WorkspaceClient(conn_str, private_key=slist[0].get("prikey"), serverKey=serverKey, startup=slist[0].get("tasks"))
-            self.combinedConnections[serverKey].parentApi = self
+            self.combinedConnections[serverKey] = sshutils.WorkspaceClient(conn_str, private_key=slist[0].get("prikey"), serverKey=serverKey, parentApi=self, startup=slist[0].get("tasks"))
             self.combinedConnections[serverKey].uniqueKey = 'workspace'
 
     def closeCombConnections(self, params={}):

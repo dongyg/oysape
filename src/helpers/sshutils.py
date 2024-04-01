@@ -148,7 +148,7 @@ def get_ps(sshconn, tty_number, debug=False):
 
 
 class SSHClient:
-    def __init__(self, ssh_connection_string, password=None, private_key=None, passphrase=None, serverKey=None, startup=None):
+    def __init__(self, ssh_connection_string, password=None, private_key=None, passphrase=None, serverKey=None, parentApi=None, startup=None):
         self.hostname, self.port, self.username = parse_ssh_connection_string(ssh_connection_string)
         self.dockerCommandPrefix = None
         self.dockerComposePrefix = None
@@ -167,6 +167,7 @@ class SSHClient:
             self.private_key = os.path.expanduser(self.private_key)
         self.passphrase = passphrase
         self.serverKey = serverKey
+        self.parentApi = parentApi
         self.startup = startup
         self.reconnect()
 
@@ -215,10 +216,11 @@ class SSHClient:
                 self.channel_available = True
                 self.send_to_channel(LF, human=False)
                 if self.startup:
-                    # print('startup', self.startup)
+                    print('startup', self.startup)
                     for taskKey in self.startup:
                         taskObj = self.parentApi.getTaskObject(taskKey)
                         taskCmds = self.parentApi.getTaskCommands(taskKey)
+                        print('exec', taskKey, taskObj, taskCmds)
                         self.parentApi.execTask(taskKey, taskObj, taskCmds, self, output=False)
             except:
                 pass
@@ -521,7 +523,7 @@ class SSHClient:
             sftp.close()
             return {'fileList': files}
         except Exception as e:
-            print(self.hostname, remote_file_path)
+            print(self.hostname, folder)
             traceback.print_exc()
             return {'errinfo': str(e)}
 

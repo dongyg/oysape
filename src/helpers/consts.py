@@ -17,7 +17,7 @@ def get_home_entry():
     raise Exception('No index.html found')
 
 # Change this to True on development environment
-IS_DEBUG = True
+IS_DEBUG = False
 
 
 # Variables for local app

@@ -20,18 +20,23 @@ def not_found(error):
 def not_allowed(error):
     return 'not found'
 
-@app.route('/websocket')
-def handle_websocket():
-    wsock = request.environ.get('wsgi.websocket')
-    if request.headers.get('User-Agent').find('Oysape') >=0:
+def getClientIdAndToken(req):
+    if req.headers.get('User-Agent').find('Oysape') >=0:
         # Use the pywebview token as the clientId for desktop version. It should have a apiObject in apis.apiInstances
         import webview
         clientId = webview.token
     else:
-        clientId = request.cookies.get('client_id')
-    clientToken = request.cookies.get('client_token')
+        clientId = req.cookies.get('client_id')
+    clientToken = req.cookies.get('client_token')
+    return clientId, clientToken
+
+@app.route('/signin/finish')
+@app.route('/websocket')
+def handle_websocket():
+    wsock = request.environ.get('wsgi.websocket')
     if not wsock:
         abort(400, 'Expected WebSocket request.')
+    clientId, clientToken = getClientIdAndToken(request)
     try:
         uniqueKey = None
         while True:
@@ -112,7 +117,7 @@ def processSigninResponse(retval):
     return rendered_template
 
 @app.route('/callback/oauth')
-def githubOauthCallback():
+def oauthCallback():
     code = request.query.get('code')
     state = request.query.get('state')
     cid = request.query.get('cid')
@@ -123,13 +128,7 @@ def githubOauthCallback():
 
 @app.route('/signout')
 def signout():
-    if request.headers.get('User-Agent').find('Oysape') >=0:
-        # Use the pywebview token as the clientId for desktop version. It should have a apiObject in apis.apiInstances
-        import webview
-        clientId = webview.token
-    else:
-        clientId = request.cookies.get('client_id')
-    clientToken = request.cookies.get('client_token')
+    clientId, clientToken = getClientIdAndToken(request)
     if clientToken and clientId and clientToken == apis.apiInstances[clientId].userToken:
         functionName = 'signout'
         if hasattr(apis.apiInstances[clientId], functionName):
@@ -176,17 +175,11 @@ def api(functionName):
         add_cors_headers()
     data = request.json
     clientIpAddress = request.headers.get('X-Forwarded-For') or request.remote_addr
-    if request.headers.get('User-Agent').find('Oysape') >=0:
-        # Use the pywebview token as the clientId for desktop version. It should have a apiObject in apis.apiInstances
-        import webview
-        clientId = webview.token
-    else:
-        clientId = request.cookies.get('client_id')
-    clientToken = request.cookies.get('client_token')
+    clientId, clientToken = getClientIdAndToken(request)
     print('OverHttp', clientId, functionName)
     if functionName in ['signInWithEmail','signInWithGithub','signInWithGoogle']:
         # Request to sign in is limited. These 3 requests have no clientId in the headers
-        if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress, {1:1, 10:3, 60:6, 900:10, 3600:15, 86400:20}):
+        if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path, {1:1, 10:3, 60:6, 900:10, 3600:15, 86400:20}):
             return json.dumps({"errinfo": "Too many requests."})
         if not clientId:
             # Generate a clientId, it should be different every time
@@ -196,7 +189,7 @@ def api(functionName):
         data['user-agent'] = request.headers.get('User-Agent')
     elif not clientToken or not clientId:
         # No token. Return empty session. The frontend will show the sign in buttons and stop the loading.
-        if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress, {1:1, 10:3, 60:6, 900:10, 3600:15, 86400:20}):
+        if clientToken and not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path, {1:1, 10:3, 60:6, 900:10, 3600:15, 86400:20}):
             return json.dumps({"errinfo": "Too many requests."})
         return json.dumps({})
     elif functionName == 'reloadUserSession' and not clientId in apis.apiInstances:
@@ -204,14 +197,14 @@ def api(functionName):
         apis.apiInstances[clientId] = apis.ApiOverHttp(clientId=clientId, clientUserAgent=request.headers.get('User-Agent'))
         apis.apiInstances[clientId].userToken = clientToken
     if not clientId in apis.apiInstances:
-        if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress, {1:1, 10:3, 60:6, 900:10, 3600:15, 86400:20}):
+        if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path, {1:1, 10:3, 60:6, 900:10, 3600:15, 86400:20}):
             return json.dumps({"errinfo": "Too many requests."})
         return json.dumps({"errinfo": "Client not found."})
     apis.apiInstances[clientId].clientUserAgent = request.headers.get('User-Agent')
     # Get the token, and check the token
     if functionName not in ['signInWithEmail', 'signInWithGithub', 'signInWithGoogle']:
         if not clientToken or clientToken != apis.apiInstances[clientId].userToken:
-            if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress, {1:1, 10:3, 60:6, 900:10, 3600:15, 86400:20}):
+            if clientToken and not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path, {1:1, 10:3, 60:6, 900:10, 3600:15, 86400:20}):
                 return json.dumps({"errinfo": "Too many requests."})
             return json.dumps({"errinfo": "Unauthorized."})
     # By reaching here, the request is valid. Call the function
@@ -241,16 +234,16 @@ def serve_static(filename):
     return static_file(filename, root=aroot)
 
 
-def open_http_server(host=''):
-    # run(app, host='127.0.0.1', port=19790)
-    server = WSGIServer((host or "127.0.0.1", 19790), app, handler_class=WebSocketHandler)
+def open_http_server(host='', port=19790):
+    # run(app, host='127.0.0.1', port=port)
+    server = WSGIServer((host or "127.0.0.1", port), app, handler_class=WebSocketHandler)
     server.serve_forever()
 
 
-def start_http_server(host=''):
+def start_http_server(host='', port=19790):
     try:
         # Start a thread with the server
-        http_server_thread = threading.Thread(target=open_http_server, kwargs={'host': host})
+        http_server_thread = threading.Thread(target=open_http_server, kwargs={'host': host, 'port': port})
         http_server_thread.daemon = True  # Set as a daemon thread
         http_server_thread.start()
     except:

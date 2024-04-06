@@ -496,8 +496,8 @@ class ApiWorkspace(ApiTerminal):
         taskKey, serverKey = params.get('taskKey'), params.get('serverKey')
         if not self.testIfTaskCanRunOnServer({'taskKey': taskKey, 'serverKey': serverKey}):
             self.combinedConnections[serverKey].onChannelString(tools.colorizeText(LF+'Waiting for tasks to finish...', 'red'))
-            return
-        self.taskOnServer(taskKey, serverKey)
+            return {}
+        return self.taskOnServer(taskKey, serverKey)
 
     def callPipeline(self, params):
         pipeName = params.get('pipelineName')
@@ -882,7 +882,6 @@ class ApiDesktop(ApiOverHttp):
             # Config the webhost
             self.combinedConnections[serverKey].onChannelString((CRLF+'Configuring webhost...'))
             cmd2 = self.combinedConnections[serverKey].dockerCommandPrefix + 'docker exec oysape-webhost python src/webhost-setup.py --obh=' + obh
-            print(cmd2)
             retcmd = self.combinedConnections[serverKey].execute_command(cmd2)
             self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
             cmd3 = self.combinedConnections[serverKey].dockerCommandPrefix + 'docker restart oysape-webhost'

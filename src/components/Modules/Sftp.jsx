@@ -27,17 +27,18 @@ export default function Sftp(props) {
   const miDownload = {label: 'Download', key: 'tree_menu_download', icon: <DownloadOutlined />, }
   const miUploadFolder = {label: 'Upload a folder', key: 'tree_menu_upload_folder', icon: <UploadOutlined />, }
   const miUploadFile = {label: 'Upload a file', key: 'tree_menu_upload_file', icon: <CloudUploadOutlined />, }
-  const miReload = {label: 'Refresh', key: 'tree_menu_reload', icon: <ReloadOutlined />, }
+  const miReload = {label: 'Refresh', key: 'tree_menu_refresh', icon: <ReloadOutlined />, }
+  const miRefreshWholeTree = {label: 'Reload', key: 'tree_menu_reload', icon: <ReloadOutlined />, }
 
   const switchSftpTarget = (value) => {
     if(!value || !userSession.servers.map((item) => item.key).includes(value)) return;
     setSftpTarget(value);
     if(!sftpFileTree[value]){
-      setSftpFileTree({[value]:[{'title': 'Loading...', 'key': value, isLeaf: true, icon: <LoadingOutlined />}]});
+      setSftpFileTree({...sftpFileTree, [value]:[{'title': 'Loading...', 'key': value+'_error', isLeaf: true, icon: <LoadingOutlined />}]});
       callApi('sftpGetFileTree', {target: value, path: '/'}).then((resp) => {
         if(resp && resp.errinfo) {
           message.error(resp.errinfo);
-          setSftpFileTree({[value]:[{'title': resp.errinfo, 'key': value, isLeaf: true, icon: <ExclamationOutlined />}]});
+          setSftpFileTree({...sftpFileTree, [value]:[{'title': resp.errinfo, 'key': value, isLeaf: true, icon: <ExclamationOutlined />}]});
         } else if(resp && resp.fileList) {
           setSftpFileTree({...sftpFileTree, [value]: resp.fileList});
         }
@@ -77,11 +78,18 @@ export default function Sftp(props) {
           reloadThisFolder(node1.current);
         }
       });
-    }else if(key === 'tree_menu_reload') {
+    }else if(key === 'tree_menu_refresh') {
       reloadThisFolder(node1.current);
+    }else if(key === 'tree_menu_reload') {
+      reloadWholeTree();
     }
   }
 
+  const reloadWholeTree = () => {
+    const value = node1.current.key.replace('_error', '');
+    setSftpFileTree({...sftpFileTree, [value]:null});
+    switchSftpTarget(value);
+  }
   const handleDoubleClick = (anode) => {
     const openIt = () => {
       callApi('open_remote_file', {target: sftpTarget, path:anode.path}).then((fileBody)=>{
@@ -103,18 +111,23 @@ export default function Sftp(props) {
       })
     }
     if(anode.isLeaf) {
-      const v1 = getLanguages(anode.path);
-      if(!(v1&&v1.length>0)) {
-        modal.confirm({
-          title: anode.title,
-          content: 'Unknown file type. Do you want to edit this file?',
-          onOk() {
-            openIt();
-          },
-          onCancel() {},
-        })
+      if(anode.key.indexOf('_error') !== -1){
+        reloadWholeTree();
       } else {
         openIt();
+        const v1 = getLanguages(anode.path);
+        if(!(v1&&v1.length>0)) {
+          modal.confirm({
+            title: anode.title,
+            content: 'Unknown file type. Do you want to edit this file?',
+            onOk() {
+              openIt();
+            },
+            onCancel() {},
+          })
+        } else {
+          openIt();
+        }
       }
     }
   }
@@ -174,8 +187,12 @@ export default function Sftp(props) {
             onRightClick={(event) => {
               node1.current = event.node;
               if(event.node.isLeaf) {
-                var items = [miOpenfile, miDivider, miCopyPath, miCopyAbsolutePath, miDivider, miDownload];
-                setContextMenuItems(items);
+                if(event.node.key.indexOf('_error')>=0) {
+                  setContextMenuItems([miRefreshWholeTree]);
+                } else {
+                  var items = [miOpenfile, miDivider, miCopyPath, miCopyAbsolutePath, miDivider, miDownload];
+                  setContextMenuItems(items);
+                }
               }else{
                 setContextMenuItems([miCopyPath, miCopyAbsolutePath, miDivider, miDownload, miDivider, miUploadFolder, miUploadFile, miDivider, miReload, ]);
               }

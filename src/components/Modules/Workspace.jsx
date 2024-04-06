@@ -58,7 +58,12 @@ export default function WorkspaceTerminal(props) {
             // console.log(command);
             // xtermRef.current.write(command);
             callApi('setTheme', {type:customTheme.type}).then((data) => {}); // To ensure the theme is set on backend
-            callApi('callTask', {taskKey:taskKey, serverKey:serverKey}).then(res => {}).catch(err => {});
+            callApi('callTask', {taskKey:taskKey, serverKey:serverKey}).then(res => {
+                if(res&&res.errinfo) {
+                    message.error(res.errinfo);
+                    xtermRef.current.write('\r\n\r\n'+colorizeText(res.errinfo, 'red', customTheme.type==='light' ? 'white' : 'gray'));
+                }
+            }).catch(err => {});
         }).catch(err => {});
     }
     const callPipeline = (pipelineObj) => {
@@ -134,7 +139,7 @@ export default function WorkspaceTerminal(props) {
                 socketObject.current.send(JSON.stringify({action: 'init', uniqueKey:uniqueKey }));
                 socketPinger.current = setInterval(() => {
                     socketObject.current.send(JSON.stringify({action: 'ping', uniqueKey:uniqueKey }));
-                }, 60*1000);
+                }, 30*1000);
             }
             socketObject.current.onmessage = function(event) {
                 const message = event.data;

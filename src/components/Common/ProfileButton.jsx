@@ -3,7 +3,7 @@ import { App, Dropdown, Space, Switch, Avatar, theme } from 'antd';
 import { CheckOutlined, ReloadOutlined, SettingOutlined, LogoutOutlined, QuestionCircleFilled, UserOutlined } from "@ant-design/icons";
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { callApi, delTokenFromCookie } from './global';
+import { callApi, delTokenFromCookie, isDesktopVersion } from './global';
 
 const { useToken } = theme;
 
@@ -82,8 +82,12 @@ export default function ProfileButton() {
         message.success('Reloaded');
       });
     }else if(key === 'menuSignIn') {
-      delTokenFromCookie();
       setUserSession({});
+      if(isDesktopVersion){
+        delTokenFromCookie();
+      } else {
+        window.location.href = '/signin';
+      }
     } else if(key === 'menuAccount') {
       callApi('gotoAccountDashboard', {}).then((res) => {});
     } else if(key === 'menuSignOut') {
@@ -92,10 +96,19 @@ export default function ProfileButton() {
         icon: <QuestionCircleFilled />,
         content: 'Are you sure you want to sign out?',
         onOk() {
-          callApi('signout', {}).then((res) => {
-            delTokenFromCookie();
+          if(isDesktopVersion){
+            callApi('signout', {}).then((res) => {
+              if(res?.errinfo) {
+                message.error(res.errinfo);
+              } else {
+                delTokenFromCookie();
+                setUserSession({});
+              }
+            });
+          } else {
             setUserSession({});
-          })
+            window.location.href = '/signout';
+          }
         },
         onCancel() {
           console.log('Cancel');

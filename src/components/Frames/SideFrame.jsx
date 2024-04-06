@@ -5,7 +5,7 @@ import { MdTaskAlt } from "react-icons/md";
 import { BsFiles } from "react-icons/bs";
 import { FaDocker } from "react-icons/fa";
 import { AiOutlineCloudServer } from "react-icons/ai";
-import { UnorderedListOutlined, DoubleLeftOutlined, DoubleRightOutlined, MenuFoldOutlined } from "@ant-design/icons";
+import { UnorderedListOutlined, DoubleLeftOutlined, DoubleRightOutlined, MenuFoldOutlined, GlobalOutlined } from "@ant-design/icons";
 
 import { useCustomContext } from '../Contexts/CustomContext'
 import { callApi, isDesktopVersion } from '../Common/global';
@@ -16,6 +16,7 @@ import PipelinesPanel from '../Pipeline/PipelinesPanel';
 import TasksPanel from '../Task/TasksPanel';
 import Sftp from '../Modules/Sftp';
 import DockersPanel from '../Modules/DockersPanel';
+import WebsitesPanel from '../Websites/WebsitesPanel';
 
 import './SideFrame.css';
 
@@ -63,12 +64,17 @@ export default function SideFrame() {
     if(isDesktopVersion){
       buttons.push({ key: 'sideExplorer', label: <Tooltip placement="right" title={'File Explorer ('+(browserInfo&&browserInfo.isMac ? 'Command' : 'Ctrl')+'+Shift+E)'}><BsFiles style={{fontSize:'2em', marginRight: '0px'}} /></Tooltip>, children: <ProjectsPanel /> })
     }
+    if(isDesktopVersion && userSession.teams[userSession.team0].is_creator) {
+      buttons.push({ key: 'sideWebsites', label: <GlobalOutlined style={{fontSize:'2em', marginRight: '0px'}} />, children: <WebsitesPanel /> })
+    }
     return buttons;
   }
   React.useEffect(() => {
-    setTimeout(() => {
-      callApi('getFolderFiles').then((data) => { setFolderFiles(data); })
-    }, 1000)
+    if(isDesktopVersion){
+      setTimeout(() => {
+        callApi('getFolderFiles').then((data) => { setFolderFiles(data); })
+      }, 1000)
+    }
   },[setFolderFiles]);
 
   return (

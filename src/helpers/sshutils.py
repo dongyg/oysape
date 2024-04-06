@@ -718,6 +718,7 @@ class SSHClient:
         featureList.append(self.dockerGetComposes())
         return {'version': output, 'featureList': featureList}
 
+
 class WebSocketSSHClient(SSHClient):
     def sendWebSocketData(self, data1, tabKey=''):
         tabKey = tabKey or self.uniqueKey

@@ -1,16 +1,33 @@
 import CryptoJS from 'crypto-js';
 
+export function getDataFromCookie(key) {
+  const cookies = document.cookie.split(';');
+  for (let cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === key) {
+      return value;
+    }
+  }
+  return '';
+}
+
+export function setDataToCookie(key, value, days = 30) {
+  const now = new Date();
+  now.setDate(now.getDate() + days);
+  const cookieValue = `${key}=${value}; path=/; expires=${now.toUTCString()};`;
+  document.cookie = cookieValue;
+}
+
+export function delDataFromCookie(key) {
+  document.cookie = `${key}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+}
+
 export const calculateMD5 = function(str) {
   const hash = CryptoJS.MD5(str);
   return hash.toString();
 }
 
 export const isDesktopVersion = navigator.userAgent.indexOf('Oysape') !== -1;
-export var uniqueClientID = null;
-
-export const setClientId = (id) => {
-  uniqueClientID = id;
-}
 
 export const callApi = (functionName, params) => {
   if(window.pywebview && window.pywebview.api) {
@@ -28,16 +45,9 @@ export const callApi = (functionName, params) => {
     }
   } else {
     console.log('callApi - http: ' + functionName);
-    const token = getTokenFromCookie();
     const headers = {
       'Content-Type': 'application/json',
     };
-    if(token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-    if(uniqueClientID) {
-      headers['Client-Id'] = uniqueClientID;
-    }
     var options = {
       method: 'POST',
       headers: headers,
@@ -56,36 +66,20 @@ export const callApi = (functionName, params) => {
 };
 
 export function setTokenToCookie(token) {
-  const now = new Date();
-  now.setMonth(now.getMonth() + 1);
-  const cookieValue = `client_token=${token}; path=/; expires=${now.toUTCString()};`;
-  document.cookie = cookieValue;
+  setDataToCookie('client_token', token, 30);
 }
 
 export function delTokenFromCookie() {
-  document.cookie = `client_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-}
-
-export function getTokenFromCookie() {
-  const cookies = document.cookie.split(';');
-  for (let cookie of cookies) {
-    const [name, value] = cookie.trim().split('=');
-    if (name === 'client_token') {
-      return value;
-    }
-  }
-  return '';
+  delDataFromCookie('client_token');
 }
 
 export async function fetchData(url = '', data = {}) {
   const queryParams = new URLSearchParams(data).toString();
   const absUrl = url.startsWith('http') ? url : ((window.OYSAPE_BACKEND_HOST||'') + url) + (queryParams ? `?${queryParams}` : '');
-  const token = getTokenFromCookie();
   const options = {
     method: 'GET',
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      'Content-Type': 'application/json'
     },
   };
   try {
@@ -104,12 +98,10 @@ export async function fetchData(url = '', data = {}) {
 export async function requestDelete(url = '', data = {}) {
   const queryParams = new URLSearchParams(data).toString();
   const absUrl = url.startsWith('http') ? url : ((window.OYSAPE_BACKEND_HOST||'') + url) + (queryParams ? `?${queryParams}` : '');
-  const token = getTokenFromCookie();
   const options = {
     method: 'DELETE',
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      'Content-Type': 'application/json'
     },
   };
   try {
@@ -127,12 +119,10 @@ export async function requestDelete(url = '', data = {}) {
 
 export async function postData(url = '', data = {}) {
   const absUrl = url.startsWith('http') ? url : ((window.OYSAPE_BACKEND_HOST||'') + url);
-  const token = getTokenFromCookie();
   const options = {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify(data)
   };

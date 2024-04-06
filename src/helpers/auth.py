@@ -1,20 +1,26 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import socket, hashlib, hmac, json
+import os, socket, hashlib, hmac, json
 import webbrowser
 from . import obhs, tools, consts
 
+def signForWebhost(serverHome, value):
+    webhost_config = os.getenv('WEBHOST_CONFIG')
+    if webhost_config and len(webhost_config.split('@'))==2:
+        v1, v2 = webhost_config.split('@')
+        obhs.keys[v2] = v1
+    secret_key = obhs.keys.get(serverHome)
+    if not secret_key:
+        return {'errinfo': 'Cannot find the oysape backend host configuration. %s'%serverHome}
+    hmac_result = hmac.new(secret_key.encode('utf-8'), value.encode('utf-8'), hashlib.sha256)
+    return {'sig': hmac_result.hexdigest()}
 
 def getSignInState(clientId, userAgent, serverHome):
     # Get the secret key for this OYSAPE_BACKEND_HOST from configuration. For desktop version, the secret key is presaved.
     # Then calulate HMAC signature with this secret key
     clientInfo = {'cid': clientId, 'ua': userAgent, 'obh': (serverHome or ''), 'nonce': tools.getRandomString()}
-    secret_key = obhs.keys.get(serverHome)
-    if not secret_key:
-        return {'errinfo': 'Cannot find the oysape backend host configuration. %s'%serverHome}
-    hmac_result = hmac.new(secret_key.encode('utf-8'), json.dumps(clientInfo, sort_keys=True).encode('utf-8'), hashlib.sha256)
-    clientInfo['sig'] = hmac_result.hexdigest()
+    clientInfo['sig'] = signForWebhost(serverHome, json.dumps(clientInfo, sort_keys=True))
     retval = tools.callServerApiPost('/signin/getready', clientInfo)
     if retval and retval.get('state'):
         return {'state': retval.get('state')}

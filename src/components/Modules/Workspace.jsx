@@ -7,7 +7,7 @@ import "xterm/css/xterm.css";
 
 import { useCustomContext } from '../Contexts/CustomContext'
 import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
-import { uniqueClientID, callApi, getTokenFromCookie, writeWelcome, colorizeText } from '../Common/global';
+import { callApi, writeWelcome, colorizeText } from '../Common/global';
 import "./Terminal.css";
 import { message } from 'antd';
 
@@ -28,7 +28,6 @@ export default function WorkspaceTerminal(props) {
     const uniqueKey = props.uniqueKey;
     const socketObject = React.useRef(null);
     const socketPinger = React.useRef(null);
-    const token = getTokenFromCookie();
 
     const updateWorkspaceTabTitle = (serverKey) => {
         currentWorkingChannel.current = serverKey;
@@ -88,7 +87,7 @@ export default function WorkspaceTerminal(props) {
         xtermRef.current.searchAddon = new SearchAddon();
 
         const sendData = (data) => {
-            socketObject.current.send(JSON.stringify({clientId: uniqueClientID, uniqueKey:uniqueKey, token:token, input:data}));
+            socketObject.current.send(JSON.stringify({uniqueKey:uniqueKey, input:data}));
             if (!xtermRef.current.resized) {
                 onResize();
                 xtermRef.current.resized = true;
@@ -104,7 +103,7 @@ export default function WorkspaceTerminal(props) {
             // console.log('cols: ' + xtermRef.current._core._bufferService.cols, 'rows: ' + xtermRef.current._core._bufferService.rows);
             xtermRef.current.fitAddon.fit();
             if(socketObject.current && socketObject.current.readyState === WebSocket.OPEN) {
-                socketObject.current.send(JSON.stringify({clientId: uniqueClientID, action:'resize', uniqueKey:uniqueKey, token:token, cols:xtermRef.current._core._bufferService.cols, rows:xtermRef.current._core._bufferService.rows}));
+                socketObject.current.send(JSON.stringify({action:'resize', uniqueKey:uniqueKey, cols:xtermRef.current._core._bufferService.cols, rows:xtermRef.current._core._bufferService.rows}));
             }
         }
 
@@ -124,7 +123,7 @@ export default function WorkspaceTerminal(props) {
             window.removeEventListener('resize', onResize);
             xtermRef.current.dispose();
         }
-    }, [setBrowserInfo, uniqueKey, token]);
+    }, [setBrowserInfo, uniqueKey]);
 
     React.useEffect(() => {
         const hasSocket = !!socketObject.current;
@@ -132,9 +131,9 @@ export default function WorkspaceTerminal(props) {
             socketObject.current = new WebSocket((window.OYSAPE_BACKEND_HOST||'').replace('http', 'ws')+'/websocket');
             socketObject.current.onopen = () => {
                 // console.log('WebSocket Connected');
-                socketObject.current.send(JSON.stringify({clientId: uniqueClientID, action: 'init', uniqueKey:uniqueKey, token:token }));
+                socketObject.current.send(JSON.stringify({action: 'init', uniqueKey:uniqueKey }));
                 socketPinger.current = setInterval(() => {
-                    socketObject.current.send(JSON.stringify({clientId: uniqueClientID, action: 'ping', uniqueKey:uniqueKey, token:token }));
+                    socketObject.current.send(JSON.stringify({action: 'ping', uniqueKey:uniqueKey }));
                 }, 60*1000);
             }
             socketObject.current.onmessage = function(event) {
@@ -163,7 +162,7 @@ export default function WorkspaceTerminal(props) {
                 socketObject.current = null;
             }
         }
-    }, [token, uniqueKey]);
+    }, [uniqueKey]);
 
     React.useEffect(() => {
         xtermRef.current.setOption('theme', {

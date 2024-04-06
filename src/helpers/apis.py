@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import os, traceback, json, json, time, threading, fnmatch, platform
-import webview
 from . import auth, tools, consts
 
 BUF_SIZE = 1024
@@ -15,11 +14,6 @@ es_home = '\u001b[200~'
 es_end = '\u001b[201~'
 folder_base = os.path.expanduser(os.path.join('~', '.oysape'))
 folder_cache = os.path.join(folder_base, 'localcache')
-# folder_projects = os.path.join(folder_base, 'projects')
-# filename_settings = os.path.join(folder_base, 'settings.json')
-# filename_session = os.path.join(folder_base, 'session.json')
-# filename_folders = os.path.join(folder_base, 'folders.json')
-# filename_excludes = os.path.join(folder_base, 'excludes.json')
 
 def get_files(apath, recurse=True, exclude=[], ignore=None):
     if os.path.isdir(apath):
@@ -77,6 +71,7 @@ def colorizeText(text, fore=None, back=None):
     return text
 
 def loadEntrypointWindow(window=None, apiObject=None):
+    import webview
     if not window:
         window = webview.create_window('Oysape', consts.homeEntry, js_api=apiObject, width=1280, height=800, confirm_close=True)
     else:
@@ -90,98 +85,41 @@ def mainloop(window):
 ################################################################################
 class ApiBase:
     def __init__(self, clientId='', clientUserAgent='', _debug=False):
+        self._debug = _debug
         self.themeType = 'dark'
         self.clientId = clientId
         self.clientUserAgent = clientUserAgent
         self.backendHost = 'http://127.0.0.1:19790'
         self.signInMessage = ''
-        self._debug = _debug
 
     def isDebug(self):
         return self._debug
 
-    def callApi(self, functionName, params={}):
-        if hasattr(self, functionName):
-            method = getattr(self, functionName)
-            retval = method(params=params)
-            # print('ApiBase.callApi', self.clientId, functionName)
-            return retval
-        else:
-            return {"errinfo": "Function not found."}
-
-    def fullscreen(self):
-        webview.windows[0].toggle_fullscreen()
-
-    def choose_file_read(self, params={}):
-        if self.isDesktopVersion():
-            filename = webview.windows[0].create_file_dialog(webview.OPEN_DIALOG)
-            return filename[0] if filename else ''
-        else:
-            return 'Give the file path directly'
-
-    def choose_file_write(self, params={}):
-        filename = webview.windows[0].create_file_dialog(webview.SAVE_DIALOG)
-        return filename
-
-    def isDesktopVersion(self):
-        return self.clientUserAgent.find('Oysape') >= 0
-
-    def get_absolute_path(self, params):
-        tpath = params.get('path', '')
-        if os.path.isfile(tpath):
-            return os.path.abspath(tpath)
-        elif os.path.isfile(os.path.expanduser(tpath)):
-            return os.path.abspath(os.path.expanduser(tpath))
-        else:
-            folders = [x for x in self.listFolder if x.get('path')]
-            for folder in folders:
-                apath = os.path.join(os.path.split(folder['path'])[0], tpath)
-                if os.path.isfile(apath):
-                    return os.path.abspath(apath)
-        return ''
-
-    def read_file(self, params):
-        # Read the content of the file: params['path']
-        path = params.get('path', '')
-        if not os.path.isfile(path):
-            return {'errinfo': 'File not found: %s' % path}
-        try:
-            with open(path, 'r') as f:
-                return f.read()
-        except Exception as e:
-            return {'errinfo': str(e)}
-
-    def save_file(self, params):
-        # Save params['content'] to params['path']
-        path = params.get('path', '')
-        content = params.get('content', '')
-        # Check if it's valid JSON if saving a setting from file editor
-        # if filename_excludes == path:
-        #     try:
-        #         json.loads(content)
-        #     except:
-        #         return {'errinfo': 'Invalid JSON'}
-        with open(path, 'w') as f:
-            f.write(content)
-
-    def setTheme(self, params):
-        self.themeType = (params or {}).get('type', self.themeType)
-
-    def execute(self, functionName, args=None):
+    def callApi(self, functionName, args=None):
+        print('ApiBase.callApi', self.clientId, functionName)
         if hasattr(self, functionName):
             function = getattr(self, functionName)
             if callable(function):
                 try:
-                    if args:
+                    if args != None:
                         return function(args)
                     else:
                         return function()
                 except Exception as e:
-                    return "Failed: (%s) %s" % (str(function), str(e))
-        return "Api not found: %s" % functionName
+                    return {'errinfo': "Failed: (%s) %s" % (functionName, str(e))}
+        return {'errinfo': "Api not found: %s" % functionName}
+
+    def setTheme(self, params):
+        self.themeType = (params or {}).get('type', self.themeType)
+
+    def isDesktopVersion(self):
+        return self.clientUserAgent.find('Oysape') >= 0
 
 
 class ApiOauth(ApiBase):
+    userToken = ''
+    userSession = {}
+
     def signInWithEmail(self, params):
         self.backendHost = params.get('obh', self.backendHost)
         return auth.openOAuthWindow('email', self.clientId, self.clientUserAgent, self.backendHost)
@@ -194,20 +132,15 @@ class ApiOauth(ApiBase):
         self.backendHost = params.get('obh', self.backendHost)
         return auth.openOAuthWindow('google', self.clientId, self.clientUserAgent, self.backendHost)
 
-    def querySigninResult(self, params={}):
-        outmsg = self.signInMessage
-        self.signInMessage = ''
-        return {'token': self.userToken, 'errinfo': outmsg}
-
-    def signout(self, params):
-        self.userToken = ''
-        self.userSession = {}
-        return {}
+    def signout(self, params={}):
+        retval = tools.callServerApiPost('/signout', {}, self)
+        if not retval.get('errinfo'):
+            self.userToken = ''
+            self.userSession = {}
+        return retval
 
 
 class ApiOysape(ApiOauth):
-    userToken = ''
-    userSession = {}
     listFolder = []
     listExclude = []
 
@@ -221,7 +154,7 @@ class ApiOysape(ApiOauth):
         return self.userSession['accesses'].get(perm, False)
 
     def gotoAccountDashboard(self, params):
-        oneCode = tools.getOneTimeCode(self.userToken)
+        oneCode = tools.callServerApiPost('/user/landing', {}, self)
         if oneCode and oneCode.get('otp'):
             auth.openAccountDashboard(oneCode.get('otp'))
         elif oneCode and oneCode.get('errinfo'):
@@ -230,39 +163,29 @@ class ApiOysape(ApiOauth):
     def reloadUserSession(self, params={}):
         if not self.userToken and params.get('token'):
             self.userToken = params.get('token')
-        retval = tools.callServerApiPost('/user/test', {}, self.userToken)
-        if retval and not retval.get('errinfo'):
-            return self.update_session(retval)
+        if self.userToken:
+            retval = tools.callServerApiPost('/user/test', {}, self)
+            if retval and not retval.get('errinfo'):
+                return self.update_session(retval)
+            else:
+                self.userToken = ''
+                return retval
         else:
-            self.userToken = ''
-            return retval
+            # No token. Return empty session. The frontend will show the sign in buttons and stop the loading.
+            return {}
 
     def update_session(self, sdata):
-        tt = sdata.get('tasks', []) or []
-        pp = sdata.get('pipelines', []) or []
-        ss = sdata.get('servers', []) or []
         ff = sdata.get('folders', []) or []
         ee = sdata.get('excludes', []) or consts.defaultExclude
         self.userSession = sdata
         self.listFolder = ff
         self.listExclude = ee
-        # with open(filename_excludes, 'w') as f:
-        #     json.dump(ee, f, indent=4)
-        # with open(filename_folders, 'w') as f:
-        #     json.dump(ff, f, indent=4)
-        # with open(filename_session, 'w') as f:
-        #     json.dump(sdata, f, indent=4)
         self.userSession['clientId'] = self.clientId
-        return self.userSession
-
-    def getUserSession(self, params={}):
-        if not self.userSession or params.get('refresh'):
-            return self.reloadUserSession(params)
         return self.userSession
 
     def switchToTeam(self, params):
         if not params.get('tid'): return {"errinfo": "No team"}
-        retval = tools.switchToTeam(params.get('tid'), self.userToken)
+        retval = tools.callServerApiPost('/user/team', {'tid': params.get('tid')}, self)
         if retval and not retval.get('errcode'):
             return self.update_session(retval)
         return retval
@@ -275,7 +198,7 @@ class ApiOysape(ApiOauth):
 
     def deleteServer(self, params):
         # Return server list in {'servers': []}
-        retval = tools.delItemOnServer('servers', params.get('key'), self.userToken)
+        retval = tools.callServerApiDelete('/user/servers', {'key': params.get('key')}, self)
         self.userSession['servers'] = retval.get('servers') or []
         return retval
 
@@ -299,7 +222,7 @@ class ApiOysape(ApiOauth):
 
     def deleteTask(self, params):
         # Return task list in {'tasks': []}
-        retval = tools.delItemOnServer('tasks', params.get('key'), self.userToken)
+        retval = tools.callServerApiDelete('/user/tasks', {'key': params.get('key')}, self)
         self.userSession['tasks'] = retval.get('tasks') or []
         return retval
 
@@ -318,63 +241,9 @@ class ApiOysape(ApiOauth):
 
     def deletePipeline(self, params):
         # Return pipeline list in {'pipelines': []}
-        retval = tools.delItemOnServer('pipelines', params.get('key'), self.userToken)
+        retval = tools.callServerApiDelete('/user/pipelines', {'key': params.get('key')}, self)
         self.userSession['pipelines'] = retval.get('pipelines') or []
         return retval
-
-    def getFolderFiles(self, params={}):
-        retval = []
-        exclude = [x for x in self.listExclude if x and x.strip()]
-        exclude = [patten for item in exclude for patten in item.split(' ') if patten]
-        ignore = lambda x,y: any([fnmatch.fnmatch(x, patten) for patten in y])
-        # items = []
-        # if os.path.exists(folder_projects):
-        #     items = get_files(folder_projects, True, exclude, ignore)
-        # oyfiles = [{"title":"Files", "key":"__files__", "children":items}]
-        # retval.extend(oyfiles)
-        folders = [x for x in self.listFolder if x.get('path')]
-        folders = [{"root":True, "title":os.path.basename(x['path']), "key":tools.get_key(x['path']), "path":x['path'], "children":get_files(x['path'], True, exclude+(x.get('exclude') or []), ignore)} for x in folders if x.get('path') and not ignore(x['path'],exclude)]
-        retval.extend(folders)
-        return retval
-
-    def addFolder(self, params={}):
-        if self.isDesktopVersion():
-            foldername = webview.windows[0].create_file_dialog(webview.FOLDER_DIALOG)
-            if foldername and foldername[0] and foldername[0] not in [x['path'] for x in self.listFolder]:
-                self.listFolder.append({'path':foldername[0]})
-                self.importTo({'what': 'folders', 'items': self.listFolder})
-                # with open(filename_folders, 'w') as f:
-                #     json.dump(self.listFolder, f, indent=4)
-            return {'folderFiles':self.getFolderFiles()}
-        else:
-            return {'errinfo': "Please give a folder to add"}
-
-    def removeFolder(self, params={}):
-        path = params.get('path', '')
-        self.listFolder = [x for x in self.listFolder if x.get('path') != path]
-        self.importTo({'what': 'folders', 'items': self.listFolder})
-        # with open(filename_folders, 'w') as f:
-        #     json.dump(self.listFolder, f, indent=4)
-        return {'folderFiles':self.getFolderFiles()}
-
-    def addExcludeToFolder(self, params={}):
-        path = params.get('path', '')
-        for item in self.listFolder:
-            if path.startswith(item['path']):
-                item['exclude'] = item.get('exclude') or []
-                item['exclude'].append(os.path.basename(path))
-        self.importTo({'what': 'folders', 'items': self.listFolder})
-        # with open(filename_folders, 'w') as f:
-        #     json.dump(self.listFolder, f, indent=4)
-        return {'folderFiles':self.getFolderFiles()}
-
-    def getGlobalExcludes(self, params={}):
-        return self.listExclude
-
-    def updateGlobalExcludes(self, params={}):
-        self.listExclude = params.get('excludes') or []
-        self.importTo({'what': 'excludes', 'items': self.listExclude})
-        return {'folderFiles':self.getFolderFiles()}
 
     def importTo(self, params={}):
         # Import servers, tasks, pipelines
@@ -386,13 +255,6 @@ class ApiOysape(ApiOauth):
             'folders': self.listFolder,
             'excludes': self.listExclude,
         }
-        # saves = {
-        #     'servers': filename_servers,
-        #     'tasks': filename_tasks,
-        #     'pipelines': filename_pipelines,
-        #     'folders': filename_folders,
-        #     'excludes': filename_excludes,
-        # }
         if what not in objs.keys():
             return {"errinfo": "Invalid operation"}
         try:
@@ -411,15 +273,12 @@ class ApiOysape(ApiOauth):
                 else:
                     return {"errinfo": "Please give a file to import"}
             if isinstance(import_list, list):
-                retval = tools.setItemsToServer(what, import_list, self.userToken)
+                retval = tools.callServerApiPost('/user/'+what, {what: import_list}, self)
                 if retval and retval.get('errinfo'):
                     return retval
                 return_list = retval.get(what, []) or []
                 objs[what].clear()
                 objs[what].extend(return_list)
-                # if saves.get(what):
-                #     with open(saves[what], 'w') as f2:
-                #         json.dump(objs[what], f2, indent=4)
                 return retval
             return {}
         except Exception as e:
@@ -453,7 +312,6 @@ class ApiOysape(ApiOauth):
                 return {"errinfo": "Please give a file to export"}
         except Exception as e:
             return {"errinfo": str(e)}
-
 
 class ApiTerminal(ApiOysape):
     terminalConnections = {}
@@ -689,6 +547,8 @@ class ApiSftp(ApiWorkspace):
         thisPath = params.get('path') or '/'
         if not serverKey in self.combinedConnections:
             self.createCombConnection(serverKey)
+        if not serverKey in self.combinedConnections:
+            return {'errinfo': 'SSH connection not found'}
         retval = self.combinedConnections[serverKey].getServerFiles(thisPath)
         return retval
 
@@ -699,6 +559,8 @@ class ApiSftp(ApiWorkspace):
         thisPath = params.get('path') or '/'
         if not serverKey in self.combinedConnections:
             self.createCombConnection(serverKey)
+        if not serverKey in self.combinedConnections:
+            return {'errinfo': 'SSH connection not found'}
         retval = self.combinedConnections[serverKey].open_remote_file(thisPath)
         return retval
 
@@ -710,6 +572,8 @@ class ApiSftp(ApiWorkspace):
         content = params.get('content')
         if not serverKey in self.combinedConnections:
             self.createCombConnection(serverKey)
+        if not serverKey in self.combinedConnections:
+            return {'errinfo': 'SSH connection not found'}
         retval = self.combinedConnections[serverKey].save_remote_file(thisPath, content)
         return retval
 
@@ -720,12 +584,16 @@ class ApiSftp(ApiWorkspace):
         thisPath = params.get('path')
         if not serverKey in self.combinedConnections:
             self.createCombConnection(serverKey)
-        foldername = webview.windows[0].create_file_dialog(webview.FOLDER_DIALOG)
-        if foldername and foldername[0]:
-            retdata = self.combinedConnections[serverKey].download(thisPath, foldername[0])
-            number, transfered = retdata.get('count',0), retdata.get('size',0)
-            self.combinedConnections[serverKey].onChannelString(CRLF+'Downloaded %s file(s). %s transfered'%(number, tools.convert_bytes(transfered))+CRLF)
-            return retdata
+        if not serverKey in self.combinedConnections:
+            return {'errinfo': 'SSH connection not found'}
+        if self.isDesktopVersion():
+            import webview
+            foldername = webview.windows[0].create_file_dialog(webview.FOLDER_DIALOG)
+            if foldername and foldername[0]:
+                retdata = self.combinedConnections[serverKey].download(thisPath, foldername[0])
+                number, transfered = retdata.get('count',0), retdata.get('size',0)
+                self.combinedConnections[serverKey].onChannelString(CRLF+'Downloaded %s file(s). %s transfered'%(number, tools.convert_bytes(transfered))+CRLF)
+                return retdata
 
     def upload_remote_file(self, params={}):
         if not self.hasPermission('terminal'):
@@ -734,12 +602,16 @@ class ApiSftp(ApiWorkspace):
         thisPath = params.get('path')
         if not serverKey in self.combinedConnections:
             self.createCombConnection(serverKey)
-        filename = webview.windows[0].create_file_dialog(webview.OPEN_DIALOG)
-        if filename and filename[0]:
-            retdata = self.combinedConnections[serverKey].upload(filename[0], os.path.join(thisPath, os.path.basename(filename[0])))
-            number, transfered = retdata.get('count',0), retdata.get('size',0)
-            self.combinedConnections[serverKey].onChannelString(CRLF+'Uploaded %s file(s). %s transfered'%(number, tools.convert_bytes(transfered))+CRLF)
-            return retdata
+        if not serverKey in self.combinedConnections:
+            return {'errinfo': 'SSH connection not found'}
+        if self.isDesktopVersion():
+            import webview
+            filename = webview.windows[0].create_file_dialog(webview.OPEN_DIALOG)
+            if filename and filename[0]:
+                retdata = self.combinedConnections[serverKey].upload(filename[0], os.path.join(thisPath, os.path.basename(filename[0])))
+                number, transfered = retdata.get('count',0), retdata.get('size',0)
+                self.combinedConnections[serverKey].onChannelString(CRLF+'Uploaded %s file(s). %s transfered'%(number, tools.convert_bytes(transfered))+CRLF)
+                return retdata
 
     def upload_remote_folder(self, params={}):
         if not self.hasPermission('terminal'):
@@ -748,12 +620,16 @@ class ApiSftp(ApiWorkspace):
         thisPath = params.get('path')
         if not serverKey in self.combinedConnections:
             self.createCombConnection(serverKey)
-        foldername = webview.windows[0].create_file_dialog(webview.FOLDER_DIALOG)
-        if foldername and foldername[0]:
-            retdata = self.combinedConnections[serverKey].upload(foldername[0], thisPath)
-            number, transfered = retdata.get('count',0), retdata.get('size',0)
-            self.combinedConnections[serverKey].onChannelString(CRLF+'Uploaded %s file(s). %s transfered'%(number, tools.convert_bytes(transfered))+CRLF)
-            return retdata
+        if not serverKey in self.combinedConnections:
+            return {'errinfo': 'SSH connection not found'}
+        if self.isDesktopVersion():
+            import webview
+            foldername = webview.windows[0].create_file_dialog(webview.FOLDER_DIALOG)
+            if foldername and foldername[0]:
+                retdata = self.combinedConnections[serverKey].upload(foldername[0], thisPath)
+                number, transfered = retdata.get('count',0), retdata.get('size',0)
+                self.combinedConnections[serverKey].onChannelString(CRLF+'Uploaded %s file(s). %s transfered'%(number, tools.convert_bytes(transfered))+CRLF)
+                return retdata
 
 
 class ApiDockerManager(ApiSftp):
@@ -763,6 +639,8 @@ class ApiDockerManager(ApiSftp):
         serverKey = params.get('target')
         if not serverKey in self.combinedConnections:
             self.createCombConnection(serverKey)
+        if not serverKey in self.combinedConnections:
+            return {'errinfo': 'SSH connection not found'}
         return self.combinedConnections[serverKey].dockerGetWholeTree()
     def dockerGetTreeNode(self, params={}):
         if not self.hasPermission('docker'):
@@ -771,6 +649,8 @@ class ApiDockerManager(ApiSftp):
         nodeKey = params.get('nodeKey')
         if not serverKey in self.combinedConnections:
             self.createCombConnection(serverKey)
+        if not serverKey in self.combinedConnections:
+            return {'errinfo': 'SSH connection not found'}
         if nodeKey and nodeKey.endswith('_docker_containers'):
             return self.combinedConnections[serverKey].dockerGetContainers()
         elif nodeKey and nodeKey.endswith('_docker_images'):
@@ -786,12 +666,14 @@ class ApiDockerManager(ApiSftp):
         command = params.get('command')
         if not serverKey in self.combinedConnections:
             self.createCombConnection(serverKey)
+        if not serverKey in self.combinedConnections:
+            return {'errinfo': 'SSH connection not found'}
         # Build a virtual Task to run the command
         interaction = 'interaction' if self.hasPermission('terminal') else ''
-        if interaction and len(webview.windows) > 0:
+        if interaction:
             self.workspaceWorkingChannel = serverKey
             self.combinedConnections[serverKey].updateWorkspaceTabTitle(self.workspaceWorkingChannel)
-        self.execTask('docker', {'interaction':interaction}, [command], self.combinedConnections[serverKey], output=False)
+        self.execTask('docker', {'interaction':interaction}, [command], self.combinedConnections[serverKey], output=params.get('output', False))
         while not self.combinedConnections[serverKey].areAllTasksDone():
             time.sleep(0.1)
     def dockerSetDockerCommand(self, params={}):
@@ -801,6 +683,8 @@ class ApiDockerManager(ApiSftp):
         command = params.get('command')
         if not serverKey in self.combinedConnections:
             self.createCombConnection(serverKey)
+        if not serverKey in self.combinedConnections:
+            return {'errinfo': 'SSH connection not found'}
         self.combinedConnections[serverKey].dockerCommandPrefix = command
         #TODO: save the docker command path on the server
     def dockerSetComposeCommand(self, params={}):
@@ -810,11 +694,215 @@ class ApiDockerManager(ApiSftp):
         command = params.get('command')
         if not serverKey in self.combinedConnections:
             self.createCombConnection(serverKey)
+        if not serverKey in self.combinedConnections:
+            return {'errinfo': 'SSH connection not found'}
         self.combinedConnections[serverKey].dockerComposePrefix = command
         #TODO: save the docker command path on the server
 
 
 class ApiOverHttp(ApiDockerManager):
     socketConnections = {}
+
+
+class ApiDesktop(ApiOverHttp):
+    def get_token(self):
+        import webview
+        for c in webview.windows[0].get_cookies():
+            if 'client_token' in c:
+                apiInstances[webview.token].userToken = c['client_token'].value
+                break
+        return {'token': apiInstances[webview.token].userToken} if apiInstances[webview.token].userToken else {}
+
+    def querySigninResult(self, params={}):
+        outmsg = self.signInMessage
+        self.signInMessage = ''
+        return {'token': self.userToken, 'errinfo': outmsg}
+
+    def toggle_fullscreen(self):
+        import webview
+        webview.windows[0].toggle_fullscreen()
+
+    def choose_file_read(self, params={}):
+        if self.isDesktopVersion():
+            import webview
+            filename = webview.windows[0].create_file_dialog(webview.OPEN_DIALOG)
+            return filename[0] if filename else ''
+        else:
+            return ''
+
+    def choose_file_write(self, params={}):
+        if self.isDesktopVersion():
+            import webview
+            filename = webview.windows[0].create_file_dialog(webview.SAVE_DIALOG)
+            return filename
+        else:
+            return ''
+
+    def get_absolute_path(self, params):
+        tpath = params.get('path', '')
+        if os.path.isfile(tpath):
+            return os.path.abspath(tpath)
+        elif os.path.isfile(os.path.expanduser(tpath)):
+            return os.path.abspath(os.path.expanduser(tpath))
+        else:
+            folders = [x for x in self.listFolder if x.get('path')]
+            for folder in folders:
+                apath = os.path.join(os.path.split(folder['path'])[0], tpath)
+                if os.path.isfile(apath):
+                    return os.path.abspath(apath)
+        return ''
+
+    def read_file(self, params):
+        # Read the content of the file: params['path']
+        path = params.get('path', '')
+        if not os.path.isfile(path):
+            return {'errinfo': 'File not found: %s' % path}
+        try:
+            with open(path, 'r') as f:
+                return f.read()
+        except Exception as e:
+            return {'errinfo': str(e)}
+
+    def save_file(self, params):
+        # Save params['content'] to params['path']
+        path = params.get('path', '')
+        content = params.get('content', '')
+        with open(path, 'w') as f:
+            f.write(content)
+
+    def getFolderFiles(self, params={}):
+        retval = []
+        exclude = [x for x in self.listExclude if x and x.strip()]
+        exclude = [patten for item in exclude for patten in item.split(' ') if patten]
+        ignore = lambda x,y: any([fnmatch.fnmatch(x, patten) for patten in y])
+        folders = [x for x in self.listFolder if x.get('path')]
+        folders = [{"root":True, "title":os.path.basename(x['path']), "key":tools.get_key(x['path']), "path":x['path'], "children":get_files(x['path'], True, exclude+(x.get('exclude') or []), ignore)} for x in folders if x.get('path') and not ignore(x['path'],exclude)]
+        retval.extend(folders)
+        return retval
+
+    def addFolder(self, params={}):
+        if self.isDesktopVersion():
+            import webview
+            foldername = webview.windows[0].create_file_dialog(webview.FOLDER_DIALOG)
+            if foldername and foldername[0] and foldername[0] not in [x['path'] for x in self.listFolder]:
+                self.listFolder.append({'path':foldername[0]})
+                self.importTo({'what': 'folders', 'items': self.listFolder})
+            return {'folderFiles':self.getFolderFiles()}
+        else:
+            return {'errinfo': "Please give a folder to add"}
+
+    def removeFolder(self, params={}):
+        path = params.get('path', '')
+        self.listFolder = [x for x in self.listFolder if x.get('path') != path]
+        self.importTo({'what': 'folders', 'items': self.listFolder})
+        return {'folderFiles':self.getFolderFiles()}
+
+    def addExcludeToFolder(self, params={}):
+        path = params.get('path', '')
+        for item in self.listFolder:
+            if path.startswith(item['path']):
+                item['exclude'] = item.get('exclude') or []
+                item['exclude'].append(os.path.basename(path))
+        self.importTo({'what': 'folders', 'items': self.listFolder})
+        return {'folderFiles':self.getFolderFiles()}
+
+    def getGlobalExcludes(self, params={}):
+        return self.listExclude
+
+    def updateGlobalExcludes(self, params={}):
+        self.listExclude = params.get('excludes') or []
+        self.importTo({'what': 'excludes', 'items': self.listExclude})
+        return {'folderFiles':self.getFolderFiles()}
+
+    def addWebHost(self, params={}):
+        obh = params.get('obh')
+        retval = tools.callServerApiPost('/user/webhost', {'obh': obh}, self)
+        if retval and not retval.get('errinfo'):
+            return self.update_session(retval)
+        else:
+            return retval
+
+    def deleteWebHost(self, params={}):
+        obh = params.get('obh')
+        retval = tools.callServerApiDelete('/user/webhost', {'obh': obh}, self)
+        if retval and not retval.get('errinfo'):
+            return self.update_session(retval)
+        else:
+            return retval
+
+    def uninstallWebHost(self, params={}):
+        obh = params.get('obh')
+        sobj = [x for x in self.userSession['sites'] if x['obh']==obh]
+        if not sobj: return {'errinfo': 'Site not found'}
+        if not sobj[0].get('target'): return {'errinfo': 'Target not found'}
+        serverKey = sobj[0]['target']
+        try:
+            if not serverKey in self.combinedConnections:
+                self.createCombConnection(serverKey)
+            if not serverKey in self.combinedConnections:
+                return {'errinfo': 'SSH connection not found'}
+            # Check the docker environment
+            if self.combinedConnections[serverKey].dockerCommandPrefix == None:
+                self.combinedConnections[serverKey].onChannelString((CRLF+'Checking docker environment...'+CRLF))
+                retval = self.combinedConnections[serverKey].dockerCheckEnv()
+                if retval and retval.get('errinfo'): return retval
+            self.combinedConnections[serverKey].onChannelString((CRLF+'Removing webhost container...'+CRLF))
+            self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rm -f oysape-webhost')
+            self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rmi -f dongyg/oysape-webhost')
+            retval = tools.callServerApiDelete('/user/webhost/verify', {'obh': obh, 'target': serverKey}, self)
+            self.combinedConnections[serverKey].onChannelString((CRLF+'Webhost uninstalled'+CRLF))
+            return retval
+            return {}
+        except Exception as e:
+            return {'errinfo': str(e)}
+
+    def installWebHost(self, params={}):
+        obh = params.get('obh')
+        serverKey = params.get('target')
+        try:
+            # Check the ssh connection
+            if not serverKey in self.combinedConnections:
+                self.createCombConnection(serverKey)
+            if not serverKey in self.combinedConnections:
+                return {'errinfo': 'SSH connection not found'}
+            # Check the docker environment
+            if self.combinedConnections[serverKey].dockerCommandPrefix == None:
+                self.combinedConnections[serverKey].onChannelString((CRLF+'Checking docker environment...'))
+                retval = self.combinedConnections[serverKey].dockerCheckEnv()
+                if retval and retval.get('errinfo'): return retval
+            # Remove the container and the image first
+            self.combinedConnections[serverKey].onChannelString((CRLF+'Removing webhost container...'))
+            retcmd = self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rm -f oysape-webhost')
+            self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
+            # self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rmi -f dongyg/oysape-webhost')
+            # retcmd = self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
+            # Run the container
+            self.combinedConnections[serverKey].onChannelString((CRLF+'Running webhost container...'))
+            oneTimeSecret = tools.getRandomString(60)
+            cmd1 = self.combinedConnections[serverKey].dockerCommandPrefix + 'docker run --name oysape-webhost -p 19790:19790 -e WEBHOST_CONFIG=' + oneTimeSecret+'@'+obh + ' -v /var/run/docker.sock:/var/run/docker.sock -v ~/.ssh:/root/.ssh -itd dongyg/oysape-webhost'
+            # self.dockerExecCommand({'command': cmd1, 'target': serverKey, 'output': True})
+            retcmd = self.combinedConnections[serverKey].execute_command(cmd1)
+            self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
+            # Config the webhost
+            self.combinedConnections[serverKey].onChannelString((CRLF+'Configuring webhost...'))
+            cmd2 = self.combinedConnections[serverKey].dockerCommandPrefix + 'docker exec oysape-webhost python src/webhost-setup.py --obh=' + obh
+            print(cmd2)
+            retcmd = self.combinedConnections[serverKey].execute_command(cmd2)
+            self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
+            cmd3 = self.combinedConnections[serverKey].dockerCommandPrefix + 'docker restart oysape-webhost'
+            retcmd = self.combinedConnections[serverKey].execute_command(cmd3)
+            self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
+            # Save the secret
+            retval = tools.callServerApiPost('/user/webhost', {'obh': obh, 'target': serverKey, 'secret': oneTimeSecret}, self)
+            self.combinedConnections[serverKey].onChannelString((CRLF+'Webhost installed'+CRLF))
+            return retval
+        except Exception as e:
+            return {'errinfo': str(e)}
+
+    def verifyWebHost(self, params={}):
+        obh = params.get('obh')
+        retval = tools.callServerApiPost('/user/webhost/verify', {'obh': obh}, self)
+        return retval
+
 
 apiInstances = {}

@@ -3,9 +3,11 @@ import React, { useEffect, useState } from 'react';
 import { Layout, Button, Image, Alert, } from 'antd';
 import { GithubOutlined, GoogleOutlined, GlobalOutlined, LoadingOutlined } from "@ant-design/icons";
 
-import { isDesktopVersion, setClientId, callApi, getTokenFromCookie, setTokenToCookie } from '../Common/global';
+import { useCustomContext } from '../Contexts/CustomContext'
+import { isDesktopVersion, callApi, setTokenToCookie, delTokenFromCookie } from '../Common/global';
 
 export default function BodyContainer() {
+  const { setUserSession } = useCustomContext();
   const queryParams = new URLSearchParams(window.location.search);
   const [ messageType, setMessageType ] = useState('error');
   const [ messageContent, setMessageContent ] = useState(queryParams.get('msg')||'');
@@ -39,7 +41,7 @@ export default function BodyContainer() {
       setLoading(false);
     } else {
       if(waitData?.clientId) {
-        setClientId(waitData.clientId);
+        // Won't be here in web version
         const waitForSigninResultTimer = setInterval(() => {
           callApi('querySigninResult', {}).then((loginData) => {
             if(loginData && loginData.token) {
@@ -72,25 +74,38 @@ export default function BodyContainer() {
   const showMessageOnSigninPage = (message, type) => {
     setMessageContent(message);
     if(type) setMessageType(type);
-    if(message) setLoading(false);
+    setLoading(false);
   };
   window.showMessageOnSigninPage = showMessageOnSigninPage;
 
+  const reloadUserSession = () => {
+    callApi('reloadUserSession', {refresh: true}).then((data) => {
+      console.log('reloadUserSession', data);
+      if(data?.uid) {
+        setUserSession(data);
+      }else if(data?.errinfo) {
+        window.showMessageOnSigninPage && window.showMessageOnSigninPage(data.errinfo);
+        delTokenFromCookie();
+      }else{
+        window.showMessageOnSigninPage && window.showMessageOnSigninPage('');
+        // delTokenFromCookie();
+      }
+    });
+  };
+  window.reloadUserSession = reloadUserSession;
+
   useEffect(() => {
     const runMeFirst = () => {
-      const token = getTokenFromCookie();
-      if(token) {
-        window.reloadUserSession(token);
-      } else {
-        setLoading(false);
-      }
+      window.reloadUserSession();
     }
 
     if(isDesktopVersion) {
       const waitForPywebivewTimer = setInterval(() => {
         if(window.pywebview && window.pywebview.token) {
           clearInterval(waitForPywebivewTimer);
-          runMeFirst();
+          callApi('get_token').then((data) => {
+            runMeFirst();
+          });
         }
       })
     } else {

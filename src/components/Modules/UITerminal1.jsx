@@ -7,7 +7,7 @@ import "xterm/css/xterm.css";
 
 import { useCustomContext } from '../Contexts/CustomContext'
 import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
-import { uniqueClientID, callApi, getTokenFromCookie } from '../Common/global';
+import { callApi } from '../Common/global';
 import "./Terminal.css";
 
 const termOptions = {
@@ -27,7 +27,6 @@ export default function WebTerminal(props) {
     const taskKey = props.taskKey;
     const withCommand = props.withCommand;
     const socketObject = React.useRef(null);
-    const token = getTokenFromCookie();
     const access_terminal = userSession.accesses.terminal;
 
     React.useEffect(() => {
@@ -36,7 +35,7 @@ export default function WebTerminal(props) {
         xtermRef.current.fitAddon = new FitAddon();
 
         const sendData = (data) => {
-            socketObject.current.send(JSON.stringify({clientId: uniqueClientID, uniqueKey:uniqueKey, serverKey:serverKey, token:token, input:data}));
+            socketObject.current.send(JSON.stringify({ uniqueKey:uniqueKey, serverKey:serverKey, input:data}));
             if (!xtermRef.current.resized) {
                 onResize();
                 xtermRef.current.resized = true;
@@ -53,7 +52,7 @@ export default function WebTerminal(props) {
             // console.log('cols: ' + xtermRef.current._core._bufferService.cols, 'rows: ' + xtermRef.current._core._bufferService.rows);
             xtermRef.current.fitAddon.fit();
             if(socketObject.current && socketObject.current.readyState === WebSocket.OPEN) {
-                socketObject.current.send(JSON.stringify({clientId: uniqueClientID, action:'resize', uniqueKey:uniqueKey, token:token, cols:xtermRef.current._core._bufferService.cols, rows:xtermRef.current._core._bufferService.rows}));
+                socketObject.current.send(JSON.stringify({ action:'resize', uniqueKey:uniqueKey, cols:xtermRef.current._core._bufferService.cols, rows:xtermRef.current._core._bufferService.rows}));
             }
         }
 
@@ -82,7 +81,7 @@ export default function WebTerminal(props) {
             window.removeEventListener('resize', onResize);
             if(xtermRef.current) xtermRef.current.dispose();
         }
-    }, [uniqueKey, serverKey, taskKey, withCommand, token, message, access_terminal]);
+    }, [uniqueKey, serverKey, taskKey, withCommand, message, access_terminal]);
 
     React.useEffect(() => {
         const hasSocket = !!socketObject.current;
@@ -90,7 +89,7 @@ export default function WebTerminal(props) {
             socketObject.current = new WebSocket((window.OYSAPE_BACKEND_HOST||'').replace('http', 'ws')+'/websocket');
             socketObject.current.onopen = () => {
                 // console.log('WebSocket Connected');
-                socketObject.current.send(JSON.stringify({ clientId: uniqueClientID, action: 'init', uniqueKey:uniqueKey, token:token }));
+                socketObject.current.send(JSON.stringify({ action: 'init', uniqueKey:uniqueKey }));
             }
             socketObject.current.onmessage = function(event) {
                 const message = event.data;
@@ -109,7 +108,7 @@ export default function WebTerminal(props) {
                 socketObject.current = null;
             }
         }
-    }, [token, uniqueKey]);
+    }, [uniqueKey]);
 
     React.useEffect(() => {
         xtermRef.current.setOption('theme', {

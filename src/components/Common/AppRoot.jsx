@@ -2,32 +2,11 @@ import React from 'react';
 import { ConfigProvider, App, theme, Layout } from 'antd';
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { callApi, uniqueClientID, setClientId, delTokenFromCookie } from '../Common/global';
 import BodyContainer from './BodyContainer';
 import SignIn from './SignIn';
 
-
 const AppRoot = () => {
-  const { customTheme, userSession, setUserSession } = useCustomContext();
-
-  const reloadUserSession = (token) => {
-    callApi('getUserSession', {refresh: true, token:token}).then((data) => {
-      console.log('getUserSession', data);
-      if(data?.uid) {
-        setUserSession(data);
-        if(!uniqueClientID) {
-          setClientId(data.clientId);
-        }
-      }else if(data?.errinfo) {
-        window.showMessageOnSigninPage && window.showMessageOnSigninPage(data.errinfo);
-        delTokenFromCookie();
-      }else{
-        window.showMessageOnSigninPage && window.showMessageOnSigninPage('Unknown error', 'error');
-        delTokenFromCookie();
-      }
-    });
-  };
-  window.reloadUserSession = reloadUserSession;
+  const { customTheme, userSession } = useCustomContext();
 
   return (
     <ConfigProvider

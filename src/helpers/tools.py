@@ -48,7 +48,6 @@ def convert_bytes(size):
 def get_key(text):
     return n16to62(hashlib.md5(text.encode('utf-8')).hexdigest())
 
-
 def rate_limit(kvobj, ip, limits={}):
     limits[1] = 2 if not limits.get(1) else limits.get(1)
     limits[5] = 10 if not limits.get(5) else limits.get(5)
@@ -69,7 +68,7 @@ def rate_limit(kvobj, ip, limits={}):
 
 ################################################################################
 def send_get_request(url, data, headers=None):
-    print('GET', url)
+    # print('GET', url)
     try:
         data_encoded = urllib.parse.urlencode(data)
         headers = headers if headers else {}
@@ -87,7 +86,7 @@ def send_get_request(url, data, headers=None):
         return None
 
 def send_post_request(url, data, headers=None):
-    print('POST',url)
+    # print('POST',url)
     try:
         json_data = json.dumps(data).encode('utf-8')
         headers = headers if headers else {}
@@ -104,7 +103,7 @@ def send_post_request(url, data, headers=None):
         return None
 
 def send_delete_request(url, data, headers=None):
-    print('DELETE', url)
+    # print('DELETE', url)
     try:
         data_encoded = urllib.parse.urlencode(data)
         headers = headers if headers else {}
@@ -121,38 +120,32 @@ def send_delete_request(url, data, headers=None):
         traceback.print_exc()
         return None
 
-def callServerApiGet(url, params, token=''):
+def callServerApiGet(url, params, localApiObj=None):
     custom_headers = {}
-    if token:
-        custom_headers['Authorization'] = 'Bearer ' + token
+    if localApiObj and localApiObj.userToken:
+        custom_headers['Authorization'] = 'Bearer ' + localApiObj.userToken
+    if localApiObj and localApiObj.clientUserAgent:
+        custom_headers['User-Agent'] = localApiObj.clientUserAgent
     data = send_get_request(consts.OYSAPE_HOST + consts.API_ROOT + url, params, )
     return data
 
-def callServerApiPost(url, params, token=''):
+def callServerApiPost(url, params, localApiObj=None):
     custom_headers = {}
-    if token:
-        custom_headers['Authorization'] = 'Bearer ' + token
+    if localApiObj and localApiObj.userToken:
+        custom_headers['Authorization'] = 'Bearer ' + localApiObj.userToken
+    if localApiObj and localApiObj.clientUserAgent:
+        custom_headers['User-Agent'] = localApiObj.clientUserAgent
     data = send_post_request(consts.OYSAPE_HOST + consts.API_ROOT + url, params, custom_headers)
     return data
 
-def callServerApiDelete(url, params, token=''):
+def callServerApiDelete(url, params, localApiObj=None):
     custom_headers = {}
-    if token:
-        custom_headers['Authorization'] = 'Bearer ' + token
+    if localApiObj and localApiObj.userToken:
+        custom_headers['Authorization'] = 'Bearer ' + localApiObj.userToken
+    if localApiObj and localApiObj.clientUserAgent:
+        custom_headers['User-Agent'] = localApiObj.clientUserAgent
     data = send_delete_request(consts.OYSAPE_HOST + consts.API_ROOT + url, params, custom_headers)
     return data
-
-def setItemsToServer(what, items, token=''):
-    return callServerApiPost('/user/'+what, {what: items}, token)
-
-def delItemOnServer(what, itemKey, token=''):
-    return callServerApiDelete('/user/'+what, {'key': itemKey}, token)
-
-def switchToTeam(tid, token=''):
-    return callServerApiPost('/user/team', {'tid': tid}, token)
-
-def getOneTimeCode(token=''):
-    return callServerApiPost('/user/landing', {}, token)
 
 # send_get_request('http://localhost:8080/oyapi/user/test', {'c': 'test@localhost'})
 # send_post_request('http://localhost:8080/oyapi/user/test', {'c': 'test@localhost'})

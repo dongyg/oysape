@@ -40,7 +40,7 @@ export default function BodyContainer() {
       showMessageOnSigninPage(waitData.errinfo, 'error');
       setLoading(false);
     } else {
-      if(waitData?.clientId) {
+      if(isDesktopVersion) {
         // Won't be here in web version
         const waitForSigninResultTimer = setInterval(() => {
           callApi('querySigninResult', {}).then((loginData) => {

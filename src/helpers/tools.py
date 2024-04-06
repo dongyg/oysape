@@ -48,6 +48,32 @@ def convert_bytes(size):
 def get_key(text):
     return n16to62(hashlib.md5(text.encode('utf-8')).hexdigest())
 
+def colorizeText(text, fore=None, back=None):
+    backgrounds = {
+        'gray': '\x1b[40m%s\x1b[0m',  # background
+        'red': '\x1b[41m%s\x1b[0m',  # background
+        'green': '\x1b[42m%s\x1b[0m',  # background
+        'yellow': '\x1b[43m%s\x1b[0m',  # background
+        'blue': '\x1b[44m%s\x1b[0m',  # background
+        'purple': '\x1b[45m%s\x1b[0m',  # background
+        'cyan': '\x1b[46m%s\x1b[0m',  # background
+        'white': '\x1b[47m%s\x1b[0m',  # background
+    }
+    foregrounds = {
+        'red': '\x1b[31m%s\x1b[0m',  # text
+        'green': '\x1b[32m%s\x1b[0m',  # text
+        'yellow': '\x1b[33m%s\x1b[0m',  # text
+        'blue': '\x1b[34m%s\x1b[0m',  # text
+        'purple': '\x1b[35m%s\x1b[0m',  # text
+        'cyan': '\x1b[36m%s\x1b[0m',  # text
+        'white': '\x1b[37m%s\x1b[0m',  # text
+    }
+    if fore and fore in foregrounds:
+        text = foregrounds[fore]%text
+    if back and back in backgrounds:
+        text = backgrounds[back]%text
+    return text
+
 def rate_limit(kvobj, ip, limits={}):
     limits[1] = 2 if not limits.get(1) else limits.get(1)
     limits[5] = 10 if not limits.get(5) else limits.get(5)

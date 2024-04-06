@@ -30,7 +30,6 @@ def getClientIdAndToken(req):
     clientToken = req.cookies.get('client_token')
     return clientId, clientToken
 
-@app.route('/signin/finish')
 @app.route('/websocket')
 def handle_websocket():
     wsock = request.environ.get('wsgi.websocket')
@@ -85,11 +84,17 @@ def handle_websocket():
                     del apis.apiInstances[clientId]
 
 
-def processSigninResponse(retval):
-    # check clientId
-    if not retval: return 'Something wrong'
-    clientId = retval.get('clientId')
+@app.route('/callback/oauth')
+def oauthCallback():
+    print(apis.apiInstances)
+    code = request.query.get('code')
+    state = request.query.get('state')
+    clientId = request.query.get('cid')
     if not clientId in apis.apiInstances: return 'Client not found while callback'
+    # Send the code to backend to finish the OAuth process and finish the sign in process. Get the token.
+    retval = tools.callServerApiPost('/signin/finish', {'code': code, 'state': state, 'cid': clientId}, apis.apiInstances[clientId])
+    print(retval)
+    if not retval: return 'Something wrong'
     if retval.get('errinfo'):
         apis.apiInstances[clientId].signInMessage = retval.get('errinfo')
         return template_signin_failed_close.replace('{msg}', apis.apiInstances[clientId].signInMessage)
@@ -115,16 +120,6 @@ def processSigninResponse(retval):
         # response.set_cookie("client_id", clientId, path="/", max_age=3600*24*30, httponly=True)
         rendered_template = template_signin_success_redirect.replace('{url}', apis.apiInstances[clientId].backendHost+'/index.html')
     return rendered_template
-
-@app.route('/callback/oauth')
-def oauthCallback():
-    code = request.query.get('code')
-    state = request.query.get('state')
-    cid = request.query.get('cid')
-    if not cid in apis.apiInstances: return 'Client not found while callback'
-    # Send the code to backend to finish the OAuth process and finish the sign in process. Get the token.
-    retval = tools.callServerApiPost('/signin/finish', {'code': code, 'state': state, 'cid': cid}, apis.apiInstances[cid])
-    return processSigninResponse(retval)
 
 @app.route('/signout')
 def signout():
@@ -187,6 +182,7 @@ def api(functionName):
         if not clientId in apis.apiInstances:
             apis.apiInstances[clientId] = apis.ApiOverHttp(clientId=clientId, clientUserAgent=request.headers.get('User-Agent'))
         data['user-agent'] = request.headers.get('User-Agent')
+        print(apis.apiInstances)
     elif not clientToken or not clientId:
         # No token. Return empty session. The frontend will show the sign in buttons and stop the loading.
         if clientToken and not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path, {1:1, 10:3, 60:6, 900:10, 3600:15, 86400:20}):

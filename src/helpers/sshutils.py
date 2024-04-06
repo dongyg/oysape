@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import os, base64, traceback, json, re, json, _thread, time, getpass, stat
-import webview
 import paramiko
 from . import tools, apis
 
@@ -148,7 +147,7 @@ def get_ps(sshconn, tty_number, debug=False):
 
 
 class SSHClient:
-    def __init__(self, ssh_connection_string, password=None, private_key=None, passphrase=None, serverKey=None, parentApi=None, startup=None):
+    def __init__(self, ssh_connection_string, password=None, private_key=None, passphrase=None, serverKey=None, parentApi=None, uniqueKey=None, startup=None):
         self.hostname, self.port, self.username = parse_ssh_connection_string(ssh_connection_string)
         self.dockerCommandPrefix = None
         self.dockerComposePrefix = None
@@ -168,6 +167,7 @@ class SSHClient:
         self.passphrase = passphrase
         self.serverKey = serverKey
         self.parentApi = parentApi
+        self.uniqueKey = uniqueKey
         self.startup = startup
         self.reconnect()
 
@@ -190,18 +190,13 @@ class SSHClient:
         self.check_ps_time = time.time()
         self.data1 = ''
         self.data2 = ''
-        try:
-            self.client = create_ssh_connection(self.hostname, self.username, self.port, self.password, self.private_key, self.passphrase)
-            self.transport = self.client._transport
-            self.openChannel()
-            self.running = True
-            _thread.start_new_thread(self.mainloop,())
-        except Exception as e:
-            traceback.print_exc()
-            self.message = str(e)
+        self.client = create_ssh_connection(self.hostname, self.username, self.port, self.password, self.private_key, self.passphrase)
+        self.transport = self.client._transport
+        self.openChannel()
+        self.running = True
+        _thread.start_new_thread(self.mainloop,())
 
     def openChannel(self):
-        from . import apis
         if not self.isChannelActive():
             if self.channel: self.channel.close()
             try:

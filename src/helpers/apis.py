@@ -44,32 +44,6 @@ def merge_steps(steps):
     merged_data = [{"target": target, "tasks": tasks} for target, tasks in merged_data.items()]
     return merged_data
 
-def colorizeText(text, fore=None, back=None):
-    backgrounds = {
-        'gray': '\x1b[40m%s\x1b[0m',  # background
-        'red': '\x1b[41m%s\x1b[0m',  # background
-        'green': '\x1b[42m%s\x1b[0m',  # background
-        'yellow': '\x1b[43m%s\x1b[0m',  # background
-        'blue': '\x1b[44m%s\x1b[0m',  # background
-        'purple': '\x1b[45m%s\x1b[0m',  # background
-        'cyan': '\x1b[46m%s\x1b[0m',  # background
-        'white': '\x1b[47m%s\x1b[0m',  # background
-    }
-    foregrounds = {
-        'red': '\x1b[31m%s\x1b[0m',  # text
-        'green': '\x1b[32m%s\x1b[0m',  # text
-        'yellow': '\x1b[33m%s\x1b[0m',  # text
-        'blue': '\x1b[34m%s\x1b[0m',  # text
-        'purple': '\x1b[35m%s\x1b[0m',  # text
-        'cyan': '\x1b[36m%s\x1b[0m',  # text
-        'white': '\x1b[37m%s\x1b[0m',  # text
-    }
-    if fore and fore in foregrounds:
-        text = foregrounds[fore]%text
-    if back and back in backgrounds:
-        text = backgrounds[back]%text
-    return text
-
 def loadEntrypointWindow(window=None, apiObject=None):
     import webview
     if not window:
@@ -325,18 +299,22 @@ class ApiTerminal(ApiOysape):
             return {"errinfo": "Session expired, please re-open the app."}
         slist = [x for x in self.userSession['servers'] if x["key"] == serverKey]
         if len(slist) == 0:
-            return
+            return {"errinfo": "Server not found"}
         if not uniqueKey in self.terminalConnections:
             # print('createTermConnection', slist)
-            conn_str = sshutils.create_ssh_string(slist[0].get("address"), slist[0].get("username"), slist[0].get("port"))
-            self.terminalConnections[uniqueKey] = sshutils.TerminalClient(conn_str, private_key=slist[0].get("prikey"), serverKey=serverKey, parentApi=self, startup=slist[0].get("tasks"))
-            self.terminalConnections[uniqueKey].uniqueKey = uniqueKey
-            if not self.terminalConnections[uniqueKey].client:
-                self.terminalConnections[uniqueKey].onChannelString(colorizeText(self.terminalConnections[uniqueKey].message,'red'))
-            elif taskKey:
-                taskObj = self.getTaskObject(taskKey)
-                taskCmds = self.getTaskCommands(taskKey)
-                self.execTask(taskKey, taskObj, taskCmds, self.terminalConnections[uniqueKey])
+            try:
+                conn_str = sshutils.create_ssh_string(slist[0].get("address"), slist[0].get("username"), slist[0].get("port"))
+                self.terminalConnections[uniqueKey] = sshutils.TerminalClient(conn_str, private_key=slist[0].get("prikey"), serverKey=serverKey, parentApi=self, uniqueKey=uniqueKey, startup=slist[0].get("tasks"))
+                if not self.terminalConnections[uniqueKey].client:
+                    self.terminalConnections[uniqueKey].onChannelString(tools.colorizeText(self.terminalConnections[uniqueKey].message,'red'))
+                elif taskKey:
+                    taskObj = self.getTaskObject(taskKey)
+                    taskCmds = self.getTaskCommands(taskKey)
+                    self.execTask(taskKey, taskObj, taskCmds, self.terminalConnections[uniqueKey])
+            except Exception as e:
+                traceback.print_exc()
+                print('createTermConnection', e)
+                return {"errinfo": str(e)}
 
     def closeTermConnection(self, params={}):
         uniqueKey = params.get('uniqueKey')
@@ -372,7 +350,7 @@ class ApiTerminal(ApiOysape):
             client.onChannelString((CRLF+'No such task defined: %s'%taskKey+CRLF))
         elif taskObj.get('interaction') == 'upload':
             # Upload a file/directory
-            if output: client.onChannelString((CRLF+CRLF+colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF))
+            if output: client.onChannelString((CRLF+CRLF+tools.colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF))
             if taskObj.get('source') and taskObj.get('destination'):
                 retdata = client.upload(taskObj.get('source'), taskObj.get('destination'), taskObj.get('excludes'))
                 number, transfered = retdata.get('count', 0), retdata.get('size', 0)
@@ -381,7 +359,7 @@ class ApiTerminal(ApiOysape):
                 client.onChannelString((CRLF+'No source or destination defined: %s'%taskObj.get('name')+CRLF))
         elif taskObj.get('interaction') == 'download':
             # Download a file/directory
-            if output: client.onChannelString((CRLF+CRLF+colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF))
+            if output: client.onChannelString((CRLF+CRLF+tools.colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF))
             if taskObj.get('source') and taskObj.get('destination'):
                 retdat = client.download(taskObj.get('source'), taskObj.get('destination'), taskObj.get('excludes'))
                 number, transfered = retdat.get('count', 0), retdat.get('size', 0)
@@ -393,7 +371,7 @@ class ApiTerminal(ApiOysape):
         else:
             # Execute the task's commands
             runmode = taskObj.get('runmode') or ''
-            if output and runmode!='script': client.onChannelString((CRLF+CRLF+colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF))
+            if output and runmode!='script': client.onChannelString((CRLF+CRLF+tools.colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF))
             if runmode.startswith('batch'):
                 # Send commands to the channel once for all
                 str_join = '&' if platform.system() == 'Windows' else ' && '
@@ -433,12 +411,16 @@ class ApiWorkspace(ApiTerminal):
         from . import sshutils
         slist = [x for x in self.userSession['servers'] if x["key"] == serverKey]
         if len(slist) == 0:
-            return
+            return {"errinfo": "Server not found"}
         if not serverKey in self.combinedConnections:
             # print('createCombConnection', serverKey)
-            conn_str = sshutils.create_ssh_string(slist[0].get("address"), slist[0].get("username"), slist[0].get("port"))
-            self.combinedConnections[serverKey] = sshutils.WorkspaceClient(conn_str, private_key=slist[0].get("prikey"), serverKey=serverKey, parentApi=self, startup=slist[0].get("tasks"))
-            self.combinedConnections[serverKey].uniqueKey = 'workspace'
+            try:
+                conn_str = sshutils.create_ssh_string(slist[0].get("address"), slist[0].get("username"), slist[0].get("port"))
+                self.combinedConnections[serverKey] = sshutils.WorkspaceClient(conn_str, private_key=slist[0].get("prikey"), serverKey=serverKey, parentApi=self, uniqueKey='workspace', startup=slist[0].get("tasks"))
+            except Exception as e:
+                traceback.print_exc()
+                print('createCombConnection', serverKey, e)
+                return {'errinfo': str(e)}
 
     def closeCombConnections(self, params={}):
         for serverKey in self.combinedConnections.keys():
@@ -465,7 +447,8 @@ class ApiWorkspace(ApiTerminal):
     def taskOnServer(self, taskKey, serverKey):
         needNewLine = True
         if not serverKey in self.combinedConnections:
-            self.createCombConnection(serverKey)
+            ret1 = self.createCombConnection(serverKey)
+            if ret1 and ret1.get('errinfo'): return ret1
             needNewLine = False
         if self.combinedConnections.get(serverKey) and self.combinedConnections[serverKey].running:
             if needNewLine:
@@ -478,7 +461,7 @@ class ApiWorkspace(ApiTerminal):
                     self.workspaceWorkingChannel = serverKey
                     self.combinedConnections[serverKey].updateWorkspaceTabTitle(self.workspaceWorkingChannel)
                 else:
-                    self.combinedConnections[serverKey].onChannelString((CRLF+CRLF+colorizeText('This task is designated as interactive; however, you lack the permission to interact with terminals. It will still execute, but you will be unable to interact with it.', 'yellow') + CRLF+CRLF))
+                    self.combinedConnections[serverKey].onChannelString((CRLF+CRLF+tools.colorizeText('This task is designated as interactive; however, you lack the permission to interact with terminals. It will still execute, but you will be unable to interact with it.', 'yellow') + CRLF+CRLF))
                     self.workspaceWorkingChannel = ''
                     self.combinedConnections[serverKey].updateWorkspaceTabTitle(self.workspaceWorkingChannel)
             else:
@@ -486,7 +469,7 @@ class ApiWorkspace(ApiTerminal):
                 self.combinedConnections[serverKey].updateWorkspaceTabTitle(self.workspaceWorkingChannel)
             self.execTask(taskKey, taskObj, taskCmds, self.combinedConnections[serverKey])
         elif self.combinedConnections[serverKey].message:
-            outmsg = colorizeText(serverKey,None,'gray') + ' ' + colorizeText(self.combinedConnections[serverKey].message,'red')
+            outmsg = tools.colorizeText(serverKey,None,'gray') + ' ' + tools.colorizeText(self.combinedConnections[serverKey].message,'red')
             self.combinedConnections[serverKey].onChannelString(outmsg)
 
     def testIfTaskCanRunOnServer(self, params):
@@ -512,7 +495,7 @@ class ApiWorkspace(ApiTerminal):
     def callTask(self, params):
         taskKey, serverKey = params.get('taskKey'), params.get('serverKey')
         if not self.testIfTaskCanRunOnServer({'taskKey': taskKey, 'serverKey': serverKey}):
-            self.combinedConnections[serverKey].onChannelString(colorizeText(LF+'Waiting for tasks to finish...', 'red'))
+            self.combinedConnections[serverKey].onChannelString(tools.colorizeText(LF+'Waiting for tasks to finish...', 'red'))
             return
         self.taskOnServer(taskKey, serverKey)
 
@@ -525,7 +508,7 @@ class ApiWorkspace(ApiTerminal):
             tasks = step['tasks']
             for taskKey in tasks:
                 if not self.testIfTaskCanRunOnServer({'taskKey': taskKey, 'serverKey': serverKey}):
-                    self.combinedConnections[serverKey].onChannelString(colorizeText(LF+'Waiting for tasks to finish...', 'red'))
+                    self.combinedConnections[serverKey].onChannelString(tools.colorizeText(LF+'Waiting for tasks to finish...', 'red'))
                     return
         print('execPipeline', pipeName)
         for step in steps:
@@ -546,7 +529,8 @@ class ApiSftp(ApiWorkspace):
         serverKey = params.get('target')
         thisPath = params.get('path') or '/'
         if not serverKey in self.combinedConnections:
-            self.createCombConnection(serverKey)
+            ret1 = self.createCombConnection(serverKey)
+            if ret1 and ret1.get('errinfo'): return ret1
         if not serverKey in self.combinedConnections:
             return {'errinfo': 'SSH connection not found'}
         retval = self.combinedConnections[serverKey].getServerFiles(thisPath)
@@ -558,7 +542,8 @@ class ApiSftp(ApiWorkspace):
         serverKey = params.get('target')
         thisPath = params.get('path') or '/'
         if not serverKey in self.combinedConnections:
-            self.createCombConnection(serverKey)
+            ret1 = self.createCombConnection(serverKey)
+            if ret1 and ret1.get('errinfo'): return ret1
         if not serverKey in self.combinedConnections:
             return {'errinfo': 'SSH connection not found'}
         retval = self.combinedConnections[serverKey].open_remote_file(thisPath)
@@ -571,7 +556,8 @@ class ApiSftp(ApiWorkspace):
         thisPath = params.get('path') or '/'
         content = params.get('content')
         if not serverKey in self.combinedConnections:
-            self.createCombConnection(serverKey)
+            ret1 = self.createCombConnection(serverKey)
+            if ret1 and ret1.get('errinfo'): return ret1
         if not serverKey in self.combinedConnections:
             return {'errinfo': 'SSH connection not found'}
         retval = self.combinedConnections[serverKey].save_remote_file(thisPath, content)
@@ -583,7 +569,8 @@ class ApiSftp(ApiWorkspace):
         serverKey = params.get('target')
         thisPath = params.get('path')
         if not serverKey in self.combinedConnections:
-            self.createCombConnection(serverKey)
+            ret1 = self.createCombConnection(serverKey)
+            if ret1 and ret1.get('errinfo'): return ret1
         if not serverKey in self.combinedConnections:
             return {'errinfo': 'SSH connection not found'}
         if self.isDesktopVersion():
@@ -601,7 +588,8 @@ class ApiSftp(ApiWorkspace):
         serverKey = params.get('target')
         thisPath = params.get('path')
         if not serverKey in self.combinedConnections:
-            self.createCombConnection(serverKey)
+            ret1 = self.createCombConnection(serverKey)
+            if ret1 and ret1.get('errinfo'): return ret1
         if not serverKey in self.combinedConnections:
             return {'errinfo': 'SSH connection not found'}
         if self.isDesktopVersion():
@@ -619,7 +607,8 @@ class ApiSftp(ApiWorkspace):
         serverKey = params.get('target')
         thisPath = params.get('path')
         if not serverKey in self.combinedConnections:
-            self.createCombConnection(serverKey)
+            ret1 = self.createCombConnection(serverKey)
+            if ret1 and ret1.get('errinfo'): return ret1
         if not serverKey in self.combinedConnections:
             return {'errinfo': 'SSH connection not found'}
         if self.isDesktopVersion():
@@ -638,7 +627,8 @@ class ApiDockerManager(ApiSftp):
             return {'errinfo': 'Docker access denied'}
         serverKey = params.get('target')
         if not serverKey in self.combinedConnections:
-            self.createCombConnection(serverKey)
+            ret1 = self.createCombConnection(serverKey)
+            if ret1 and ret1.get('errinfo'): return ret1
         if not serverKey in self.combinedConnections:
             return {'errinfo': 'SSH connection not found'}
         return self.combinedConnections[serverKey].dockerGetWholeTree()
@@ -648,7 +638,8 @@ class ApiDockerManager(ApiSftp):
         serverKey = params.get('target')
         nodeKey = params.get('nodeKey')
         if not serverKey in self.combinedConnections:
-            self.createCombConnection(serverKey)
+            ret1 = self.createCombConnection(serverKey)
+            if ret1 and ret1.get('errinfo'): return ret1
         if not serverKey in self.combinedConnections:
             return {'errinfo': 'SSH connection not found'}
         if nodeKey and nodeKey.endswith('_docker_containers'):
@@ -665,7 +656,8 @@ class ApiDockerManager(ApiSftp):
         serverKey = params.get('target')
         command = params.get('command')
         if not serverKey in self.combinedConnections:
-            self.createCombConnection(serverKey)
+            ret1 = self.createCombConnection(serverKey)
+            if ret1 and ret1.get('errinfo'): return ret1
         if not serverKey in self.combinedConnections:
             return {'errinfo': 'SSH connection not found'}
         # Build a virtual Task to run the command
@@ -682,7 +674,8 @@ class ApiDockerManager(ApiSftp):
         serverKey = params.get('target')
         command = params.get('command')
         if not serverKey in self.combinedConnections:
-            self.createCombConnection(serverKey)
+            ret1 = self.createCombConnection(serverKey)
+            if ret1 and ret1.get('errinfo'): return ret1
         if not serverKey in self.combinedConnections:
             return {'errinfo': 'SSH connection not found'}
         self.combinedConnections[serverKey].dockerCommandPrefix = command
@@ -693,7 +686,8 @@ class ApiDockerManager(ApiSftp):
         serverKey = params.get('target')
         command = params.get('command')
         if not serverKey in self.combinedConnections:
-            self.createCombConnection(serverKey)
+            ret1 = self.createCombConnection(serverKey)
+            if ret1 and ret1.get('errinfo'): return ret1
         if not serverKey in self.combinedConnections:
             return {'errinfo': 'SSH connection not found'}
         self.combinedConnections[serverKey].dockerComposePrefix = command
@@ -838,7 +832,8 @@ class ApiDesktop(ApiOverHttp):
         serverKey = sobj[0]['target']
         try:
             if not serverKey in self.combinedConnections:
-                self.createCombConnection(serverKey)
+                ret1 = self.createCombConnection(serverKey)
+                if ret1 and ret1.get('errinfo'): return ret1
             if not serverKey in self.combinedConnections:
                 return {'errinfo': 'SSH connection not found'}
             # Check the docker environment
@@ -862,7 +857,8 @@ class ApiDesktop(ApiOverHttp):
         try:
             # Check the ssh connection
             if not serverKey in self.combinedConnections:
-                self.createCombConnection(serverKey)
+                ret1 = self.createCombConnection(serverKey)
+                if ret1 and ret1.get('errinfo'): return ret1
             if not serverKey in self.combinedConnections:
                 return {'errinfo': 'SSH connection not found'}
             # Check the docker environment
@@ -874,8 +870,8 @@ class ApiDesktop(ApiOverHttp):
             self.combinedConnections[serverKey].onChannelString((CRLF+'Removing webhost container...'))
             retcmd = self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rm -f oysape-webhost')
             self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
-            # self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rmi -f dongyg/oysape-webhost')
-            # retcmd = self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
+            self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rmi -f dongyg/oysape-webhost')
+            self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
             # Run the container
             self.combinedConnections[serverKey].onChannelString((CRLF+'Running webhost container...'))
             oneTimeSecret = tools.getRandomString(60)

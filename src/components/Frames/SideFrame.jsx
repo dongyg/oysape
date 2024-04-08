@@ -61,7 +61,7 @@ export default function SideFrame() {
       buttons.push({ key: 'sideDocker', label: <Tooltip placement="right" title={'Docker ('+(browserInfo&&browserInfo.isMac ? 'Command' : 'Ctrl')+'+Shift+D)'}><FaDocker style={{fontSize:'2em', marginRight: '0px'}} /></Tooltip>, children: <DockersPanel /> });
     }
     // access_files will not affect the Desktop version. This is invisible on the web version.
-    if(isDesktopVersion){
+    if(userSession.accesses.files){
       buttons.push({ key: 'sideExplorer', label: <Tooltip placement="right" title={'File Explorer ('+(browserInfo&&browserInfo.isMac ? 'Command' : 'Ctrl')+'+Shift+E)'}><BsFiles style={{fontSize:'2em', marginRight: '0px'}} /></Tooltip>, children: <ProjectsPanel /> })
     }
     if(isDesktopVersion && userSession.teams[userSession.team0].is_creator) {

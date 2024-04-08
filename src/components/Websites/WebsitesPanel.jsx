@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { App, Button, Dropdown, Table } from 'antd';
 import { BsPlusLg, BsThreeDots } from "react-icons/bs";
 import { DeleteOutlined, DeleteFilled } from '@ant-design/icons';
-import { FiTerminal } from "react-icons/fi";
 import { RiInstallLine, RiUninstallLine } from "react-icons/ri";
 import { BiUserCheck } from "react-icons/bi";
 

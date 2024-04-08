@@ -1,10 +1,11 @@
 import React, {useState} from 'react';
+import { Base64 } from 'js-base64';
 
 import { App, Tree, Select, Dropdown } from 'antd';
 import { UploadOutlined, CloudUploadOutlined, DownloadOutlined, DownOutlined, LoadingOutlined, ExclamationOutlined, EditOutlined, CopyOutlined, FolderViewOutlined, ReloadOutlined } from '@ant-design/icons';
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { callApi, getLanguages, calculateMD5 } from '../Common/global';
+import { callApi, getLanguages, calculateMD5, isDesktopVersion } from '../Common/global';
 import CodeEditor from '../Modules/CodeEditor';
 
 const { DirectoryTree } = Tree; // 把 Tree 赋值给 DirectoryTree, 然后使用 DirectoryTree 就是出现整行选中效果, 否则就不出现整行选中效果
@@ -20,6 +21,7 @@ export default function Sftp(props) {
   const time1 = React.useRef(0);
   const path1 = React.useRef('');
   const node1 = React.useRef(null);
+  const fileInputRef = React.useRef(null);
   const miDivider = {type: 'divider', }
   const miOpenfile = {label: 'Open', key: 'tree_menu_openfile', icon: <EditOutlined />, }
   const miCopyPath = {label: 'Copy Name', key: 'tree_menu_copy_name', icon: <CopyOutlined />, }
@@ -60,6 +62,17 @@ export default function Sftp(props) {
       callApi('download_remote_file', {target: sftpTarget, path:node1.current.path}).then((resp)=>{
         if(resp && resp.errinfo) {
           message.error(resp.errinfo);
+        }else if(resp && resp.content) {
+          const fileBody = Base64.decode(resp.content);
+          const blob = new Blob([fileBody], {type: 'application/octet-stream'});
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = node1.current.title;
+          link.setAttribute('download', node1.current.title);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
         }
       });
     }else if(key === 'tree_menu_upload_folder') {
@@ -71,13 +84,17 @@ export default function Sftp(props) {
         }
       });
     }else if(key === 'tree_menu_upload_file') {
-      callApi('upload_remote_file', {target: sftpTarget, path:node1.current.path}).then((resp)=>{
-        if(resp && resp.errinfo) {
-          message.error(resp.errinfo);
-        } else if (!node1.current.isLeaf && node1.current.expanded && resp && resp.count && resp.size) {
-          reloadThisFolder(node1.current);
-        }
-      });
+      if(!isDesktopVersion) {
+        fileInputRef.current.click();
+      } else {
+        callApi('upload_remote_file', {target: sftpTarget, path:node1.current.path}).then((resp)=>{
+          if(resp && resp.errinfo) {
+            message.error(resp.errinfo);
+          } else if (!node1.current.isLeaf && node1.current.expanded && resp && resp.count && resp.size) {
+            reloadThisFolder(node1.current);
+          }
+        });
+      }
     }else if(key === 'tree_menu_refresh') {
       reloadThisFolder(node1.current);
     }else if(key === 'tree_menu_reload') {
@@ -92,8 +109,9 @@ export default function Sftp(props) {
   }
   const handleDoubleClick = (anode) => {
     const openIt = () => {
-      callApi('open_remote_file', {target: sftpTarget, path:anode.path}).then((fileBody)=>{
-        if(typeof fileBody === 'string') {
+      callApi('open_remote_file', {target: sftpTarget, path:anode.path}).then((resp)=>{
+        if(resp && resp.content) {
+          const fileBody = Base64.decode(resp.content);
           const uniqueKey = calculateMD5(anode.path);
           if (tabItems.filter((item) => item.key === uniqueKey)[0]) {
           } else {
@@ -105,8 +123,8 @@ export default function Sftp(props) {
             }]);
           }
           setTabActiveKey(uniqueKey);
-        }else if(fileBody && fileBody.errinfo) {
-          message.error(fileBody.errinfo);
+        }else if(resp && resp.errinfo) {
+          message.error(resp.errinfo);
         }
       })
     }
@@ -162,6 +180,24 @@ export default function Sftp(props) {
     });
   };
 
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = function() {
+        const base64content = reader.result.split(',')[1]; // Remove the data URI scheme part
+        callApi('upload_remote_file', {target: sftpTarget, path:node1.current.path, filename:file.name, filebody:base64content}).then((resp)=>{
+          if(resp && resp.errinfo) {
+            message.error(resp.errinfo);
+          } else if (!node1.current.isLeaf && node1.current.expanded) {
+            reloadThisFolder(node1.current);
+          }
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <>
       <div style={{ height: headerHeight, padding: '12px 16px', display: 'flex', flexWrap: 'nowrap', justifyContent: 'space-between' }}>
@@ -194,12 +230,17 @@ export default function Sftp(props) {
                   setContextMenuItems(items);
                 }
               }else{
-                setContextMenuItems([miCopyPath, miCopyAbsolutePath, miDivider, miDownload, miDivider, miUploadFolder, miUploadFile, miDivider, miReload, ]);
+                if(isDesktopVersion){
+                  setContextMenuItems([miCopyPath, miCopyAbsolutePath, miDivider, miDownload, miDivider, miUploadFolder, miUploadFile, miDivider, miReload, ]);
+                } else {
+                  setContextMenuItems([miCopyPath, miCopyAbsolutePath, miDivider, miUploadFile, miDivider, miReload, ]);
+                }
               }
             }}
           />
         </Dropdown>
       </div>
+      <input type="file" style={{ display: 'none' }} ref={fileInputRef} onChange={handleFileChange} />
     </>
   );
 }

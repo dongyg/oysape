@@ -21,6 +21,7 @@ def not_allowed(error):
     return 'not found'
 
 def getClientIdAndToken(req):
+    clientIpAddress = req.headers.get('X-Forwarded-For') or req.remote_addr
     if req.headers.get('User-Agent').find('Oysape') >=0:
         # Use the pywebview token as the clientId for desktop version. It should have a apiObject in apis.apiInstances
         import webview
@@ -28,14 +29,14 @@ def getClientIdAndToken(req):
     else:
         clientId = req.cookies.get('client_id')
     clientToken = req.cookies.get('client_token')
-    return clientId, clientToken
+    return clientIpAddress, clientId, clientToken
 
 @app.route('/websocket')
 def handle_websocket():
     wsock = request.environ.get('wsgi.websocket')
     if not wsock:
         abort(400, 'Expected WebSocket request.')
-    clientId, clientToken = getClientIdAndToken(request)
+    clientIpAddress, clientId, clientToken = getClientIdAndToken(request)
     try:
         uniqueKey = None
         while True:
@@ -45,15 +46,15 @@ def handle_websocket():
             try:
                 recvData = json.loads(init_message)
             except Exception as e:
-                print('SocketError:', (request.headers.get('X-Forwarded-For') or request.remote_addr), init_message)
+                print('Socket Error:', clientIpAddress, clientId, init_message)
                 break
-            # print(recvData)
+            # if consts.IS_LOGGING: print(recvData)
             action = recvData.get('action')
             uniqueKey = recvData.get('uniqueKey')
             apiObject = apis.apiInstances.get(clientId) if clientId else None
             if apiObject and uniqueKey and clientToken and clientToken == apiObject.userToken:
                 if action == 'init':
-                    # print('Init socket', clientId, uniqueKey)
+                    if consts.IS_LOGGING: print('Socket Init', clientIpAddress, clientId, uniqueKey)
                     apiObject.socketConnections[uniqueKey] = wsock
                 elif action == 'resize':
                     apiObject.resizeAllCombChannel(recvData) if uniqueKey == 'workspace' else apiObject.resizeTermChannel(recvData)
@@ -69,16 +70,16 @@ def handle_websocket():
         wsock.close()
         if clientId and clientId in apis.apiInstances:
             if uniqueKey in apis.apiInstances[clientId].socketConnections:
-                # print('Close socket', clientId, uniqueKey)
+                if consts.IS_LOGGING: print('Socket Close', clientIpAddress, clientId, uniqueKey)
                 del apis.apiInstances[clientId].socketConnections[uniqueKey]
             if uniqueKey == 'workspace':
-                # print('Close all terminals', 'workspace:', len(apis.apiInstances[clientId].terminalConnections), 'terminal:', len(apis.apiInstances[clientId].combinedConnections))
+                if consts.IS_LOGGING: print('Workspace Close', clientIpAddress, clientId, 'terminal:', len(apis.apiInstances[clientId].terminalConnections), 'combined:', len(apis.apiInstances[clientId].combinedConnections))
                 apis.apiInstances[clientId].closeCombConnections()
                 apis.apiInstances[clientId].closeAllTerminals()
                 if apis.apiInstances[clientId].isDesktopVersion():
                     import webview
                     if clientId != webview.token:
-                        # print('Remove API object', clientId)
+                        if consts.IS_LOGGING: print('Workspace Api Object Remove', clientIpAddress, clientId)
                         del apis.apiInstances[clientId]
                 else:
                     del apis.apiInstances[clientId]
@@ -86,14 +87,12 @@ def handle_websocket():
 
 @app.route('/callback/oauth')
 def oauthCallback():
-    print(apis.apiInstances)
     code = request.query.get('code')
     state = request.query.get('state')
     clientId = request.query.get('cid')
     if not clientId in apis.apiInstances: return 'Client not found while callback'
     # Send the code to backend to finish the OAuth process and finish the sign in process. Get the token.
     retval = tools.callServerApiPost('/signin/finish', {'code': code, 'state': state, 'cid': clientId}, apis.apiInstances[clientId])
-    print(retval)
     if not retval: return 'Something wrong'
     if retval.get('errinfo'):
         apis.apiInstances[clientId].signInMessage = retval.get('errinfo')
@@ -123,14 +122,14 @@ def oauthCallback():
 
 @app.route('/signout')
 def signout():
-    clientId, clientToken = getClientIdAndToken(request)
-    if clientToken and clientId and clientToken == apis.apiInstances[clientId].userToken:
+    clientIpAddress, clientId, clientToken = getClientIdAndToken(request)
+    if clientToken and clientId and clientId in apis.apiInstances and clientToken == apis.apiInstances[clientId].userToken:
         functionName = 'signout'
         if hasattr(apis.apiInstances[clientId], functionName):
             method = getattr(apis.apiInstances[clientId], functionName)
             retval = method(params={}) or {}
             if not retval.get('errinfo'):
-                print('Client signout', clientId)
+                print('Client signout', clientIpAddress, clientId)
                 response.delete_cookie('client_id')
                 response.delete_cookie('client_token')
     return redirect('/index.html')
@@ -138,11 +137,8 @@ def signout():
 @app.route('/<:re:.*>', method='OPTIONS')
 def enable_cors_generic_route():
     """
-    This route takes priority over all others. So any request with an OPTIONS
-    method will be handled by this function.
-
+    This route takes priority over all others. So any request with an OPTIONS method will be handled by this function.
     See: https://github.com/bottlepy/bottle/issues/402
-
     NOTE: This means we won't 404 any invalid path that is an OPTIONS request.
     """
     add_cors_headers()
@@ -150,15 +146,13 @@ def enable_cors_generic_route():
 @hook('after_request')
 def enable_cors_after_request_hook():
     """
-    This executes after every route. We use it to attach CORS headers when
-    applicable.
+    This executes after every route. We use it to attach CORS headers when applicable.
     """
-    if consts.IS_DEBUG:
-        add_cors_headers()
+    add_cors_headers()
 
 def add_cors_headers():
     if consts.IS_DEBUG:
-        response.headers['Access-Control-Allow-Origin'] = 'http://localhost:3000'
+        response.headers['Access-Control-Allow-Origin'] = 'http://192.168.0.2:19790'
         response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, OPTIONS'
         response.headers['Access-Control-Allow-Headers'] = 'Origin, Accept, Content-Type, X-Requested-With, X-CSRF-Token'
         response.headers['Access-Control-Allow-Credentials'] = 'true'
@@ -166,12 +160,10 @@ def add_cors_headers():
 @app.route('/api/<functionName>', method='POST')
 def api(functionName):
     # The http apis are for the web version only
-    if consts.IS_DEBUG:
-        add_cors_headers()
+    add_cors_headers()
     data = request.json
-    clientIpAddress = request.headers.get('X-Forwarded-For') or request.remote_addr
-    clientId, clientToken = getClientIdAndToken(request)
-    print('OverHttp', clientId, functionName)
+    clientIpAddress, clientId, clientToken = getClientIdAndToken(request)
+    if consts.IS_LOGGING: print('OverHttp', clientIpAddress, clientId, functionName)
     if functionName in ['signInWithEmail','signInWithGithub','signInWithGoogle']:
         # Request to sign in is limited. These 3 requests have no clientId in the headers
         if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path, {1:1, 10:3, 60:6, 900:10, 3600:15, 86400:20}):
@@ -182,10 +174,9 @@ def api(functionName):
         if not clientId in apis.apiInstances:
             apis.apiInstances[clientId] = apis.ApiOverHttp(clientId=clientId, clientUserAgent=request.headers.get('User-Agent'))
         data['user-agent'] = request.headers.get('User-Agent')
-        print(apis.apiInstances)
     elif not clientToken or not clientId:
         # No token. Return empty session. The frontend will show the sign in buttons and stop the loading.
-        if clientToken and not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path, {1:1, 10:3, 60:6, 900:10, 3600:15, 86400:20}):
+        if not consts.IS_DEBUG and clientToken and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path, {1:1, 10:3, 60:6, 900:10, 3600:15, 86400:20}):
             return json.dumps({"errinfo": "Too many requests."})
         return json.dumps({})
     elif functionName == 'reloadUserSession' and not clientId in apis.apiInstances:
@@ -200,7 +191,7 @@ def api(functionName):
     # Get the token, and check the token
     if functionName not in ['signInWithEmail', 'signInWithGithub', 'signInWithGoogle']:
         if not clientToken or clientToken != apis.apiInstances[clientId].userToken:
-            if clientToken and not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path, {1:1, 10:3, 60:6, 900:10, 3600:15, 86400:20}):
+            if not consts.IS_DEBUG and clientToken and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path, {1:1, 10:3, 60:6, 900:10, 3600:15, 86400:20}):
                 return json.dumps({"errinfo": "Too many requests."})
             return json.dumps({"errinfo": "Unauthorized."})
     # By reaching here, the request is valid. Call the function
@@ -208,7 +199,7 @@ def api(functionName):
         method = getattr(apis.apiInstances[clientId], functionName)
         retval = method(params=data) or {}
         if functionName == 'signout' and not retval.get('errinfo'):
-            print('Client signout', clientId, retval)
+            if consts.IS_LOGGING: print('Client signout', clientIpAddress, clientId, retval)
             redirect('/signout')
             response.delete_cookie('client_id')
             response.delete_cookie('client_token')

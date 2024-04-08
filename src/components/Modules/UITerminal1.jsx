@@ -35,7 +35,9 @@ export default function WebTerminal(props) {
         xtermRef.current.fitAddon = new FitAddon();
 
         const sendData = (data) => {
-            socketObject.current.send(JSON.stringify({ uniqueKey:uniqueKey, serverKey:serverKey, input:data}));
+            if(socketObject.current && socketObject.current.readyState === WebSocket.OPEN) {
+                socketObject.current.send(JSON.stringify({ uniqueKey:uniqueKey, serverKey:serverKey, input:data}));
+            }
             if (!xtermRef.current.resized) {
                 onResize();
                 xtermRef.current.resized = true;

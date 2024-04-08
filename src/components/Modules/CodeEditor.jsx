@@ -83,7 +83,9 @@ export default function CodeEditor(props) {
       })
     } else {
       callApi(target?'save_remote_file':'save_file', {path:path, content:content, target:target}).then((data)=>{
-        if(!data) {
+        if(data && data.errinfo){
+          message.error(data.errinfo);
+        } else  {
           const newItems = tabItems.map((item) => {
             if(item.key === uniqueKey) {
               item.hasSomethingNew = false;
@@ -94,8 +96,6 @@ export default function CodeEditor(props) {
           setTabItems(newItems);
           setFooterStatusText('Saved. '+(target?target+':':'')+path);
           message.success('Saved');
-        } else if(data && data.errinfo) {
-          message.error(data.errinfo);
         }
       });
     }

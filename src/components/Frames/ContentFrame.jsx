@@ -1,9 +1,8 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect } from 'react';
 import { App, Tabs } from 'antd';
 import { QuestionCircleFilled } from "@ant-design/icons";
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { callApi } from '../Common/global';
 import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
 import Workspace from '../Modules/Workspace';
 // import BlankContent from '../Modules/BlankContent';

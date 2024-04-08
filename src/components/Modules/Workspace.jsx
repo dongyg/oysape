@@ -92,7 +92,9 @@ export default function WorkspaceTerminal(props) {
         xtermRef.current.searchAddon = new SearchAddon();
 
         const sendData = (data) => {
-            socketObject.current.send(JSON.stringify({uniqueKey:uniqueKey, input:data}));
+            if(socketObject.current && socketObject.current.readyState === WebSocket.OPEN) {
+                socketObject.current.send(JSON.stringify({uniqueKey:uniqueKey, input:data}));
+            }
             if (!xtermRef.current.resized) {
                 onResize();
                 xtermRef.current.resized = true;
@@ -138,7 +140,9 @@ export default function WorkspaceTerminal(props) {
                 // console.log('WebSocket Connected');
                 socketObject.current.send(JSON.stringify({action: 'init', uniqueKey:uniqueKey }));
                 socketPinger.current = setInterval(() => {
-                    socketObject.current.send(JSON.stringify({action: 'ping', uniqueKey:uniqueKey }));
+                    if (socketObject.current.readyState === WebSocket.OPEN) {
+                        socketObject.current.send(JSON.stringify({action: 'ping', uniqueKey:uniqueKey }));
+                    }
                 }, 30*1000);
             }
             socketObject.current.onmessage = function(event) {

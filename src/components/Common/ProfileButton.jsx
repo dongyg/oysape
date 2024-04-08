@@ -89,7 +89,13 @@ export default function ProfileButton() {
         window.location.href = '/signin';
       }
     } else if(key === 'menuAccount') {
-      callApi('gotoAccountDashboard', {}).then((res) => {});
+      callApi('gotoAccountDashboard', {}).then((res) => {
+        if(res?.errinfo) {
+          message.error(res.errinfo);
+        } else if(res?.url) {
+          window.open(res.url);
+        }
+      });
     } else if(key === 'menuSignOut') {
       modal.confirm({
         title: 'Confirm to Sign Out',

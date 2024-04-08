@@ -484,8 +484,10 @@ class SSHClient:
             local_path = os.path.realpath(os.path.expanduser(local_path))
         if os.path.isdir(local_path):
             return self.upload_directory(local_path, remote_path, self.onChannelString, excludes=excludes)
-        else:
+        elif os.path.isfile(local_path):
             return self.upload_file(local_path, remote_path, self.onChannelString)
+        else:
+            return {'errinfo': 'Local path not found: %s' % local_path, 'count': 0, 'size': 0}
 
     def download(self, remote_path, local_path, excludes=None):
         if not (self.transport and self.transport.is_alive()):
@@ -526,10 +528,15 @@ class SSHClient:
         try:
             content = ''
             sftp = self.client.open_sftp()
-            with sftp.open(thisPath, "r") as remote_file:
-                content = remote_file.read().decode()
-            sftp.close()
-            return content
+            file_attr = sftp.stat(thisPath)
+            if stat.S_ISDIR(file_attr.st_mode):
+                sftp.close()
+                return {'errinfo': 'Not a file'}
+            else:
+                with sftp.open(thisPath, "r") as remote_file:
+                    content = remote_file.read()
+                sftp.close()
+            return {'content': base64.b64encode(content).decode()}
         except Exception as e:
             print(self.hostname, thisPath)
             traceback.print_exc()
@@ -541,6 +548,7 @@ class SSHClient:
             with sftp.open(thisPath, "w") as remote_file:
                 remote_file.write(content)
             sftp.close()
+            return {}
         except Exception as e:
             print(self.hostname, thisPath)
             traceback.print_exc()

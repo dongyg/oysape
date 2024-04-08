@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect} from 'react';
 import { ConfigProvider, App, theme, Layout } from 'antd';
 
 import { useCustomContext } from '../Contexts/CustomContext'
@@ -7,6 +7,18 @@ import SignIn from './SignIn';
 
 const AppRoot = () => {
   const { customTheme, userSession } = useCustomContext();
+
+  useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      event.returnValue = 'Are you sure you want to leave?';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
 
   return (
     <ConfigProvider

@@ -51,6 +51,11 @@ def openOAuthWindow(oauthAgent, clientId, userAgent, serverHome):
             retval['url'] = aurl
     return retval
 
-def openAccountDashboard(otp):
+def openAccountDashboard(otp, userAgent, serverHome):
     landing_url = consts.OYSAPE_HOST + consts.API_ROOT + '/user/landing?s=%s'%otp
-    webbrowser.open_new(landing_url)
+    isDesktopVersion = (userAgent.find('Oysape') >= 0 and serverHome.find('//127.0.0.1:') >= 0)
+    if isDesktopVersion:
+        webbrowser.open_new(landing_url)
+        return {}
+    else:
+        return {'url': landing_url}

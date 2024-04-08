@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react'
-import { App, Tag, Steps, AutoComplete, Input } from 'antd';
+import { Tag, Steps, AutoComplete, Input } from 'antd';
 import { PlusOutlined, SelectOutlined } from "@ant-design/icons";
 
 import { useCustomContext } from '../Contexts/CustomContext'
@@ -8,7 +8,6 @@ import TaskEditor from '../Task/TaskEditor';
 import ServerEditor from '../Server/ServerEditor';
 
 export default function StepsComponent({steps, onChange, ...props}) {
-  const { message } = App.useApp();
   const { tabItems, setTabItems, setTabActiveKey, hideSidebarIfNeed, userSession } = useCustomContext();
   const [indexEditTarget, setIndexEditTarget] = useState(-1);
   const [indexEditTask, setIndexEditTask] = useState(-1);

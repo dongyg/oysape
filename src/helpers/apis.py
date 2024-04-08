@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os, traceback, json, json, time, threading, fnmatch, platform
+import os, traceback, json, json, time, base64, fnmatch, platform
 from . import auth, tools, consts
 
 BUF_SIZE = 1024
@@ -58,19 +58,16 @@ def mainloop(window):
 
 ################################################################################
 class ApiBase:
-    def __init__(self, clientId='', clientUserAgent='', _debug=False):
-        self._debug = _debug
+    def __init__(self, clientId='', clientUserAgent='', _logging=consts.IS_LOGGING):
+        self._logging = _logging
         self.themeType = 'dark'
         self.clientId = clientId
         self.clientUserAgent = clientUserAgent
         self.backendHost = 'http://127.0.0.1:19790'
         self.signInMessage = ''
 
-    def isDebug(self):
-        return self._debug
-
     def callApi(self, functionName, args=None):
-        print('ApiBase.callApi', self.clientId, functionName)
+        if self._logging: print('ApiBase.callApi', self.clientId, functionName)
         if hasattr(self, functionName):
             function = getattr(self, functionName)
             if callable(function):
@@ -128,11 +125,11 @@ class ApiOysape(ApiOauth):
         return self.userSession['accesses'].get(perm, False)
 
     def gotoAccountDashboard(self, params):
-        oneCode = tools.callServerApiPost('/user/landing', {}, self)
-        if oneCode and oneCode.get('otp'):
-            auth.openAccountDashboard(oneCode.get('otp'))
-        elif oneCode and oneCode.get('errinfo'):
-            return oneCode
+        retval = tools.callServerApiPost('/user/landing', {}, self)
+        if retval and retval.get('otp'):
+            return auth.openAccountDashboard(retval.get('otp'), self.clientUserAgent, self.backendHost)
+        elif retval and retval.get('errinfo'):
+            return retval
 
     def reloadUserSession(self, params={}):
         if not self.userToken and params.get('token'):
@@ -140,7 +137,13 @@ class ApiOysape(ApiOauth):
         if self.userToken:
             retval = tools.callServerApiPost('/user/test', {}, self)
             if retval and not retval.get('errinfo'):
-                return self.update_session(retval)
+                ff = retval.get('folders', []) or []
+                ee = retval.get('excludes', []) or consts.defaultExclude
+                self.userSession = retval
+                self.listFolder = ff
+                self.listExclude = ee
+                self.userSession['clientId'] = self.clientId
+                return self.userSession
             else:
                 self.userToken = ''
                 return retval
@@ -148,20 +151,17 @@ class ApiOysape(ApiOauth):
             # No token. Return empty session. The frontend will show the sign in buttons and stop the loading.
             return {}
 
-    def update_session(self, sdata):
-        ff = sdata.get('folders', []) or []
-        ee = sdata.get('excludes', []) or consts.defaultExclude
-        self.userSession = sdata
-        self.listFolder = ff
-        self.listExclude = ee
-        self.userSession['clientId'] = self.clientId
-        return self.userSession
-
     def switchToTeam(self, params):
         if not params.get('tid'): return {"errinfo": "No team"}
         retval = tools.callServerApiPost('/user/team', {'tid': params.get('tid')}, self)
         if retval and not retval.get('errcode'):
-            return self.update_session(retval)
+            ff = retval.get('folders', []) or []
+            ee = retval.get('excludes', []) or consts.defaultExclude
+            self.userSession = retval
+            self.listFolder = ff
+            self.listExclude = ee
+            self.userSession['clientId'] = self.clientId
+            return self.userSession
         return retval
 
     def addServer(self, params):
@@ -172,6 +172,7 @@ class ApiOysape(ApiOauth):
 
     def deleteServer(self, params):
         # Return server list in {'servers': []}
+        if not self.hasPermission('writable'): return {"errinfo": "Writable access denied"}
         retval = tools.callServerApiDelete('/user/servers', {'key': params.get('key')}, self)
         self.userSession['servers'] = retval.get('servers') or []
         return retval
@@ -196,6 +197,7 @@ class ApiOysape(ApiOauth):
 
     def deleteTask(self, params):
         # Return task list in {'tasks': []}
+        if not self.hasPermission('writable'): return {"errinfo": "Writable access denied"}
         retval = tools.callServerApiDelete('/user/tasks', {'key': params.get('key')}, self)
         self.userSession['tasks'] = retval.get('tasks') or []
         return retval
@@ -215,12 +217,14 @@ class ApiOysape(ApiOauth):
 
     def deletePipeline(self, params):
         # Return pipeline list in {'pipelines': []}
+        if not self.hasPermission('writable'): return {"errinfo": "Writable access denied"}
         retval = tools.callServerApiDelete('/user/pipelines', {'key': params.get('key')}, self)
         self.userSession['pipelines'] = retval.get('pipelines') or []
         return retval
 
     def importTo(self, params={}):
         # Import servers, tasks, pipelines
+        if not self.hasPermission('writable'): return {"errinfo": "Writable access denied"}
         what = params.get('what')
         objs = {
             'servers': self.userSession['servers'],
@@ -261,6 +265,7 @@ class ApiOysape(ApiOauth):
 
     def exportFrom(self, params={}):
         # Export servers, tasks, pipelines, folders, excludes
+        if not self.hasPermission('writable'): return {"errinfo": "Writable access denied"}
         what = params.get('what')
         objs = {
             'servers': self.userSession['servers'],
@@ -291,6 +296,7 @@ class ApiTerminal(ApiOysape):
     terminalConnections = {}
 
     def createTermConnection(self, params):
+        if not self.hasPermission('terminal'): return {"errinfo": "Terminal access denied"}
         from . import sshutils
         serverKey = params.get('serverKey')
         uniqueKey = params.get('uniqueKey')
@@ -301,7 +307,7 @@ class ApiTerminal(ApiOysape):
         if len(slist) == 0:
             return {"errinfo": "Server not found"}
         if not uniqueKey in self.terminalConnections:
-            # print('createTermConnection', slist)
+            if self._logging: print('createTermConnection', slist)
             try:
                 conn_str = sshutils.create_ssh_string(slist[0].get("address"), slist[0].get("username"), slist[0].get("port"))
                 self.terminalConnections[uniqueKey] = sshutils.TerminalClient(conn_str, private_key=slist[0].get("prikey"), serverKey=serverKey, parentApi=self, uniqueKey=uniqueKey, startup=slist[0].get("tasks"))
@@ -319,7 +325,7 @@ class ApiTerminal(ApiOysape):
     def closeTermConnection(self, params={}):
         uniqueKey = params.get('uniqueKey')
         if self.terminalConnections.get(uniqueKey):
-            # print('closeTermConnection', uniqueKey)
+            if self._logging: print('closeTermConnection', uniqueKey)
             self.terminalConnections[uniqueKey].close()
             del self.terminalConnections[uniqueKey]
 
@@ -339,11 +345,6 @@ class ApiTerminal(ApiOysape):
         if uniqueKey in self.terminalConnections:
             self.terminalConnections[uniqueKey].send_to_channel(input)
 
-    def getConn(self, params):
-        uniqueKey = params.get('uniqueKey')
-        if uniqueKey in self.terminalConnections:
-            return self.terminalConnections[uniqueKey].channel.exit_status_ready()
-
     def execTask(self, taskKey, taskObj, taskCmds, client, output=True):
         bgColor = 'gray' if self.themeType == 'dark' else 'white'
         if not taskObj:
@@ -354,7 +355,10 @@ class ApiTerminal(ApiOysape):
             if taskObj.get('source') and taskObj.get('destination'):
                 retdata = client.upload(taskObj.get('source'), taskObj.get('destination'), taskObj.get('excludes'))
                 number, transfered = retdata.get('count', 0), retdata.get('size', 0)
-                if output: client.onChannelString(CRLF+'Uploaded %s file(s). %s transfered'%(number, tools.convert_bytes(transfered))+CRLF)
+                if output:
+                    if retdata.get('errinfo'):
+                        client.onChannelString((CRLF+tools.colorizeText(retdata.get('errinfo'), 'red')+CRLF))
+                    client.onChannelString(CRLF+'Uploaded %s file(s). %s transfered'%(number, tools.convert_bytes(transfered))+CRLF)
             else:
                 client.onChannelString((CRLF+'No source or destination defined: %s'%taskObj.get('name')+CRLF))
         elif taskObj.get('interaction') == 'download':
@@ -363,7 +367,10 @@ class ApiTerminal(ApiOysape):
             if taskObj.get('source') and taskObj.get('destination'):
                 retdat = client.download(taskObj.get('source'), taskObj.get('destination'), taskObj.get('excludes'))
                 number, transfered = retdat.get('count', 0), retdat.get('size', 0)
-                if output: client.onChannelString(CRLF+'Downloaded %s file(s). %s transfered'%(number, tools.convert_bytes(transfered))+CRLF)
+                if output:
+                    if retdata.get('errinfo'):
+                        client.onChannelString((CRLF+tools.colorizeText(retdata.get('errinfo'), 'red')+CRLF))
+                    client.onChannelString(CRLF+'Downloaded %s file(s). %s transfered'%(number, tools.convert_bytes(transfered))+CRLF)
             else:
                 client.onChannelString((CRLF+'No source or destination defined: %s'%taskObj.get('name')+CRLF))
         elif not taskCmds:
@@ -378,7 +385,7 @@ class ApiTerminal(ApiOysape):
                 command = (str_join if runmode.endswith('join') else LF).join(taskCmds)
                 if len(taskCmds)>1 and runmode.endswith('escape'):
                     command = es_home + command + es_end
-                print('execTask', client.serverKey, json.dumps(command))
+                if self._logging: print('execTask', client.serverKey, json.dumps(command))
                 client.send_to_channel(command + LF, human=False)
             elif runmode=='script':
                 # Save the commands to a script file, then execute it
@@ -391,11 +398,12 @@ class ApiTerminal(ApiOysape):
                     f.write(content)
                 number, transfered = client.upload_file(filepath, '~/.oysape/cache/%s'%filename)
                 if number==1 and transfered>0:
+                    if self._logging: print('execTask', client.serverKey, taskKey)
                     client.client.exec_command(f'chmod +x ~/.oysape/cache/%s'%filename)
                     client.send_to_channel('source ~/.oysape/cache/%s'%filename+LF, human=False)
             else:
                 # Send commands to the channel line-by-line
-                print('execTask', client.serverKey, json.dumps(taskCmds))
+                if self._logging: print('execTask', client.serverKey, json.dumps(taskCmds))
                 while taskCmds:
                     data = taskCmds.pop(0)
                     data = data.strip()+LF
@@ -413,7 +421,7 @@ class ApiWorkspace(ApiTerminal):
         if len(slist) == 0:
             return {"errinfo": "Server not found"}
         if not serverKey in self.combinedConnections:
-            # print('createCombConnection', serverKey)
+            if self._logging: print('createCombConnection', serverKey)
             try:
                 conn_str = sshutils.create_ssh_string(slist[0].get("address"), slist[0].get("username"), slist[0].get("port"))
                 self.combinedConnections[serverKey] = sshutils.WorkspaceClient(conn_str, private_key=slist[0].get("prikey"), serverKey=serverKey, parentApi=self, uniqueKey='workspace', startup=slist[0].get("tasks"))
@@ -424,7 +432,7 @@ class ApiWorkspace(ApiTerminal):
 
     def closeCombConnections(self, params={}):
         for serverKey in self.combinedConnections.keys():
-            # print('closeCombConnections', serverKey)
+            if self._logging: print('closeCombConnections', serverKey)
             self.combinedConnections[serverKey].close()
         self.combinedConnections = {}
 
@@ -441,7 +449,6 @@ class ApiWorkspace(ApiTerminal):
         serverKey = self.workspaceWorkingChannel
         if serverKey and serverKey in self.combinedConnections:
             input = params.get('input')
-            # print('sendCombinedInput', serverKey, json.dumps(input))
             self.combinedConnections[serverKey].send_to_channel(input)
 
     def taskOnServer(self, taskKey, serverKey):
@@ -510,7 +517,7 @@ class ApiWorkspace(ApiTerminal):
                 if not self.testIfTaskCanRunOnServer({'taskKey': taskKey, 'serverKey': serverKey}):
                     self.combinedConnections[serverKey].onChannelString(tools.colorizeText(LF+'Waiting for tasks to finish...', 'red'))
                     return
-        print('execPipeline', pipeName)
+        if self._logging: print('execPipeline', pipeName)
         for step in steps:
             serverKey = step['target']
             tasks = step['tasks']
@@ -524,8 +531,7 @@ class ApiWorkspace(ApiTerminal):
 
 class ApiSftp(ApiWorkspace):
     def sftpGetFileTree(self, params={}):
-        if not self.hasPermission('terminal'):
-            return {'errinfo': 'SFTP access denied'}
+        if not self.hasPermission('sftp'): return {'errinfo': 'SFTP access denied'}
         serverKey = params.get('target')
         thisPath = params.get('path') or '/'
         if not serverKey in self.combinedConnections:
@@ -537,8 +543,7 @@ class ApiSftp(ApiWorkspace):
         return retval
 
     def open_remote_file(self, params={}):
-        if not self.hasPermission('terminal'):
-            return {'errinfo': 'SFTP access denied'}
+        if not self.hasPermission('sftp'): return {'errinfo': 'SFTP access denied'}
         serverKey = params.get('target')
         thisPath = params.get('path') or '/'
         if not serverKey in self.combinedConnections:
@@ -550,8 +555,7 @@ class ApiSftp(ApiWorkspace):
         return retval
 
     def save_remote_file(self, params={}):
-        if not self.hasPermission('terminal'):
-            return {'errinfo': 'SFTP access denied'}
+        if not self.hasPermission('sftp'): return {'errinfo': 'SFTP access denied'}
         serverKey = params.get('target')
         thisPath = params.get('path') or '/'
         content = params.get('content')
@@ -564,8 +568,7 @@ class ApiSftp(ApiWorkspace):
         return retval
 
     def download_remote_file(self, params={}):
-        if not self.hasPermission('terminal'):
-            return {'errinfo': 'SFTP access denied'}
+        if not self.hasPermission('sftp'): return {'errinfo': 'SFTP access denied'}
         serverKey = params.get('target')
         thisPath = params.get('path')
         if not serverKey in self.combinedConnections:
@@ -581,10 +584,12 @@ class ApiSftp(ApiWorkspace):
                 number, transfered = retdata.get('count',0), retdata.get('size',0)
                 self.combinedConnections[serverKey].onChannelString(CRLF+'Downloaded %s file(s). %s transfered'%(number, tools.convert_bytes(transfered))+CRLF)
                 return retdata
+        else:
+            retdat = self.open_remote_file(params)
+            return retdat
 
     def upload_remote_file(self, params={}):
-        if not self.hasPermission('terminal'):
-            return {'errinfo': 'SFTP access denied'}
+        if not self.hasPermission('sftp'): return {'errinfo': 'SFTP access denied'}
         serverKey = params.get('target')
         thisPath = params.get('path')
         if not serverKey in self.combinedConnections:
@@ -600,10 +605,13 @@ class ApiSftp(ApiWorkspace):
                 number, transfered = retdata.get('count',0), retdata.get('size',0)
                 self.combinedConnections[serverKey].onChannelString(CRLF+'Uploaded %s file(s). %s transfered'%(number, tools.convert_bytes(transfered))+CRLF)
                 return retdata
+        else:
+            filename = params.get('filename')
+            if filename:
+                return self.save_remote_file({'target': serverKey, 'path': os.path.join(thisPath,filename), 'content': base64.b64decode(params.get('filebody'))})
 
     def upload_remote_folder(self, params={}):
-        if not self.hasPermission('terminal'):
-            return {'errinfo': 'SFTP access denied'}
+        if not self.hasPermission('sftp'): return {'errinfo': 'SFTP access denied'}
         serverKey = params.get('target')
         thisPath = params.get('path')
         if not serverKey in self.combinedConnections:
@@ -619,12 +627,13 @@ class ApiSftp(ApiWorkspace):
                 number, transfered = retdata.get('count',0), retdata.get('size',0)
                 self.combinedConnections[serverKey].onChannelString(CRLF+'Uploaded %s file(s). %s transfered'%(number, tools.convert_bytes(transfered))+CRLF)
                 return retdata
+        else:
+            return {'errinfo': 'Desktop version only'}
 
 
 class ApiDockerManager(ApiSftp):
     def dockerGetWholeTree(self, params={}):
-        if not self.hasPermission('docker'):
-            return {'errinfo': 'Docker access denied'}
+        if not self.hasPermission('docker'): return {'errinfo': 'Docker access denied'}
         serverKey = params.get('target')
         if not serverKey in self.combinedConnections:
             ret1 = self.createCombConnection(serverKey)
@@ -633,8 +642,7 @@ class ApiDockerManager(ApiSftp):
             return {'errinfo': 'SSH connection not found'}
         return self.combinedConnections[serverKey].dockerGetWholeTree()
     def dockerGetTreeNode(self, params={}):
-        if not self.hasPermission('docker'):
-            return {'errinfo': 'Docker access denied'}
+        if not self.hasPermission('docker'): return {'errinfo': 'Docker access denied'}
         serverKey = params.get('target')
         nodeKey = params.get('nodeKey')
         if not serverKey in self.combinedConnections:
@@ -651,8 +659,7 @@ class ApiDockerManager(ApiSftp):
         else:
             return {'errinfo': 'Invalid node'}
     def dockerExecCommand(self, params={}):
-        if not self.hasPermission('docker'):
-            return {'errinfo': 'Docker access denied'}
+        if not self.hasPermission('docker'): return {'errinfo': 'Docker access denied'}
         serverKey = params.get('target')
         command = params.get('command')
         if not serverKey in self.combinedConnections:
@@ -669,8 +676,7 @@ class ApiDockerManager(ApiSftp):
         while not self.combinedConnections[serverKey].areAllTasksDone():
             time.sleep(0.1)
     def dockerSetDockerCommand(self, params={}):
-        if not self.hasPermission('docker'):
-            return {'errinfo': 'Docker access denied'}
+        if not self.hasPermission('docker'): return {'errinfo': 'Docker access denied'}
         serverKey = params.get('target')
         command = params.get('command')
         if not serverKey in self.combinedConnections:
@@ -681,8 +687,7 @@ class ApiDockerManager(ApiSftp):
         self.combinedConnections[serverKey].dockerCommandPrefix = command
         #TODO: save the docker command path on the server
     def dockerSetComposeCommand(self, params={}):
-        if not self.hasPermission('docker'):
-            return {'errinfo': 'Docker access denied'}
+        if not self.hasPermission('docker'): return {'errinfo': 'Docker access denied'}
         serverKey = params.get('target')
         command = params.get('command')
         if not serverKey in self.combinedConnections:
@@ -761,8 +766,12 @@ class ApiDesktop(ApiOverHttp):
         # Save params['content'] to params['path']
         path = params.get('path', '')
         content = params.get('content', '')
-        with open(path, 'w') as f:
-            f.write(content)
+        try:
+            with open(path, 'w') as f:
+                f.write(content)
+            return {}
+        except Exception as e:
+            return {'errinfo': str(e)}
 
     def getFolderFiles(self, params={}):
         retval = []

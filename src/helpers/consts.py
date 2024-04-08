@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 __all__ = [
-    'IS_DEBUG', 'homeEntry', 'OYSAPE_HOST', 'API_ROOT'
+    'IS_DEBUG', 'IS_LOGGING', 'homeEntry', 'OYSAPE_HOST', 'API_ROOT'
 ]
 
 import os, json
@@ -17,18 +17,19 @@ def get_home_entry():
     raise Exception('No index.html found')
 
 # Change this to True on development environment
-IS_DEBUG = False
-
+IS_DEBUG = True
+IS_LOGGING = True
 
 # Variables for local app
-# homeEntry = 'http://localhost:3000' if IS_DEBUG else get_home_entry()
-# homeEntry = 'http://localhost:3000' if IS_DEBUG else 'http://127.0.0.1:19790/index.html'
+# homeEntry = 'http://localhost:3000'
 homeEntry = 'http://127.0.0.1:19790/index.html'
 
 
 # Variables for server conmunication
-OYSAPE_HOST = 'http://localhost:8080' if IS_DEBUG else 'https://oysape.aifetel.cc'
+# OYSAPE_HOST = 'http://localhost:8080'
+OYSAPE_HOST = 'https://oysape.aifetel.cc'
 API_ROOT = '/oyapi'
+
 
 defaultExclude = [
     ".DS_Store ._* .Spotlight-V100 .Trashes Thumbs.db Desktop.ini",

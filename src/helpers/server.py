@@ -179,14 +179,14 @@ def api(functionName):
         if not consts.IS_DEBUG and clientToken and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path, {1:1, 10:3, 60:6, 900:10, 3600:15, 86400:20}):
             return json.dumps({"errinfo": "Too many requests."})
         return json.dumps({})
-    elif functionName == 'reloadUserSession' and not clientId in apis.apiInstances:
+    elif functionName == 'reloadUserSession' and clientId and not clientId in apis.apiInstances and clientToken:
         # When a user open a web version page, with a clientId and a clientToken
         apis.apiInstances[clientId] = apis.ApiOverHttp(clientId=clientId, clientUserAgent=request.headers.get('User-Agent'))
         apis.apiInstances[clientId].userToken = clientToken
     if not clientId in apis.apiInstances:
         if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path, {1:1, 10:3, 60:6, 900:10, 3600:15, 86400:20}):
             return json.dumps({"errinfo": "Too many requests."})
-        return json.dumps({"errinfo": "Client not found."})
+        return json.dumps({"errinfo": "Session expired. Please reload or re-open the app."})
     apis.apiInstances[clientId].clientUserAgent = request.headers.get('User-Agent')
     # Get the token, and check the token
     if functionName not in ['signInWithEmail', 'signInWithGithub', 'signInWithGoogle']:

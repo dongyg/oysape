@@ -302,7 +302,7 @@ class ApiTerminal(ApiOysape):
         uniqueKey = params.get('uniqueKey')
         taskKey = params.get('taskKey')
         if not self.userSession.get('servers'):
-            return {"errinfo": "Session expired, please re-open the app."}
+            return {"errinfo": "Session expired, please reload or re-open the app."}
         slist = [x for x in self.userSession['servers'] if x["key"] == serverKey]
         if len(slist) == 0:
             return {"errinfo": "Server not found"}

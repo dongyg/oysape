@@ -162,7 +162,7 @@ class SSHClient:
                 self.private_key = os.path.expanduser('~/.ssh/id_ecdsa')
             elif os.path.isfile(os.path.expanduser('~/.ssh/id_ed25519')):
                 self.private_key = os.path.expanduser('~/.ssh/id_ed25519')
-        if self.private_key.startswith('~/'):
+        if self.private_key and self.private_key.startswith('~/'):
             self.private_key = os.path.expanduser(self.private_key)
         self.passphrase = passphrase
         self.serverKey = serverKey

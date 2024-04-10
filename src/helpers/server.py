@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import threading, traceback, os, json, hashlib
+import threading, traceback, os, json, hashlib, hmac
 from bottle import Bottle, request, static_file, abort, response, hook, redirect
 from geventwebsocket import WebSocketError
 from gevent.pywsgi import WSGIServer
 from geventwebsocket.handler import WebSocketHandler
-from . import tools, apis, consts
+from . import tools, apis, consts, obhs
 from .templs import template_signin_success_close, template_signin_success_redirect, template_signin_failed_close
 
 KVStore = {}
@@ -134,6 +134,30 @@ def signout():
                 response.delete_cookie('client_token')
     return redirect('/index.html')
 
+@app.route('/callback/webhost')
+def checkWebhost():
+    clientIpAddress = request.headers.get('X-Forwarded-For') or request.remote_addr
+    val = request.query.get('val')
+    sig = request.query.get('sig')
+    if not val or not sig:
+        if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
+            return json.dumps({"errinfo": "Too many requests."})
+        return {'errinfo': 'Invalid request'}
+    serverHome = f"{request.urlparts.scheme}://{request.urlparts.netloc}"
+    print(serverHome)
+    secret_key = obhs.keys.get(serverHome)
+    if not secret_key:
+        if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
+            return json.dumps({"errinfo": "Too many requests."})
+        return {'errinfo': 'Cannot find the oysape backend host configuration. %s'%serverHome}
+    hmac_result = hmac.new(secret_key.encode('utf-8'), val.encode('utf-8'), hashlib.sha256)
+    if not hmac_result.hexdigest() == sig:
+        if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
+            return json.dumps({"errinfo": "Too many requests."})
+        return {'errinfo': 'Invalid signature'}
+    return {'data': 'ok'}
+
+
 @app.route('/<:re:.*>', method='OPTIONS')
 def enable_cors_generic_route():
     """
@@ -166,7 +190,7 @@ def api(functionName):
     if consts.IS_LOGGING: print('OverHttp', clientIpAddress, clientId, functionName)
     if functionName in ['signInWithEmail','signInWithGithub','signInWithGoogle']:
         # Request to sign in is limited. These 3 requests have no clientId in the headers
-        if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path, {1:1, 10:3, 60:6, 900:10, 3600:15, 86400:20}):
+        if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
             return json.dumps({"errinfo": "Too many requests."})
         if not clientId:
             # Generate a clientId, it should be different every time
@@ -176,7 +200,7 @@ def api(functionName):
         data['user-agent'] = request.headers.get('User-Agent')
     elif not clientToken or not clientId:
         # No token. Return empty session. The frontend will show the sign in buttons and stop the loading.
-        if not consts.IS_DEBUG and clientToken and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path, {1:1, 10:3, 60:6, 900:10, 3600:15, 86400:20}):
+        if not consts.IS_DEBUG and clientToken and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
             return json.dumps({"errinfo": "Too many requests."})
         return json.dumps({})
     elif functionName == 'reloadUserSession' and clientId and not clientId in apis.apiInstances and clientToken:
@@ -184,14 +208,14 @@ def api(functionName):
         apis.apiInstances[clientId] = apis.ApiOverHttp(clientId=clientId, clientUserAgent=request.headers.get('User-Agent'))
         apis.apiInstances[clientId].userToken = clientToken
     if not clientId in apis.apiInstances:
-        if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path, {1:1, 10:3, 60:6, 900:10, 3600:15, 86400:20}):
+        if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
             return json.dumps({"errinfo": "Too many requests."})
         return json.dumps({"errinfo": "Session expired. Please reload or re-open the app."})
     apis.apiInstances[clientId].clientUserAgent = request.headers.get('User-Agent')
     # Get the token, and check the token
     if functionName not in ['signInWithEmail', 'signInWithGithub', 'signInWithGoogle']:
         if not clientToken or clientToken != apis.apiInstances[clientId].userToken:
-            if not consts.IS_DEBUG and clientToken and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path, {1:1, 10:3, 60:6, 900:10, 3600:15, 86400:20}):
+            if not consts.IS_DEBUG and clientToken and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
                 return json.dumps({"errinfo": "Too many requests."})
             return json.dumps({"errinfo": "Unauthorized."})
     # By reaching here, the request is valid. Call the function

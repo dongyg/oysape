@@ -22,7 +22,7 @@ IS_LOGGING = True
 
 # Variables for local app
 # homeEntry = 'http://localhost:3000'
-homeEntry = 'http://127.0.0.1:19790/index.html'
+homeEntry = 'http://127.0.0.1:19790/index.html?v=2024.0411.1'
 
 
 # Variables for server conmunication

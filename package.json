@@ -1,6 +1,6 @@
 {
   "name": "oysape",
-  "version": "0.1.0",
+  "version": "2024.0411.1",
   "private": true,
   "homepage": "./",
   "dependencies": {
@@ -82,11 +82,14 @@
   },
   "scripts": {
     "dev": "node scripts/start.js",
-    "build": "yarn run clean && run-script-os",
-    "compile": "BUILD_PATH='./gui' node scripts/build.js",
-    "build:macos": "BUILD_PATH='./gui' node scripts/build.js && yarn run pack",
-    "build:windows": "set BUILD_PATH=gui&node scripts/build.js & yarn run pack",
-    "build:linux": "BUILD_PATH='./gui' node scripts/build.js && yarn run pack",
+    "build": "run-script-os",
+    "build:macos": "yarn run compile && yarn run pack",
+    "build:windows": "yarn run compile & yarn run pack",
+    "build:linux": "yarn run compile && yarn run pack",
+    "compile": "run-script-os",
+    "compile:macos": "yarn run clean && NODE_ENV=production GENERATE_SOURCEMAP=false BUILD_PATH='./gui' node scripts/build.js",
+    "compile:windows": "yarn run clean&set NODE_ENV=production&set GENERATE_SOURCEMAP=false&set BUILD_PATH=gui&node scripts/build.js",
+    "compile:linux": "yarn run clean && NODE_ENV=production GENERATE_SOURCEMAP=false BUILD_PATH='./gui' node scripts/build.js",
     "pack": "run-script-os",
     "pack:macos": "./venv-oysape/bin/python build-macos.py py2app",
     "pack:windows": ".\\venv-oysape\\Scripts\\pyinstaller build-windows.spec & .\\venv-oysape\\Scripts\\pyinstaller build-windows.spec -- --standalone",

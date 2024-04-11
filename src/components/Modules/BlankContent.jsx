@@ -2,7 +2,6 @@ import { useRef } from 'react';
 import { useCustomContext } from '../Contexts/CustomContext'
 import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
 import ToggleTheme from '../Common/ToggleTheme';
-import Editor from '../Editor/Editor'
 
 const BlankContent = () => {
   const { customTheme } = useCustomContext();
@@ -16,7 +15,6 @@ const BlankContent = () => {
   return (
     <div ref={divContainer} style={{ backgroundColor: customTheme.colors["editor.background"], height: '100%', }}>
       <ToggleTheme />
-      <Editor />
     </div>
   );
 }

@@ -1,19 +1,20 @@
 import { useState } from 'react';
 import { App, Button, Dropdown, Table } from 'antd';
 import { BsPlusLg, BsThreeDots } from "react-icons/bs";
-import { DeleteOutlined, DeleteFilled } from '@ant-design/icons';
+import { DeleteOutlined, QuestionCircleFilled } from '@ant-design/icons';
 import { RiInstallLine, RiUninstallLine } from "react-icons/ri";
 import { BiUserCheck } from "react-icons/bi";
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { callApi } from '../Common/global';
+import { callApi, getUniqueKey } from '../Common/global';
 
 import TextInputModal from '../Modules/TextInputModal';
+import WebsiteManage from './WebsiteManage';
 import './WebsitesPanel.css';
 
 export default function WebsitesPanel() {
-  const { message } = App.useApp();
-  const { userSession, setUserSession } = useCustomContext();
+  const { message, modal } = App.useApp();
+  const { hideSidebarIfNeed, userSession, setUserSession, tabItems, setTabItems, setTabActiveKey } = useCustomContext();
   const headerHeight = '56px';
   const [ showInput, setShowInput ] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
@@ -26,7 +27,6 @@ export default function WebsitesPanel() {
       if(data && data.errinfo) {
         message.error(data.errinfo);
       }else if(data && data.sites){
-        console.log(data);
         setUserSession({...userSession, sites: data.sites});
       }
     })
@@ -34,8 +34,6 @@ export default function WebsitesPanel() {
 
   const menuItems = [
     { key: 'menuNewWebHost', label: ('Add a new web host'), icon: <BsPlusLg />, },
-    { type: 'divider', },
-    { key: 'menuEmptyWebHost', label: ( 'Remove all webhosts' ), icon: <DeleteFilled />, },
   ];
   const onClickMenu = ({ key }) => {
     if(key === 'menuNewWebHost') {
@@ -43,57 +41,103 @@ export default function WebsitesPanel() {
     }
   };
 
+  const execVerify = (obh) => {
+    modal.confirm({
+      title: 'Confirm to Verify Webhost',
+      icon: <QuestionCircleFilled />,
+      content: 'Are you sure you want to verify webhost ' + obh + '?',
+      onOk() {
+        callApi('verifyWebHost', {obh: obh}).then((data) => {
+          if(data && data.errinfo) {
+            message.error(data.errinfo);
+          }else if(data && data.sites){
+            message.success('Verified successfully');
+            setUserSession({...userSession, sites: data.sites});
+          }
+        })
+      },
+      onCancel() {
+        console.log('Cancel');
+      },
+    });
+  }
+  const execUninstall = (obh, target) => {
+    modal.confirm({
+      title: 'Confirm to Uninstall Webhost',
+      icon: <QuestionCircleFilled />,
+      content: 'Are you sure you want to uninstall webhost ' + obh + ' from ' + target + '?',
+      onOk() {
+        callApi('uninstallWebHost', {obh: obh}).then((data) => {
+          if(data && data.errinfo) {
+            message.error(data.errinfo);
+          }else if(data && data.sites){
+            setUserSession({...userSession, sites: data.sites, teams: data.teams});
+          }
+        })
+      },
+      onCancel() {
+        console.log('Cancel');
+      },
+    });
+  }
+  const execDelete = (obh) => {
+    modal.confirm({
+      title: 'Confirm to Delete Webhost',
+      icon: <QuestionCircleFilled />,
+      content: 'Are you sure you want to delete webhost ' + obh + '?',
+      onOk() {
+        callApi('deleteWebHost', {obh: obh}).then((data) => {
+          if(data && data.errinfo) {
+            message.error(data.errinfo);
+          }else if(data && data.sites){
+            setUserSession({...userSession, sites: data.sites});
+          }
+        })
+      },
+      onCancel() {
+        console.log('Cancel');
+      },
+    });
+  }
+  const execInstall = (obh, target) => {
+    callApi('installWebHost', {obh: obh, target: target}).then((data) => {
+      if(data && data.errinfo) {
+        message.error(data.errinfo);
+      }else if(data && data.sites){
+        setUserSession({...userSession, sites: data.sites});
+      }
+    })
+  }
+
   const onClickContextItem = ({ key }) => {
     if(!selectedRowKeys[0]) {
       return;
     }
     if(key === 'menuSetupWebhost') {
     }else if(key === 'menuVerifyOwner') {
-      callApi('verifyWebHost', {obh: selectedRowKeys[0]}).then((data) => {
-        if(data && data.errinfo) {
-          message.error(data.errinfo);
-        }else if(data && data.sites){
-          console.log(data);
-          setUserSession({...userSession, sites: data.sites});
-        }
-      })
+      execVerify(selectedRowKeys[0]);
     }else if(key === 'menuUnsetup') {
-      callApi('uninstallWebHost', {obh: selectedRowKeys[0]}).then((data) => {
-        if(data && data.errinfo) {
-          message.error(data.errinfo);
-        }else if(data && data.sites){
-          console.log(data);
-          setUserSession({...userSession, sites: data.sites});
-        }
-      })
+      const currentItem = userSession.sites.filter((item) => item.obh === selectedRowKeys[0])[0];
+      execUninstall(selectedRowKeys[0], currentItem.target);
     }else if(key === 'menuDeleteWebhost') {
-      callApi('deleteWebHost', {obh: selectedRowKeys[0]}).then((data) => {
-        if(data && data.errinfo) {
-          message.error(data.errinfo);
-        }else if(data && data.sites){
-          console.log(data);
-          setUserSession({...userSession, sites: data.sites});
-        }
-      })
+      execDelete(selectedRowKeys[0]);
     } else if (userSession.servers.filter((item) => item.key === key).length > 0) {
-      callApi('installWebHost', {obh: selectedRowKeys[0], target: key}).then((data) => {
-        if(data && data.errinfo) {
-          message.error(data.errinfo);
-        }else if(data && data.sites){
-          console.log(data);
-          setUserSession({...userSession, sites: data.sites});
-        }
-      })
+      execInstall(selectedRowKeys[0], key);
     }
   };
   const getContextItems = () => {
-    var retval = [
-      { key: 'menuSetupWebhost', label: ('Install on'), icon: <RiInstallLine />, children: userSession.servers.map((item) => {return {key: item.key, label: item.name}})},
-      { key: 'menuVerifyOwner', label: ('Verify the owner'), icon: <BiUserCheck />, },
-      { type: 'divider', },
-      { key: 'menuUnsetup', label: ('Uninstall'), icon: <RiUninstallLine />, },
-      { key: 'menuDeleteWebhost', label: ('Delete'), icon: <DeleteOutlined />, },
-    ];
+    const currentItem = userSession.sites.filter((item) => item.obh === selectedRowKeys[0])[0];
+    var retval = [];
+    if(currentItem && !currentItem.target && !currentItem.verified) {
+      retval.push({ key: 'menuSetupWebhost', label: ('Install on'), icon: <RiInstallLine />, children: userSession.servers.map((item) => {return {key: item.key, label: item.name}})});
+      retval.push({ key: 'menuDeleteWebhost', label: ('Delete'), icon: <DeleteOutlined />, });
+    }
+    if(currentItem && currentItem.target && !currentItem.verified) {
+      retval.push({ key: 'menuVerifyOwner', label: ('Verify the owner'), icon: <BiUserCheck />, });
+    }
+    if(currentItem && currentItem.target && currentItem.verified) {
+      retval.push({ key: 'menuUnsetup', label: ('Uninstall'), icon: <RiUninstallLine />, });
+    }
     return retval;
   };
   const columns = [
@@ -109,7 +153,7 @@ export default function WebsitesPanel() {
                 { record.verified ? 'Verified' : 'Unverified' }
               </div>
             </div>
-            <div>{record.target || 'Unset'}</div>
+            <div>{record.target || 'Uninstalled'}</div>
           </div>
         </Dropdown>)
       }
@@ -136,6 +180,24 @@ export default function WebsitesPanel() {
     type: multipleSelect&&editable?'checkbox':'radio',
     onChange: onSelectedRowKeysChange
   };
+
+  const openWebsiteEditor = (record) => {
+    const tabKey = record.obh+'-editor';
+    const findItems = tabItems.filter((item) => item.websiteKey === tabKey);
+    if(findItems.length > 0) {
+      setTabActiveKey(findItems[0].key);
+    }else{
+      const uniqueKey = getUniqueKey();
+      setTabItems([...tabItems || [], {
+        key: uniqueKey,
+        websiteKey: tabKey,
+        label: record.obh,
+        children: <WebsiteManage uniqueKey={uniqueKey} websiteKey={tabKey} websiteObject={record} />,
+      }]);
+      setTabActiveKey(uniqueKey);
+    }
+    hideSidebarIfNeed();
+  }
 
   const NoDataComponent = () => (
     <div>
@@ -176,7 +238,7 @@ export default function WebsitesPanel() {
               selectRow(record);
             },
             onDoubleClick: () => {
-              //TODO: open the web host
+              openWebsiteEditor(record);
             }
           })}
         />

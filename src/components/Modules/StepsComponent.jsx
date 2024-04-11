@@ -113,7 +113,7 @@ export default function StepsComponent({steps, onChange, ...props}) {
                 <Input placeholder="Select a Task" size='small' autoComplete='off' autoCapitalize='off' autoCorrect='off' spellCheck='false' />
             </AutoComplete>
           ) : (
-            <Tag key={getUniqueKey()} closable={!!task} style={{ userSelect: 'none', }} icon={task?<SelectOutlined onClick={()=>{handleOpenTask(task)}} />:null} onClose={() => onCloseTask(idxStep, idxTask)} onDoubleClick={() => onClickTask(idxStep, idxTask)}>
+            <Tag key={getUniqueKey()} closable={!!task} style={{ userSelect: 'none', }} icon={task?<SelectOutlined onClick={()=>{handleOpenTask(task)}} />:null} onClose={() => onCloseTask(idxStep, idxTask)} onClick={() => {if(!task) onClickTask(idxStep, idxTask)}} onDoubleClick={() => onClickTask(idxStep, idxTask)}>
               {task||'+'}
             </Tag>
           )

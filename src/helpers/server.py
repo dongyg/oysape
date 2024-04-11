@@ -143,13 +143,19 @@ def checkWebhost():
         if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
             return json.dumps({"errinfo": "Too many requests."})
         return {'errinfo': 'Invalid request'}
-    serverHome = f"{request.urlparts.scheme}://{request.urlparts.netloc}"
-    print(serverHome)
-    secret_key = obhs.keys.get(serverHome)
+    webhost_config = os.getenv('WEBHOST_CONFIG')
+    if webhost_config and len(webhost_config.split('@'))==2:
+        v1, v2 = webhost_config.split('@')
+        obhs.keys[v2] = v1
+    else:
+        if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
+            return json.dumps({"errinfo": "Too many requests."})
+        return {'errinfo': 'Cannot find the oysape backend host configuration.'}
+    secret_key = obhs.keys.get(v2)
     if not secret_key:
         if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
             return json.dumps({"errinfo": "Too many requests."})
-        return {'errinfo': 'Cannot find the oysape backend host configuration. %s'%serverHome}
+        return {'errinfo': 'Cannot find the oysape backend host configuration. %s'%v2}
     hmac_result = hmac.new(secret_key.encode('utf-8'), val.encode('utf-8'), hashlib.sha256)
     if not hmac_result.hexdigest() == sig:
         if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):

@@ -817,9 +817,13 @@ class ApiDesktop(ApiOverHttp):
         self.importTo({'what': 'excludes', 'items': self.listExclude})
         return {'folderFiles':self.getFolderFiles()}
 
+    def update_session(self, params):
+        self.userSession.update(params)
+        return self.userSession
+
     def addWebHost(self, params={}):
         obh = params.get('obh')
-        retval = tools.callServerApiPost('/user/webhost', {'obh': obh}, self)
+        retval = tools.callServerApiPost('/user/webhosts', {'obh': obh}, self)
         if retval and not retval.get('errinfo'):
             return self.update_session(retval)
         else:
@@ -827,7 +831,7 @@ class ApiDesktop(ApiOverHttp):
 
     def deleteWebHost(self, params={}):
         obh = params.get('obh')
-        retval = tools.callServerApiDelete('/user/webhost', {'obh': obh}, self)
+        retval = tools.callServerApiDelete('/user/webhosts', {'obh': obh}, self)
         if retval and not retval.get('errinfo'):
             return self.update_session(retval)
         else:
@@ -847,16 +851,18 @@ class ApiDesktop(ApiOverHttp):
                 return {'errinfo': 'SSH connection not found'}
             # Check the docker environment
             if self.combinedConnections[serverKey].dockerCommandPrefix == None:
-                self.combinedConnections[serverKey].onChannelString((CRLF+'Checking docker environment...'+CRLF))
+                self.combinedConnections[serverKey].onChannelString((CRLF+'Checking docker environment...'))
                 retval = self.combinedConnections[serverKey].dockerCheckEnv()
                 if retval and retval.get('errinfo'): return retval
-            self.combinedConnections[serverKey].onChannelString((CRLF+'Removing webhost container...'+CRLF))
-            self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rm -f oysape-webhost')
-            self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rmi -f dongyg/oysape-webhost')
             retval = tools.callServerApiDelete('/user/webhost/verify', {'obh': obh, 'target': serverKey}, self)
+            if retval and retval.get('errinfo'): return retval
+            self.combinedConnections[serverKey].onChannelString((CRLF+'Removing webhost container...'))
+            retcmd = self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rm -f oysape-webhost')
+            self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
+            retcmd = self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rmi -f dongyg/oysape-webhost')
+            self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
             self.combinedConnections[serverKey].onChannelString((CRLF+'Webhost uninstalled'+CRLF))
-            return retval
-            return {}
+            return self.update_session(retval)
         except Exception as e:
             return {'errinfo': str(e)}
 
@@ -877,10 +883,8 @@ class ApiDesktop(ApiOverHttp):
                 if retval and retval.get('errinfo'): return retval
             # Remove the container and the image first
             self.combinedConnections[serverKey].onChannelString((CRLF+'Removing webhost container...'))
-            retcmd = self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rm -f oysape-webhost')
-            self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
+            self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rm -f oysape-webhost')
             self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rmi -f dongyg/oysape-webhost')
-            self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
             # Run the container
             self.combinedConnections[serverKey].onChannelString((CRLF+'Running webhost container...'))
             oneTimeSecret = tools.getRandomString(60)
@@ -897,7 +901,7 @@ class ApiDesktop(ApiOverHttp):
             retcmd = self.combinedConnections[serverKey].execute_command(cmd3)
             self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
             # Save the secret
-            retval = tools.callServerApiPost('/user/webhost', {'obh': obh, 'target': serverKey, 'secret': oneTimeSecret}, self)
+            retval = tools.callServerApiPost('/user/webhosts', {'obh': obh, 'target': serverKey, 'secret': oneTimeSecret}, self)
             self.combinedConnections[serverKey].onChannelString((CRLF+'Webhost installed'+CRLF))
             return retval
         except Exception as e:
@@ -908,5 +912,13 @@ class ApiDesktop(ApiOverHttp):
         retval = tools.callServerApiPost('/user/webhost/verify', {'obh': obh}, self)
         return retval
 
+    def applyToTeams(self, params={}):
+        obh = params.get('obh')
+        teams = params.get('teams')
+        retval = tools.callServerApiPost('/user/webhost/apply', {'obh': obh, 'teams': teams}, self)
+        if retval and not retval.get('errinfo'):
+            return self.update_session(retval)
+        else:
+            return retval
 
 apiInstances = {}

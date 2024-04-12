@@ -14,7 +14,7 @@ def signForWebhost(serverHome, value):
     if not secret_key:
         return {'errinfo': 'Cannot find the oysape backend host configuration. %s'%serverHome}
     hmac_result = hmac.new(secret_key.encode('utf-8'), value.encode('utf-8'), hashlib.sha256)
-    return {'sig': hmac_result.hexdigest()}
+    return hmac_result.hexdigest()
 
 def getSignInState(clientId, userAgent, serverHome):
     # Get the secret key for this OYSAPE_BACKEND_HOST from configuration. For desktop version, the secret key is presaved.

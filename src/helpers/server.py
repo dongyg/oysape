@@ -22,7 +22,7 @@ def not_allowed(error):
 
 def getClientIdAndToken(req):
     clientIpAddress = req.headers.get('X-Forwarded-For') or req.remote_addr
-    if req.headers.get('User-Agent').find('Oysape') >=0:
+    if req.headers.get('User-Agent').find('OysapeDesktop') >=0:
         # Use the pywebview token as the clientId for desktop version. It should have a apiObject in apis.apiInstances
         import webview
         clientId = webview.token

@@ -64,7 +64,7 @@ export default function TasksPanel() {
           })
         },
         onCancel() {
-          console.log('Cancel');
+          // console.log('Cancel');
         },
       });
   }

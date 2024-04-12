@@ -66,7 +66,7 @@ export default function ServersPanel() {
           })
         },
         onCancel() {
-          console.log('Cancel');
+          // console.log('Cancel');
         },
       });
     }

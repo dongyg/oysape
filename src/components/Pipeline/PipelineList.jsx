@@ -133,7 +133,7 @@ const PipelineList = () => {
         })
       },
       onCancel() {
-        console.log('Cancel');
+        // console.log('Cancel');
       },
     });
   }

@@ -17,12 +17,12 @@ def get_home_entry():
     raise Exception('No index.html found')
 
 # Change this to True on development environment
-IS_DEBUG = False
+IS_DEBUG = True
 IS_LOGGING = True
 
 # Variables for local app
-# homeEntry = 'http://localhost:3000'
-homeEntry = 'http://127.0.0.1:19790/index.html?v=2024.0411.1'
+homeEntry = 'http://localhost:3000'
+# homeEntry = 'http://127.0.0.1:19790/index.html?v=2024.0411.2'
 
 
 # Variables for server conmunication

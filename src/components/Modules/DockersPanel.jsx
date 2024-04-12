@@ -96,7 +96,7 @@ export default function ProjectsPanel() {
   }
 
   const handleDoubleClick = (anode) => {
-    console.log(anode);
+    // console.log(anode);
   }
 
   const reloadDockerServer = (serverKey) => {

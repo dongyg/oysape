@@ -50,7 +50,7 @@ export default function ProjectFileTree() {
           })
         },
         onCancel() {
-          console.log('Cancel');
+          // console.log('Cancel');
         },
       });
     }else if(key === 'tree_menu_add_to_exclude') {
@@ -68,7 +68,7 @@ export default function ProjectFileTree() {
           })
         },
         onCancel() {
-          console.log('Cancel');
+          // console.log('Cancel');
         },
       });
     }
@@ -83,7 +83,7 @@ export default function ProjectFileTree() {
 
   const reloadFolderFiles = useCallback(() => {
     callApi('getFolderFiles', {refresh: true}).then((data) => {
-      console.log('getFolderFiles', data)
+      // console.log('getFolderFiles', data)
       setFolderFiles(data);
     });
   }, [setFolderFiles]);

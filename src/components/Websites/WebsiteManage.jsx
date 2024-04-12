@@ -1,17 +1,15 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { App, Dropdown, Button, Typography, Steps, Tabs, Checkbox, Divider } from 'antd';
 
 import { DeleteOutlined, QuestionCircleFilled } from '@ant-design/icons';
-import { UserOutlined, SolutionOutlined, LoadingOutlined, SmileOutlined } from "@ant-design/icons";
+import { SolutionOutlined, } from "@ant-design/icons";
 import { RiInstallLine, RiUninstallLine } from "react-icons/ri";
-import { BiUserCheck } from "react-icons/bi";
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { callApi, getUniqueKey } from '../Common/global';
-import BlankContent from '../Modules/BlankContent';
+import { callApi } from '../Common/global';
 
 const CheckboxGroup = Checkbox.Group;
-const { Title, Paragraph, Text, Link } = Typography;
+const { Title } = Typography;
 
 const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
   const { message, modal } = App.useApp();
@@ -51,7 +49,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
         })
       },
       onCancel() {
-        console.log('Cancel');
+        // console.log('Cancel');
       },
     });
   }
@@ -71,7 +69,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
         })
       },
       onCancel() {
-        console.log('Cancel');
+        // console.log('Cancel');
       },
     });
   }
@@ -91,7 +89,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
         })
       },
       onCancel() {
-        console.log('Cancel');
+        // console.log('Cancel');
       },
     });
   }
@@ -107,7 +105,6 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
   }
 
   const execApplyToTeams = () => {
-    console.log(webhostObject.obh, checkedList);
     callApi('applyToTeams', {obh: webhostObject.obh, teams: checkedList}).then((data) => {
       if(data && data.errinfo) {
         message.error(data.errinfo);
@@ -130,7 +127,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
               : webhostObject.target,
             status: 'finish',
           },
-          { title: 'Verification', icon: <SolutionOutlined />,
+          { title: 'Verify', icon: <SolutionOutlined />,
             description: webhostObject.target&&!webhostObject.verified ? <Button size='small' onClick={() => execVerify(webhostObject.obh)}>Verify</Button> : (webhostObject.verified?'Verified':null),
             status: 'finish',
           },
@@ -144,7 +141,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
           },
         ]}
       />
-      <Tabs centered activeKey={currentWorkKey} onChange={(key) => { setCurrentWorkKey(key); }}
+      <Tabs  activeKey={currentWorkKey} onChange={(key) => { setCurrentWorkKey(key); }}
         items={[
           { key: 'webhost_teams', label: 'Applied Teams', children: <>
             {webhostObject.target && webhostObject.verified ?

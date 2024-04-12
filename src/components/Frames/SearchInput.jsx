@@ -143,7 +143,6 @@ const SearchInput = () => {
     });
   }
   const getFilesForSearch = (query) => {
-    console.log('getFilesForSearch', folderFiles)
     const flatFiles = flatFileTree(JSON.parse(JSON.stringify(folderFiles)));
     return folderFiles ? flatFiles.filter((item) => getPathAndName(item).toLowerCase().indexOf(query) >= 0).map((item) => {
       return { value: getPathAndName(item), label: (<div>{getPathAndName(item)}</div>) }

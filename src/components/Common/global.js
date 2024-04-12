@@ -27,7 +27,7 @@ export const calculateMD5 = function(str) {
   return hash.toString();
 }
 
-export const isDesktopVersion = navigator.userAgent.indexOf('Oysape') !== -1;
+export const isDesktopVersion = navigator.userAgent.indexOf('OysapeDesktop') !== -1;
 
 export const callApi = (functionName, params) => {
   if(window.pywebview && window.pywebview.api) {
@@ -156,7 +156,6 @@ export const getPathAndName = (item) => {
 }
 
 export const flatFileTree = (tree, path) => {
-    console.log(tree);
     return (tree||[]).reduce((acc, item) => {
         item.path = path || '';
         item.name = item.title;

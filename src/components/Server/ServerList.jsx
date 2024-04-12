@@ -146,7 +146,7 @@ const ServerList = () => {
         })
       },
       onCancel() {
-        console.log('Cancel');
+        // console.log('Cancel');
       },
     });
   }

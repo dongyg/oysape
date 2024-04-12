@@ -57,7 +57,7 @@ export default function WebsitesPanel() {
         })
       },
       onCancel() {
-        console.log('Cancel');
+        // console.log('Cancel');
       },
     });
   }
@@ -76,7 +76,7 @@ export default function WebsitesPanel() {
         })
       },
       onCancel() {
-        console.log('Cancel');
+        // console.log('Cancel');
       },
     });
   }
@@ -95,7 +95,7 @@ export default function WebsitesPanel() {
         })
       },
       onCancel() {
-        console.log('Cancel');
+        // console.log('Cancel');
       },
     });
   }

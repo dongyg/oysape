@@ -80,7 +80,7 @@ export default function BodyContainer() {
 
   const reloadUserSession = () => {
     callApi('reloadUserSession', {refresh: true}).then((data) => {
-      console.log('reloadUserSession', data);
+      // console.log('reloadUserSession', data);
       if(data?.uid) {
         setUserSession(data);
       }else if(data?.errinfo) {

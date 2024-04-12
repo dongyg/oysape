@@ -3,7 +3,7 @@
 
 import os, base64, traceback, json, re, json, _thread, time, getpass, stat
 import paramiko
-from . import tools, apis
+from . import tools
 
 BUF_SIZE = 1024
 CR = '\r'
@@ -650,7 +650,7 @@ class SSHClient:
             {'label': 'pause', 'key': 'tree_menu_command_container_pause', 'command': self.dockerCommandPrefix+'docker container pause {theName}', 'icon':'PauseOutlined' },
             {'label': 'stop', 'key': 'tree_menu_command_container_stop', 'command': self.dockerCommandPrefix+'docker container stop {theName}', 'icon':'BorderOutlined' },
             {'type': 'divider' },
-            {'label': 'logs -f', 'key': 'tree_menu_command_container_logs', 'command': self.dockerCommandPrefix+'docker container logs -f --tail=100 {theName}', 'terminal': True, },
+            {'label': 'logs -f', 'key': 'tree_menu_command_container_logs', 'command': self.dockerCommandPrefix+'docker container logs -f {theName}', 'terminal': True, },
             {'label': 'inspect', 'key': 'tree_menu_command_container_inspect', 'command': self.dockerCommandPrefix+'docker container inspect {theName}', },
             {'label': 'stats --no-stream', 'key': 'tree_menu_command_container_stats', 'command': self.dockerCommandPrefix+'docker container stats --no-stream {theName}', },
             {'type': 'divider' },
@@ -693,6 +693,8 @@ class SSHClient:
             {'label': 'start', 'key': 'tree_menu_command_compose_start', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} start', 'icon':'CaretRightOutlined', },
             {'label': 'pause', 'key': 'tree_menu_command_compose_pause', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} pause', 'icon':'PauseOutlined', },
             {'label': 'stop', 'key': 'tree_menu_command_compose_stop', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} stop', 'icon':'BorderOutlined', },
+            {'type': 'divider' },
+            {'label': 'logs -f', 'key': 'tree_menu_command_compose_logs', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} logs -f', 'terminal': True, },
             {'type': 'divider' },
             {'label': 'up -d', 'key': 'tree_menu_command_compose_up-d', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} up -d', 'icon':'VerticalAlignTopOutlined', },
             {'label': 'down && up -d', 'key': 'tree_menu_command_compose_down_up-d', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} down && '+self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} up -d', 'icon':'ColumnHeightOutlined', },

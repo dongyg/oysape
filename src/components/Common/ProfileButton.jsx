@@ -117,7 +117,7 @@ export default function ProfileButton() {
           }
         },
         onCancel() {
-          console.log('Cancel');
+          // console.log('Cancel');
         },
       });
     }else if(key === 'menuTest3') {

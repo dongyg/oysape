@@ -124,7 +124,7 @@ export default function WorkspaceTerminal(props) {
         setBrowserInfo(xtermRef.current._core.browser);
         writeWelcome(xtermRef.current);
         window.addEventListener('resize', onResize);
-        console.log(navigator.userAgent);
+        // console.log(navigator.userAgent);
         return () => {
             callApi('closeCombConnections', {});
             window.removeEventListener('resize', onResize);

@@ -39,7 +39,7 @@ def getOAuthUrl(oauthAgent):
 def openOAuthWindow(oauthAgent, clientId, userAgent, serverHome):
     # oauthAgent: 'github' or 'email' or 'google'
     retval = {'clientId': clientId}
-    isDesktopVersion = (userAgent.find('Oysape') >= 0 and serverHome.find('//127.0.0.1:') >= 0)
+    isDesktopVersion = (userAgent.find('OysapeDesktop') >= 0 and serverHome.find('//127.0.0.1:') >= 0)
     sdata = getSignInState(clientId, (socket.gethostname() if isDesktopVersion else userAgent), serverHome)
     if sdata and sdata.get('errinfo'):
         retval['errinfo'] = sdata.get('errinfo')
@@ -53,7 +53,7 @@ def openOAuthWindow(oauthAgent, clientId, userAgent, serverHome):
 
 def openAccountDashboard(otp, userAgent, serverHome):
     landing_url = consts.OYSAPE_HOST + consts.API_ROOT + '/user/landing?s=%s'%otp
-    isDesktopVersion = (userAgent.find('Oysape') >= 0 and serverHome.find('//127.0.0.1:') >= 0)
+    isDesktopVersion = (userAgent.find('OysapeDesktop') >= 0 and serverHome.find('//127.0.0.1:') >= 0)
     if isDesktopVersion:
         webbrowser.open_new(landing_url)
         return {}

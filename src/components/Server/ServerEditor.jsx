@@ -27,22 +27,18 @@ export default function ServerEditor(props) {
 
   // tasks
   const onClickTask = (idxTask) => {
-    console.log('onClickTask', idxTask);
     setIndexEditTaskIndex(idxTask);
   }
   const onChangeTask = useCallback((idxTask, value) => {
-    console.log('onChangeTask', idxTask, value);
     const newItems = [...tasks];
     newItems[idxTask] = value;
     setTasks(newItems);
     setIndexEditTaskIndex(-1);
   }, [tasks]);
   const onCloseTask = useCallback((idxTask) => {
-    console.log('onCloseTask', tasks);
     const newItems = [...tasks];
     newItems.splice(idxTask, 1);
     setTasks(newItems);
-    console.log('onCloseTask', newItems);
   }, [tasks]);
 
   // form

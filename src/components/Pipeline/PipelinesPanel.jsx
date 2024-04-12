@@ -64,7 +64,7 @@ export default function PipelinesPanel() {
           })
         },
         onCancel() {
-          console.log('Cancel');
+          // console.log('Cancel');
         },
       });
     }

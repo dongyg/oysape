@@ -30,7 +30,6 @@ const ContentFrame = () => {
     setTabActiveKey(key);
   };
   const closeThisTab = (targetKey, force) => {
-    console.log('closeThisTab', targetKey, force);
     const tabTitle = getTabTitle(targetKey);
     if (targetKey === 'workspace') {
       notification.error({
@@ -50,7 +49,7 @@ const ContentFrame = () => {
             removeTab(targetKey);
           },
           onCancel() {
-            console.log('Cancel');
+            // console.log('Cancel');
           },
         });
       }

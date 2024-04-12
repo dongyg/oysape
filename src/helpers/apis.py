@@ -84,7 +84,7 @@ class ApiBase:
         self.themeType = (params or {}).get('type', self.themeType)
 
     def isDesktopVersion(self):
-        return self.clientUserAgent.find('Oysape') >= 0
+        return self.clientUserAgent.find('OysapeDesktop') >= 0
 
 
 class ApiOauth(ApiBase):

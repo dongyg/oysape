@@ -1,6 +1,6 @@
 {
   "name": "oysape",
-  "version": "2024.0412.2",
+  "version": "2024.0422.1",
   "private": true,
   "homepage": "./",
   "dependencies": {
@@ -33,6 +33,7 @@
     "crypto-js": "^4.1.1",
     "css-loader": "^6.5.1",
     "css-minimizer-webpack-plugin": "^3.2.0",
+    "dayjs": "^1.11.10",
     "dotenv": "^10.0.0",
     "dotenv-expand": "^5.1.0",
     "eslint": "^8.3.0",

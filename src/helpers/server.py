@@ -6,7 +6,7 @@ from bottle import Bottle, request, static_file, abort, response, hook, redirect
 from geventwebsocket import WebSocketError
 from gevent.pywsgi import WSGIServer
 from geventwebsocket.handler import WebSocketHandler
-from . import tools, apis, consts, obhs
+from . import tools, apis, consts, obhs, scheduler
 from .templs import template_signin_success_close, template_signin_success_redirect, template_signin_failed_close
 
 KVStore = {}
@@ -112,7 +112,7 @@ def oauthCallback():
         rendered_template = template_signin_success_close
     else:
         # In the web version, can set the cookie here. The cookies are only available for this session.
-        #TODO: cookies 的有效期可以让用户在设置 web host 的时候自行设置. 仅会话有效的话会更安全(token泄露被盗用的可能性更小). 另外用户也可以选择在 web version 使用后自行 sign out. sign out 后 token 已经删除并失效了, 就不存在泄露和被盗用风险了.
+        # cookies 的有效期可以让用户在设置 web host 的时候自行设置. 仅会话有效的话会更安全(token泄露被盗用的可能性更小). 另外用户也可以选择在 web version 使用后自行 sign out. sign out 后 token 已经删除并失效了, 就不存在泄露和被盗用风险了.
         response.set_cookie("client_token", retval.get('data').get('token'), path="/", httponly=True)
         response.set_cookie("client_id", clientId, path="/", httponly=True)
         # response.set_cookie("client_token", retval.get('data').get('token'), path="/", max_age=3600*24*30, httponly=True)
@@ -161,6 +161,16 @@ def checkWebhost():
         if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
             return json.dumps({"errinfo": "Too many requests."})
         return {'errinfo': 'Invalid signature'}
+    # Validation is a necessary step after the webhost container is running. Once validation is passed, the webhost's schedules can be run.
+    webhostFile = os.path.join(apis.folder_base, 'webhost.json')
+    if os.path.isfile(webhostFile):
+        try:
+            with open(webhostFile, 'r') as f:
+                webhostObject = json.load(f)
+            if webhostObject.get('schedules'):
+                scheduler.initScheduler(webhostObject.get('schedules'))
+        except Exception as e:
+            print('Error', e)
     return {'data': 'ok'}
 
 
@@ -236,6 +246,10 @@ def api(functionName):
         return json.dumps(retval)
     else:
         return json.dumps({"errinfo": "Function not found."})
+
+@app.route('/')
+def serve_root():
+    redirect('/index.html')
 
 @app.route('/<filename:path>')
 def serve_static(filename):

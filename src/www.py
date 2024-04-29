@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sys, signal
-from helpers import server, console, apis
+from helpers import server, console
 
 def sig_handler(signum, frame):
     raise SystemExit()

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Modal, Input } from 'antd';
 
-const TextInputModal = ({ visible, onCreate, onCancel, defaultValue, title, placeholder }) => {
+const TextInputModal = ({ visible, onCreate, onCancel, defaultValue, title, placeholder, rules }) => {
   const [inputValue, setInputValue] = useState('');
   const inputRef = useRef(null);
 
@@ -13,6 +13,9 @@ const TextInputModal = ({ visible, onCreate, onCancel, defaultValue, title, plac
   }, [visible, defaultValue]);
 
   const handleOk = () => {
+    if (rules && rules.map((rule) => {return rule.test(inputValue); }).indexOf(false) >= 0) {
+      return;
+    }
     onCreate(inputValue);
     setInputValue('');
   };
@@ -42,7 +45,9 @@ const TextInputModal = ({ visible, onCreate, onCancel, defaultValue, title, plac
         placeholder={placeholder||"Enter here"}
         value={inputValue}
         onChange={handleChange}
+        onPressEnter={handleOk}
         ref={inputRef}
+        autoComplete='off' autoCapitalize='off' autoCorrect='off'
       />
     </Modal>
   );

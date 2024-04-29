@@ -24,6 +24,7 @@ export default function ServerEditor(props) {
   // form validation
   const [passStatus, setPassStatus] = useState('success');
   const [passHint, setPassHint] = useState('');
+  const [saving, setSaving] = useState(false);
 
   // tasks
   const onClickTask = (idxTask) => {
@@ -90,7 +91,9 @@ export default function ServerEditor(props) {
     if(hasSomethingNew) setTabItems(newItems);
   }
   const saveServer = (newobj) => {
+    setSaving(true);
     callApi('addServer', newobj).then((data) => {
+      setSaving(false);
       if(data && data.errinfo) {
         message.error(data.errinfo);
       }else if(data && data.servers) {
@@ -187,7 +190,7 @@ export default function ServerEditor(props) {
           })}
         </Form.Item>
         <Form.Item wrapperCol={{ offset: 6, span: 18, }}>
-          <Button type="primary" htmlType="submit">Save</Button>
+          <Button type="primary" htmlType="submit" loading={saving}>{saving ? 'Saving...' : 'Save'}</Button>
           <Button onClick={onRunIt}>Run it</Button>
         </Form.Item>
       </Form>

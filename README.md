@@ -6,6 +6,7 @@ This is a tools to help you manage your ssh servers and your operations on those
 - DevOps tool
 - CI/CD tool
 
+> This app is developed based on [React](https://reactjs.org/), [Ant Design](https://ant.design/) and [PyWebview](https://pywebview.flowrl.com/)
 
 ## Definitions
 
@@ -37,6 +38,16 @@ On Linux systems installation system makes educated guesses. If you run KDE, QT 
 
 
 ## Usage
+
+### Running with docker container
+
+```
+docker run --rm --name oyhost -p 19790:19790 -itd oysape/webhost
+```
+
+> Unrecommended for desktop usage. Use desktop version instead. That will give you more convenience to access your local files.
+
+### Running with source code
 
 To launch the application.
 

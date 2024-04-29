@@ -24,6 +24,7 @@ export default function TaskEditor(props) {
   const [form] = Form.useForm();
   // codemirror
   const [codeValue, setCodeValue] = useState('');
+  const [saving, setSaving] = useState(false);
 
   // tags
   const handleTagChange = (newTags) => {
@@ -80,7 +81,9 @@ export default function TaskEditor(props) {
     if(hasSomethingNew) setTabItems(newItems);
   }
   const saveTask = (newobj) => {
+    setSaving(true);
     callApi('addTask', newobj).then((data) => {
+      setSaving(false);
       if(data && data.errinfo) {
         message.error(data.errinfo);
       }else if(data) {
@@ -196,7 +199,7 @@ export default function TaskEditor(props) {
           <TagsComponent tags={tags} onChange={handleTagChange} backgroundColor={customTheme.colors["editor.background"]} />
         </Form.Item>
         <Form.Item wrapperCol={{ offset: 4, span: 20, }}>
-          <Button type="primary" htmlType="submit">Save</Button>
+          <Button type="primary" htmlType="submit" loading={saving}>{saving ? 'Saving...' : 'Save'}</Button>
           <Button onClick={onSaveAsNew}>Save as New</Button>
           <Button onClick={onRunIt}>Run it</Button>
         </Form.Item>

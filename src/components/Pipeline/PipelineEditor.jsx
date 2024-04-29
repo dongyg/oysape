@@ -20,6 +20,7 @@ export default function PipelineEditor(props) {
   const [steps, setSteps] = useState([]);
   // form
   const [form] = Form.useForm();
+  const [saving, setSaving] = useState(false);
 
   // form
   const checkRequiredFields = (values) => {
@@ -54,7 +55,9 @@ export default function PipelineEditor(props) {
     setTabItems(newItems);
   }
   const savePipeline = (newobj) => {
+    setSaving(true);
     callApi('addPipeline', newobj).then((data) => {
+      setSaving(false);
       if(data && data.errinfo) {
         message.error(data.errinfo);
       }else if(data && data.pipelines) {
@@ -122,7 +125,7 @@ export default function PipelineEditor(props) {
           <StepsComponent steps={steps} onChange={setSteps} />
         </Form.Item>
         <Form.Item wrapperCol={{ offset: 6, span: 18, }}>
-          <Button type="primary" htmlType="submit">Save</Button>
+          <Button type="primary" htmlType="submit" loading={saving}>{saving ? 'Saving...' : 'Save'}</Button>
           <Button onClick={onSaveAsNew}>Save as New</Button>
           <Button onClick={onRunIt}>Run it</Button>
         </Form.Item>

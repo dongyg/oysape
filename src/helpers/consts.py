@@ -2,39 +2,48 @@
 # -*- coding: utf-8 -*-
 
 __all__ = [
-    'IS_DEBUG', 'IS_LOGGING', 'homeEntry', 'OYSAPE_HOST', 'API_ROOT'
+    'IS_DEBUG', 'IS_LOGGING', 'HOME_ENTRY', 'OYSAPE_HOST', 'API_ROOT', 'DEFAULT_EXCLUDE', 'initVariants',
 ]
 
-import os, json
-
-def get_home_entry():
-    if os.path.exists(os.path.realpath('../gui/index.html')):
-        return os.path.realpath('../gui/index.html')
-    if os.path.exists(os.path.realpath('../Resources/gui/index.html')):
-        return os.path.realpath('../Resources/gui/index.html')
-    if os.path.exists(os.path.realpath('./gui/index.html')):
-        return os.path.realpath('./gui/index.html')
-    raise Exception('No index.html found')
+# def get_home_entry():
+#     import os
+#     if os.path.exists(os.path.realpath('../gui/index.html')):
+#         return os.path.realpath('../gui/index.html')
+#     if os.path.exists(os.path.realpath('../Resources/gui/index.html')):
+#         return os.path.realpath('../Resources/gui/index.html')
+#     if os.path.exists(os.path.realpath('./gui/index.html')):
+#         return os.path.realpath('./gui/index.html')
+#     raise Exception('No index.html found')
 
 # Change this to True on development environment
 IS_DEBUG = False
 IS_LOGGING = True
+API_ROOT = '/oyapi'
 
 # Variables for local app
-# homeEntry = 'http://localhost:3000'
-homeEntry = 'http://127.0.0.1:19790/index.html?v=2024.0412.2'
+# HOME_ENTRY = 'http://localhost:3000'
+HOME_ENTRY = 'http://127.0.0.1:19790/index.html?v=2024.0422.1'
 
 
 # Variables for server conmunication
 # OYSAPE_HOST = 'http://localhost:8080'
 OYSAPE_HOST = 'https://oysape.aifetel.cc'
-API_ROOT = '/oyapi'
 
 
-defaultExclude = [
+DEFAULT_EXCLUDE = [
     ".DS_Store ._* .Spotlight-V100 .Trashes Thumbs.db Desktop.ini",
     "_MTN .bzr .hg .fslckout _FOSSIL_ .fos CVS _darcs .git .svn .osc .gitattributes .gitmodules",
     "*.pyc *.pyo *.class *.a *.obj *.o *.so *.la *.lib *.dylib *.ocx *.dll *.exe *.jar *.zip *.tar *.tar.gz *.tgz *.rpm *.dmg *.pkg *.deb}",
     "*.jpg *.jpeg *.gif *.png *.bmp *.tiff *.tif *.webp *.wav *.mp3 *.ogg *.flac *.avi *.mpg *.mp4 *.mkv *.xcf *.xpm}",
     "node_modules"
 ]
+
+def initVariants(is_debug, version):
+    global HOME_ENTRY, IS_DEBUG, OYSAPE_HOST
+    IS_DEBUG = is_debug
+    if is_debug:
+        HOME_ENTRY = 'http://localhost:3000'
+        OYSAPE_HOST = 'http://localhost:8080'
+    else:
+        HOME_ENTRY = 'http://127.0.0.1:19790/index.html?v=%s' % version
+        OYSAPE_HOST = 'https://oysape.aifetel.cc'

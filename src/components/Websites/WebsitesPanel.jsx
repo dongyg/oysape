@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { App, Button, Dropdown, Table } from 'antd';
 import { BsPlusLg, BsThreeDots } from "react-icons/bs";
-import { DeleteOutlined, QuestionCircleFilled } from '@ant-design/icons';
-import { RiInstallLine, RiUninstallLine } from "react-icons/ri";
-import { BiUserCheck } from "react-icons/bi";
+// import { DeleteOutlined, QuestionCircleFilled } from '@ant-design/icons';
+// import { RiInstallLine, RiUninstallLine } from "react-icons/ri";
+// import { BiUserCheck } from "react-icons/bi";
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { callApi, getUniqueKey } from '../Common/global';
+import { callApi, getUniqueKey, isDesktopVersion } from '../Common/global';
 
 import TextInputModal from '../Modules/TextInputModal';
 import WebsiteManage from './WebsiteManage';
@@ -28,10 +28,12 @@ export default function WebsitesPanel() {
         message.error(data.errinfo);
       }else if(data && data.sites){
         setUserSession({...userSession, sites: data.sites});
+        const record = data.sites.filter((item) => item.obh === value)[0];
+        setSelectedRowKeys([record.obh]);
+        openWebsiteEditor(record);
       }
     })
   }
-
   const menuItems = [
     { key: 'menuNewWebHost', label: ('Add a new web host'), icon: <BsPlusLg />, },
   ];
@@ -41,121 +43,121 @@ export default function WebsitesPanel() {
     }
   };
 
-  const execVerify = (obh) => {
-    modal.confirm({
-      title: 'Confirm to Verify Webhost',
-      icon: <QuestionCircleFilled />,
-      content: 'Are you sure you want to verify webhost ' + obh + '?',
-      onOk() {
-        callApi('verifyWebHost', {obh: obh}).then((data) => {
-          if(data && data.errinfo) {
-            message.error(data.errinfo);
-          }else if(data && data.sites){
-            message.success('Verified successfully');
-            setUserSession({...userSession, sites: data.sites});
-          }
-        })
-      },
-      onCancel() {
-        // console.log('Cancel');
-      },
-    });
-  }
-  const execUninstall = (obh, target) => {
-    modal.confirm({
-      title: 'Confirm to Uninstall Webhost',
-      icon: <QuestionCircleFilled />,
-      content: 'Are you sure you want to uninstall webhost ' + obh + ' from ' + target + '?',
-      onOk() {
-        callApi('uninstallWebHost', {obh: obh}).then((data) => {
-          if(data && data.errinfo) {
-            message.error(data.errinfo);
-          }else if(data && data.sites){
-            setUserSession({...userSession, sites: data.sites, teams: data.teams});
-          }
-        })
-      },
-      onCancel() {
-        // console.log('Cancel');
-      },
-    });
-  }
-  const execDelete = (obh) => {
-    modal.confirm({
-      title: 'Confirm to Delete Webhost',
-      icon: <QuestionCircleFilled />,
-      content: 'Are you sure you want to delete webhost ' + obh + '?',
-      onOk() {
-        callApi('deleteWebHost', {obh: obh}).then((data) => {
-          if(data && data.errinfo) {
-            message.error(data.errinfo);
-          }else if(data && data.sites){
-            setUserSession({...userSession, sites: data.sites});
-          }
-        })
-      },
-      onCancel() {
-        // console.log('Cancel');
-      },
-    });
-  }
-  const execInstall = (obh, target) => {
-    callApi('installWebHost', {obh: obh, target: target}).then((data) => {
-      if(data && data.errinfo) {
-        message.error(data.errinfo);
-      }else if(data && data.sites){
-        setUserSession({...userSession, sites: data.sites});
-      }
-    })
-  }
+  // const execVerify = (obh) => {
+  //   modal.confirm({
+  //     title: 'Confirm to Verify Webhost',
+  //     icon: <QuestionCircleFilled />,
+  //     content: 'Are you sure you want to verify webhost ' + obh + '?',
+  //     onOk() {
+  //       callApi('verifyWebHost', {obh: obh}).then((data) => {
+  //         if(data && data.errinfo) {
+  //           message.error(data.errinfo);
+  //         }else if(data && data.sites){
+  //           message.success('Verified successfully');
+  //           setUserSession({...userSession, sites: data.sites, teams: data.teams});
+  //         }
+  //       })
+  //     },
+  //     onCancel() {
+  //       // console.log('Cancel');
+  //     },
+  //   });
+  // }
+  // const execUninstall = (obh, target) => {
+  //   modal.confirm({
+  //     title: 'Confirm to Uninstall Webhost',
+  //     icon: <QuestionCircleFilled />,
+  //     content: 'Are you sure you want to uninstall webhost ' + obh + ' from ' + target + '?',
+  //     onOk() {
+  //       callApi('uninstallWebHost', {obh: obh}).then((data) => {
+  //         if(data && data.errinfo) {
+  //           message.error(data.errinfo);
+  //         }else if(data && data.sites){
+  //           setUserSession({...userSession, sites: data.sites, teams: data.teams});
+  //         }
+  //       })
+  //     },
+  //     onCancel() {
+  //       // console.log('Cancel');
+  //     },
+  //   });
+  // }
+  // const execDelete = (obh) => {
+  //   modal.confirm({
+  //     title: 'Confirm to Delete Webhost',
+  //     icon: <QuestionCircleFilled />,
+  //     content: 'Are you sure you want to delete webhost ' + obh + '?',
+  //     onOk() {
+  //       callApi('deleteWebHost', {obh: obh}).then((data) => {
+  //         if(data && data.errinfo) {
+  //           message.error(data.errinfo);
+  //         }else if(data && data.sites){
+  //           setUserSession({...userSession, sites: data.sites});
+  //         }
+  //       })
+  //     },
+  //     onCancel() {
+  //       // console.log('Cancel');
+  //     },
+  //   });
+  // }
 
-  const onClickContextItem = ({ key }) => {
-    if(!selectedRowKeys[0]) {
-      return;
-    }
-    if(key === 'menuSetupWebhost') {
-    }else if(key === 'menuVerifyOwner') {
-      execVerify(selectedRowKeys[0]);
-    }else if(key === 'menuUnsetup') {
-      const currentItem = userSession.sites.filter((item) => item.obh === selectedRowKeys[0])[0];
-      execUninstall(selectedRowKeys[0], currentItem.target);
-    }else if(key === 'menuDeleteWebhost') {
-      execDelete(selectedRowKeys[0]);
-    } else if (userSession.servers.filter((item) => item.key === key).length > 0) {
-      execInstall(selectedRowKeys[0], key);
-    }
-  };
-  const getContextItems = () => {
-    const currentItem = userSession.sites.filter((item) => item.obh === selectedRowKeys[0])[0];
-    var retval = [];
-    if(currentItem && !currentItem.target && !currentItem.verified) {
-      retval.push({ key: 'menuSetupWebhost', label: ('Install on'), icon: <RiInstallLine />, children: userSession.servers.map((item) => {return {key: item.key, label: item.name}})});
-      retval.push({ key: 'menuDeleteWebhost', label: ('Delete'), icon: <DeleteOutlined />, });
-    }
-    if(currentItem && currentItem.target && !currentItem.verified) {
-      retval.push({ key: 'menuVerifyOwner', label: ('Verify the owner'), icon: <BiUserCheck />, });
-    }
-    if(currentItem && currentItem.target && currentItem.verified) {
-      retval.push({ key: 'menuUnsetup', label: ('Uninstall'), icon: <RiUninstallLine />, });
-    }
-    return retval;
-  };
+  // const onClickContextItem = ({ key }) => {
+  //   if(!selectedRowKeys[0]) {
+  //     return;
+  //   }
+  //   if(key === 'menuOpenWebhost') {
+  //     callApi('openWebHost', {obh: selectedRowKeys[0]}).then((data) => {
+  //       if(data && data.errinfo) {
+  //         message.error(data.errinfo);
+  //       }
+  //     })
+  //   }else if(key === 'menuVerifyOwner') {
+  //     execVerify(selectedRowKeys[0]);
+  //   }else if(key === 'menuUnsetup') {
+  //     const currentItem = userSession.sites.filter((item) => item.obh === selectedRowKeys[0])[0];
+  //     execUninstall(selectedRowKeys[0], currentItem.target);
+  //   }else if(key === 'menuDeleteWebhost') {
+  //     execDelete(selectedRowKeys[0]);
+  //   }
+  // };
+  // const getContextItems = () => {
+  //   const currentItem = userSession.sites.filter((item) => item.obh === selectedRowKeys[0])[0];
+  //   var retval = [];
+  //   if(isDesktopVersion){
+  //     retval.push({ key: 'menuOpenWebhost', label: ('Open in Browser'), });
+  //   }
+  //   if(currentItem && !currentItem.target && !currentItem.verified) {
+  //     retval.push({ key: 'menuDeleteWebhost', label: ('Delete'), icon: <DeleteOutlined />, });
+  //   }
+  //   if(currentItem && currentItem.target && !currentItem.verified) {
+  //     retval.push({ key: 'menuVerifyOwner', label: ('Verify the owner'), icon: <BiUserCheck />, });
+  //   }
+  //   if(currentItem && currentItem.target && currentItem.verified) {
+  //     retval.push({ key: 'menuUnsetup', label: ('Uninstall'), icon: <RiUninstallLine />, });
+  //   }
+  //   return retval;
+  // };
+
   const columns = [
     {
-      title: "Name",
+      title: "Title",
       dataIndex: "obh",
       render: (text, record, index) => {
-        return (<Dropdown menu={{items: getContextItems(), onClick: onClickContextItem}} trigger={['contextMenu']}>
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', whiteSpace: 'break-spaces'}}>
-              <div>{record.obh}</div>
-              <div style={{ textAlign: 'right' }}>
-                { record.verified ? 'Verified' : 'Unverified' }
+        return (
+          //<Dropdown menu={{items: getContextItems(), onClick: onClickContextItem}} trigger={['contextMenu']}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', whiteSpace: 'break-spaces'}}>
+                <div>{record.title || record.obh}</div>
+                <div>{record.target || 'Uninstalled'}</div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', whiteSpace: 'break-spaces'}}>
+                <div>{record.title ? record.obh : ''}</div>
+                <div style={{ textAlign: 'right' }}>{ record.verified ? 'Verified' : 'Unverified' }</div>
               </div>
             </div>
-            <div>{record.target || 'Uninstalled'}</div>
-          </div>
-        </Dropdown>)
+          //</Dropdown>
+        );
       }
     }
   ];
@@ -243,7 +245,9 @@ export default function WebsitesPanel() {
           })}
         />
       </div>
-      <TextInputModal visible={showInput} defaultValue={""} title={"Add a new web host"} onCreate={addWebsite} onCancel={() => setShowInput(false)} placeholder={"Enter your web host url"}></TextInputModal>
+      <TextInputModal visible={showInput} defaultValue={""} title={"Add a new web host"} onCreate={addWebsite} onCancel={() => setShowInput(false)}
+        placeholder={"Please input your web host URL using http(s)://"}
+        rules={[/^https?:\/\//]}></TextInputModal>
     </>
   );
 }

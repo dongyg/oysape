@@ -11,3 +11,15 @@
 .hide-selection-column .ant-table-selection-column {
     display: none;
 }
+
+.ant-steps.ant-steps-label-vertical .ant-steps-item-content {
+    margin-top: 0px;
+}
+
+.ant-list-lg .ant-list-item {
+    padding: 16px 0px;
+}
+
+.ant-list-vertical .ant-list-item .ant-list-item-extra {
+    text-align: right;
+}

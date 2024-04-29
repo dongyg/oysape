@@ -260,6 +260,7 @@ class SSHClient:
         self.onChannelData(string.encode())
 
     def onChannelData(self, bdata):
+        # To be overridden
         pass
 
     def onChannelClose(self):
@@ -761,3 +762,18 @@ class WorkspaceClient(WebSocketSSHClient):
     def onChannelClose(self):
         super().onChannelClose()
         self.updateWorkspaceTabTitle('')
+
+
+class SchedulerClient(WebSocketSSHClient):
+    def onChannelData(self, bdata):
+        # save the output to file
+        filepath = os.path.join(os.path.expanduser(os.path.join('~', '.oysape')), 'scheduler.log')
+        with open(filepath, 'ab') as f:
+            f.write(bdata)
+
+    def onChannelClose(self):
+        super().onChannelClose()
+
+    def updateWorkspaceTabTitle(self, serverKey):
+        # For the scheduler, we do not need to update the tab title
+        pass

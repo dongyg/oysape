@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os, traceback, json, json, time, base64, fnmatch, platform
-from . import auth, tools, consts
+from . import auth, tools, consts, scheduler
 
 BUF_SIZE = 1024
 CR = '\r'
@@ -47,13 +47,13 @@ def merge_steps(steps):
 def loadEntrypointWindow(window=None, apiObject=None):
     import webview
     if not window:
-        window = webview.create_window('Oysape', consts.homeEntry, js_api=apiObject, width=1280, height=800, confirm_close=True)
+        window = webview.create_window('Oysape', consts.HOME_ENTRY, js_api=apiObject, width=1280, height=800, confirm_close=True)
     else:
-        window.load_url(consts.homeEntry)
+        window.load_url(consts.HOME_ENTRY)
     return window
 
 def mainloop(window):
-    window.load_url(consts.homeEntry)
+    window.load_url(consts.HOME_ENTRY)
 
 
 ################################################################################
@@ -122,7 +122,7 @@ class ApiOysape(ApiOauth):
     def hasPermission(self, params):
         # Return True if the user has permission indicated by params.perm
         perm = params.get('perm') if isinstance(params, dict) else params
-        return self.userSession['accesses'].get(perm, False)
+        return (self.userSession.get('accesses',{}) or {}).get(perm, False)
 
     def gotoAccountDashboard(self, params):
         retval = tools.callServerApiPost('/user/landing', {}, self)
@@ -138,7 +138,7 @@ class ApiOysape(ApiOauth):
             retval = tools.callServerApiPost('/user/test', {}, self)
             if retval and not retval.get('errinfo'):
                 ff = retval.get('folders', []) or []
-                ee = retval.get('excludes', []) or consts.defaultExclude
+                ee = retval.get('excludes', []) or consts.DEFAULT_EXCLUDE
                 self.userSession = retval
                 self.listFolder = ff
                 self.listExclude = ee
@@ -156,7 +156,7 @@ class ApiOysape(ApiOauth):
         retval = tools.callServerApiPost('/user/team', {'tid': params.get('tid')}, self)
         if retval and not retval.get('errcode'):
             ff = retval.get('folders', []) or []
-            ee = retval.get('excludes', []) or consts.defaultExclude
+            ee = retval.get('excludes', []) or consts.DEFAULT_EXCLUDE
             self.userSession = retval
             self.listFolder = ff
             self.listExclude = ee
@@ -257,6 +257,14 @@ class ApiOysape(ApiOauth):
                 return_list = retval.get(what, []) or []
                 objs[what].clear()
                 objs[what].extend(return_list)
+                # If current user has webhost set, and those webhosts are verified, and the target is in servers. Save servers/tasks/pipelines to webhost target
+                for site in (self.userSession.get('sites') or []):
+                    serverKey = site.get('target')
+                    if serverKey and site.get('verified') and site.get('target') in [x.get('key') for x in objs['servers']]:
+                        filename = tools.get_key(self.userSession.get('tname'))+'.json'
+                        if not os.path.isdir(os.path.join(folder_base,'teams')):
+                            os.makedirs(os.path.join(folder_base,'teams'))
+                        self.save_remote_file({'target': serverKey, 'path': os.path.join(folder_base,'teams',filename), 'content': json.dumps(objs)})
                 return retval
             return {}
         except Exception as e:
@@ -517,7 +525,7 @@ class ApiWorkspace(ApiTerminal):
                 if not self.testIfTaskCanRunOnServer({'taskKey': taskKey, 'serverKey': serverKey}):
                     self.combinedConnections[serverKey].onChannelString(tools.colorizeText(LF+'Waiting for tasks to finish...', 'red'))
                     return
-        if self._logging: print('execPipeline', pipeName)
+        if self._logging: print(time.time(), 'execPipeline', pipeName)
         for step in steps:
             serverKey = step['target']
             tasks = step['tasks']
@@ -699,6 +707,43 @@ class ApiDockerManager(ApiSftp):
         #TODO: save the docker command path on the server
 
 
+class ApiScheduler(ApiDockerManager):
+    # This is for the web version scheduler
+    teamName = ''
+
+    def reloadUserSession(self, params={}):
+        # Override the method reloadUserSession, load servers/tasks/pipelines from disk
+        retval = {}
+        filename = os.path.join(folder_base, 'teams', tools.get_key(self.teamName)+'.json')
+        if os.path.isfile(filename):
+            with open(filename, 'r') as f:
+                retval = json.load(f)
+        ff = retval.get('folders', []) or []
+        ee = retval.get('excludes', []) or consts.DEFAULT_EXCLUDE
+        self.userSession = retval
+        self.listFolder = ff
+        self.listExclude = ee
+        self.userSession['clientId'] = self.clientId
+        return self.userSession
+
+    def createCombConnection(self, serverKey):
+        # Override the method createCombConnection, use sshutils.SchedulerClient replace sshutils.WorkspaceClient
+        # So all the tasks and pipelines output will be sent to another place.
+        from . import sshutils
+        slist = [x for x in self.userSession['servers'] if x["key"] == serverKey]
+        if len(slist) == 0:
+            return {"errinfo": "Server not found"}
+        if not serverKey in self.combinedConnections:
+            if self._logging: print('createCombConnection', serverKey)
+            try:
+                conn_str = sshutils.create_ssh_string(slist[0].get("address"), slist[0].get("username"), slist[0].get("port"))
+                self.combinedConnections[serverKey] = sshutils.SchedulerClient(conn_str, private_key=slist[0].get("prikey"), serverKey=serverKey, parentApi=self, uniqueKey='workspace', startup=slist[0].get("tasks"))
+            except Exception as e:
+                traceback.print_exc()
+                print('createCombConnection', serverKey, e)
+                return {'errinfo': str(e)}
+
+
 class ApiOverHttp(ApiDockerManager):
     socketConnections = {}
 
@@ -839,6 +884,7 @@ class ApiDesktop(ApiOverHttp):
 
     def uninstallWebHost(self, params={}):
         obh = params.get('obh')
+        containerName = params.get('containerName') or 'oyhost'
         sobj = [x for x in self.userSession['sites'] if x['obh']==obh]
         if not sobj: return {'errinfo': 'Site not found'}
         if not sobj[0].get('target'): return {'errinfo': 'Target not found'}
@@ -857,18 +903,24 @@ class ApiDesktop(ApiOverHttp):
             retval = tools.callServerApiDelete('/user/webhost/verify', {'obh': obh, 'target': serverKey}, self)
             if retval and retval.get('errinfo'): return retval
             self.combinedConnections[serverKey].onChannelString((CRLF+'Removing webhost container...'))
-            retcmd = self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rm -f oysape-webhost')
+            retcmd = self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker ps --filter "name=^/'+containerName+'$" --format \'{{.Names}}\' | grep -qw '+containerName+' && ' + self.combinedConnections[serverKey].dockerCommandPrefix + 'docker stop '+containerName)
             self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
-            retcmd = self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rmi -f dongyg/oysape-webhost')
+            retcmd = self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rmi -f oysape/webhost')
             self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
-            self.combinedConnections[serverKey].onChannelString((CRLF+'Webhost uninstalled'+CRLF))
-            return self.update_session(retval)
+            self.combinedConnections[serverKey].onChannelString((CRLF+'Webhost stoped'+CRLF))
+            if retval and not retval.get('errinfo'):
+                return self.update_session(retval)
+            else:
+                return retval
         except Exception as e:
             return {'errinfo': str(e)}
 
     def installWebHost(self, params={}):
         obh = params.get('obh')
         serverKey = params.get('target')
+        containerName = params.get('containerName') or 'oyhost'
+        portMapping = params.get('port') or '19790:19790'
+        volumes = ' '.join((['-v '+x.get('volume') for x in (params.get('volumes') or []) if x.get('volume')] or []) + ['-v ~/.oysape:/root/.oysape'])
         try:
             # Check the ssh connection
             if not serverKey in self.combinedConnections:
@@ -881,36 +933,65 @@ class ApiDesktop(ApiOverHttp):
                 self.combinedConnections[serverKey].onChannelString((CRLF+'Checking docker environment...'))
                 retval = self.combinedConnections[serverKey].dockerCheckEnv()
                 if retval and retval.get('errinfo'): return retval
-            # Remove the container and the image first
-            self.combinedConnections[serverKey].onChannelString((CRLF+'Removing webhost container...'))
-            self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rm -f oysape-webhost')
-            self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rmi -f dongyg/oysape-webhost')
+            # No need to remove the container
+            # self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rm -f '+containerName)
+            self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rmi -f oysape/webhost')
+            # Pull the latest image first
+            self.combinedConnections[serverKey].onChannelString((CRLF+'Pull the latest image...'))
+            self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker pull oysape/webhost')
             # Run the container
+            self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker ps --filter "name=^/'+containerName+'$" --format \'{{.Names}}\' | grep -qw '+containerName+' && ' + self.combinedConnections[serverKey].dockerCommandPrefix + 'docker stop '+containerName)
             self.combinedConnections[serverKey].onChannelString((CRLF+'Running webhost container...'))
             oneTimeSecret = tools.getRandomString(60)
-            cmd1 = self.combinedConnections[serverKey].dockerCommandPrefix + 'docker run --name oysape-webhost -p 19790:19790 -e WEBHOST_CONFIG=' + oneTimeSecret+'@'+obh + ' -v /var/run/docker.sock:/var/run/docker.sock -v ~/.ssh:/root/.ssh -itd dongyg/oysape-webhost'
+            cmd1 = self.combinedConnections[serverKey].dockerCommandPrefix + f'docker run --rm --name {containerName} -p {portMapping} -e WEBHOST_CONFIG=' + oneTimeSecret+'@'+obh + f' {volumes} -itd oysape/webhost'
             # self.dockerExecCommand({'command': cmd1, 'target': serverKey, 'output': True})
             retcmd = self.combinedConnections[serverKey].execute_command(cmd1)
             self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
             # Config the webhost
             self.combinedConnections[serverKey].onChannelString((CRLF+'Configuring webhost...'))
-            cmd2 = self.combinedConnections[serverKey].dockerCommandPrefix + 'docker exec oysape-webhost python src/webhost-setup.py --obh=' + obh
+            cmd2 = self.combinedConnections[serverKey].dockerCommandPrefix + 'docker exec '+containerName+' python src/webhost-setup.py --obh=' + obh
+            if params.get('title'): cmd2 += ' --title="' + params.get('title') + '"'
             retcmd = self.combinedConnections[serverKey].execute_command(cmd2)
             self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
-            cmd3 = self.combinedConnections[serverKey].dockerCommandPrefix + 'docker restart oysape-webhost'
+            cmd3 = self.combinedConnections[serverKey].dockerCommandPrefix + 'docker restart '+containerName
             retcmd = self.combinedConnections[serverKey].execute_command(cmd3)
             self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
-            # Save the secret
-            retval = tools.callServerApiPost('/user/webhosts', {'obh': obh, 'target': serverKey, 'secret': oneTimeSecret}, self)
-            self.combinedConnections[serverKey].onChannelString((CRLF+'Webhost installed'+CRLF))
-            return retval
+            # Save the secret and others fields
+            adata = {'obh': obh, 'target': serverKey, 'secret': oneTimeSecret, 'title': params.get('title'), 'containerName': containerName, 'port': portMapping, 'volumes': (params.get('volumes') or [])}
+            if params.get('title'): adata['title'] = params.get('title')
+            retval = tools.callServerApiPost('/user/webhosts', adata, self)
+            self.combinedConnections[serverKey].onChannelString((CRLF+'Webhost started'+CRLF))
+            if retval and not retval.get('errinfo'):
+                return self.update_session(retval)
+            else:
+                return retval
         except Exception as e:
             return {'errinfo': str(e)}
 
     def verifyWebHost(self, params={}):
+        # If current user has webhost set, and those webhosts are verified, and the target is in servers. Save servers/tasks/pipelines to webhost target.
+        # This needs to be done before verify webhost, because once verified, the webhost will need servers/tasks/pipelines data.
+        objs = {
+            'servers': self.userSession['servers'],
+            'tasks': self.userSession['tasks'],
+            'pipelines': self.userSession['pipelines'],
+            'folders': self.listFolder,
+            'excludes': self.listExclude,
+        }
+        for site in (self.userSession.get('sites') or []):
+            serverKey = site.get('target')
+            if serverKey and site.get('verified') and site.get('target') in [x.get('key') for x in objs['servers']]:
+                filename = tools.get_key(self.userSession.get('tname'))+'.json'
+                if not os.path.isdir(os.path.join(folder_base,'teams')):
+                    os.makedirs(os.path.join(folder_base,'teams'))
+                self.save_remote_file({'target': serverKey, 'path': os.path.join(folder_base,'teams',filename), 'content': json.dumps(objs)})
+        # Verify webhost
         obh = params.get('obh')
         retval = tools.callServerApiPost('/user/webhost/verify', {'obh': obh}, self)
-        return retval
+        if retval and not retval.get('errinfo'):
+            return self.update_session(retval)
+        else:
+            return retval
 
     def applyToTeams(self, params={}):
         obh = params.get('obh')
@@ -920,5 +1001,61 @@ class ApiDesktop(ApiOverHttp):
             return self.update_session(retval)
         else:
             return retval
+
+    def openWebHost(self, params={}):
+        import webbrowser
+        obh = params.get('obh')
+        webbrowser.open_new(obh)
+
+    def setSchedule(self, params={}):
+        # If current user has webhost set, and those webhosts are verified, and the target is in servers. Save servers/tasks/pipelines to webhost target.
+        # This needs to be done before verify webhost, because once verified, the webhost will need servers/tasks/pipelines data.
+        objs = {
+            'servers': self.userSession['servers'],
+            'tasks': self.userSession['tasks'],
+            'pipelines': self.userSession['pipelines'],
+            'folders': self.listFolder,
+            'excludes': self.listExclude,
+        }
+        for site in (self.userSession.get('sites') or []):
+            serverKey = site.get('target')
+            if serverKey and site.get('verified') and site.get('target') in [x.get('key') for x in objs['servers']]:
+                filename = tools.get_key(self.userSession.get('tname'))+'.json'
+                if not os.path.isdir(os.path.join(folder_base,'teams')):
+                    os.makedirs(os.path.join(folder_base,'teams'))
+                self.save_remote_file({'target': serverKey, 'path': os.path.join(folder_base,'teams',filename), 'content': json.dumps(objs)})
+        # Create or update webhost's schedule
+        obh = params.get('obh')
+        retval = tools.callServerApiPost('/user/webhost/schedule', {'obh': obh, 'schedule': params.get('schedule')}, self)
+        if retval and not retval.get('errinfo'):
+            # Update webhost's webhost.json
+            for site in (retval.get('sites') or []):
+                serverKey = site.get('target')
+                if obh == site.get('obh'):
+                    self.save_remote_file({'target': serverKey, 'path': os.path.join(folder_base,'webhost.json'), 'content': json.dumps(site)})
+            # After the webhost's scheduled tasks are modified, perform a webhost validation. Once the validation is passed, the webhost will recreate the scheduler.
+            tools.callServerApiPost('/user/webhost/verify', {'obh': obh}, self)
+            # Return
+            return self.update_session(retval)
+        else:
+            return retval
+
+    def deleteSchedule(self, params={}):
+        obh = params.get('obh')
+        retval = tools.callServerApiDelete('/user/webhost/schedule', {'obh': obh, 'title': params.get('title')}, self)
+        if retval and not retval.get('errinfo'):
+            # Update webhost's webhost.json
+            for site in (retval.get('sites') or []):
+                serverKey = site.get('target')
+                if obh == site.get('obh'):
+                    self.save_remote_file({'target': serverKey, 'path': os.path.join(folder_base,'webhost.json'), 'content': json.dumps(site)})
+            # After the webhost's scheduled tasks are modified, perform a webhost validation. Once the validation is passed, the webhost will recreate the scheduler.
+            tools.callServerApiPost('/user/webhost/verify', {'obh': obh}, self)
+            # Return
+            return self.update_session(retval)
+        else:
+            return retval
+
+
 
 apiInstances = {}

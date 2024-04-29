@@ -66,6 +66,7 @@ export const callApi = (functionName, params) => {
 };
 
 export function setTokenToCookie(token) {
+  // The token will be set through this function only in the desktop version
   setDataToCookie('client_token', token, 30);
 }
 

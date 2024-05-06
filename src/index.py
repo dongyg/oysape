@@ -6,7 +6,7 @@ import webview
 from helpers import server, consts, apis
 
 if __name__ == '__main__':
-    version = '2024.0422.1'
+    version = '2024.0506.1'
     os_info = distro.name(pretty=True) if platform.system() == 'Linux' else platform.platform()
     clientAgent = f'{os_info} OysapeDesktop/{version}'
 

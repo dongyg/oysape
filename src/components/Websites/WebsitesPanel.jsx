@@ -186,6 +186,7 @@ export default function WebsitesPanel() {
   const openWebsiteEditor = (record) => {
     const tabKey = record.obh+'-editor';
     const findItems = tabItems.filter((item) => item.websiteKey === tabKey);
+    record.initScript = record.initScript||'';
     if(findItems.length > 0) {
       setTabActiveKey(findItems[0].key);
     }else{

@@ -1,15 +1,19 @@
 import React, { useState, useRef } from 'react'
+import CodeMirror from '@uiw/react-codemirror'
+import { solarizedLight, solarizedDark } from '@uiw/codemirror-theme-solarized';
+import { loadLanguage } from '@uiw/codemirror-extensions-langs';
 import { App, Dropdown, Button, Typography, Steps, Tabs, Checkbox, Divider, Row, Col, List, Form, Input, Modal, Tooltip } from 'antd';
 import { DeleteOutlined, QuestionCircleFilled, EditOutlined, PlusOutlined, ClockCircleOutlined, PlayCircleOutlined, CheckCircleOutlined, RedoOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { SolutionOutlined, CaretRightOutlined, PauseOutlined } from "@ant-design/icons";
 import { RiInstallLine, RiUninstallLine } from "react-icons/ri";
-import { TbCalendarRepeat, TbBrandPython } from "react-icons/tb";
+import { TbCalendarRepeat } from "react-icons/tb";
 import { RxActivityLog } from "react-icons/rx";
 
 import { useCustomContext } from '../Contexts/CustomContext'
 import { callApi } from '../Common/global';
 
 import ScheduleForm from './ScheduleForm';
+import ScheduleLogViewer from './ScheduleLogViewer';
 
 const CheckboxGroup = Checkbox.Group;
 const { Title, Paragraph } = Typography;
@@ -63,10 +67,16 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
   const [currentWorkKey, setCurrentWorkKey] = useState('webhost_teams');
   const [installing, setInstalling] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [codeValue, setCodeValue] = useState(websiteObject.initScript||'');
+
+  // codemirror
+  const onCodeChange = React.useCallback((val, viewUpdate) => {
+    setCodeValue(val||'');
+  }, [])
 
   React.useEffect(() => {
     window.getHostObject = () => {
-      return websiteObject;
+      return webhostObject;
     }
   })
   const plainOptions = Object.values(userSession.teams).filter(item => item.is_creator).map(item => item.tname);
@@ -129,6 +139,10 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
       const values = await formInstall.validateFields();
       if(values.title && values.title.indexOf('"') > -1) {
         message.error('Title cannot contain "');
+        return;
+      }
+      if(values.initScript && values.initScript.indexOf("'") > -1) {
+        message.error('Init script cannot contain single quote (\')');
         return;
       }
       setInstalling(true);
@@ -290,12 +304,26 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
           <Form.Item name="port" label="Port" rules={[ { validator: validatePortMapping }]}>
             <Input autoComplete="off" autoCapitalize="off" autoCorrect="off" placeholder="Enter port mapping. Default: 19790:19790" disabled={!!webhostObject.target} />
           </Form.Item>
+          <Form.Item name="initScript" label="Initialization" tooltip={<><p>Initialize the container with this script.</p><p>It will be executed after the container is created.</p><p>Do not include single quote(') in the script</p></>}>
+            <CodeMirror className='codeCmd withScrollContent'
+              theme={customTheme.isDark?solarizedDark:solarizedLight}
+              basicSetup={{highlightActiveLine:false}}
+              value={codeValue||''}
+              extensions={[loadLanguage('shell')]}
+              onChange={onCodeChange}
+              onStatistics={(data)=>{
+                // console.log(data)
+              }}
+              readOnly={!!webhostObject.target}
+            />
+          </Form.Item>
           <Form.List name="volumes">
             {(fields, { add, remove }) => (
               <>
                 {fields.map((field, index) => (
                   <>
-                    <Form.Item wrapperCol={{ offset: index === 0 ? 0 : 4, span: 18, }} label={index === 0 ? 'Volumes' : null}
+                    <Form.Item wrapperCol={{ offset: index === 0 ? 0 : 4, span: 18, }}
+                      label={index === 0 ? <><Button type="link" onClick={() => add()} icon={<PlusOutlined />}></Button>Volumes</> : null}
                       tooltip={<>"You probably want to add ~/.ssh so that the container can access your SSH keys"<Button size='small' onClick={() => {add({'volume':'~/.ssh:/root/.ssh'});}}>Add it for me</Button></>}
                       {...field}
                       name={[field.name, 'volume']}
@@ -307,11 +335,12 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                     </Form.Item>
                   </>
                 ))}
-                { !!webhostObject.target ? null :
-                <Form.Item wrapperCol={{ offset: (formInstall.getFieldValue('volumes')||[]).length === 0 ? 0 : 4, span: 18, }} label={(formInstall.getFieldValue('volumes')||[]).length === 0 ? 'Volumes' : ''}
+                { (formInstall.getFieldValue('volumes')||[]).length !== 0 ? null :
+                <Form.Item wrapperCol={{ offset: (formInstall.getFieldValue('volumes')||[]).length === 0 ? 0 : 4, span: 18, }}
+                  label={(formInstall.getFieldValue('volumes')||[]).length === 0 ? <><Button type="link" onClick={() => add()} icon={<PlusOutlined />}></Button>Volumes</> : ''}
                   tooltip={<>You probably want to add ~/.ssh so that the container can access your SSH keys{!!webhostObject.target ? null : <Button size='small' onClick={() => {add({'volume':'~/.ssh:/root/.ssh'});}}>Add it for me</Button>}</>}
                 >
-                  <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>Add Volume</Button>
+                  <Button type="link" onClick={() => add()} icon={<PlusOutlined />}>Add Volume</Button>
                 </Form.Item>}
               </>
             )}
@@ -397,8 +426,6 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                           </>,
                         ]}
                         extra={<>
-                          <Tooltip title="Post script"><Button icon={<TbBrandPython />} onClick={() => {
-                          } }/></Tooltip>&nbsp;
                           <Tooltip title="Edit"><Button icon={<EditOutlined />} onClick={() => {
                             setShowScheduleForm(true);
                             setTimeout(() => {
@@ -425,7 +452,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                             })
                           } }/></Tooltip>
                           <Divider style={{ margin: '10px 0' }} />
-                          <Tooltip title={item.running ? 'Stop' : 'Start'}><Button type={item.running ? "default" : "primary"} danger={item.running ? 'true' : null} icon={item.running ? <PauseOutlined /> : <CaretRightOutlined />} onClick={() => {
+                          <Tooltip placement="bottom" title={item.running ? 'Stop' : 'Start'}><Button type={item.running ? "default" : "primary"} danger={item.running ? 'true' : null} icon={item.running ? <PauseOutlined /> : <CaretRightOutlined />} onClick={() => {
                             modal.confirm({
                               title: 'Are you sure you want to ' + (item.running ? 'stop' : 'start') + ' this schedule?',
                               content: `The schedule ${item.title} will be ${item.running ? 'stopped' : 'started'}.`,
@@ -444,7 +471,14 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                               onCancel() {},
                             })
                           } }/></Tooltip>&nbsp;
-                          <Tooltip title="View log"><Button icon={<RxActivityLog />} onClick={() => {
+                          <Tooltip placement="bottom" title="View log"><Button icon={<RxActivityLog />} onClick={() => {
+                            modal.info({
+                              title: 'Schedule Log - ' + item.title,
+                              content: <ScheduleLogViewer obh={webhostObject.obh} sch={item.title} tname={item.team} />,
+                              width: '80%',
+                              okText: 'Close',
+                              icon: null,
+                            })
                           } }/></Tooltip>
                         </>}
                       >

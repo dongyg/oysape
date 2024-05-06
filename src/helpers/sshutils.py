@@ -3,7 +3,7 @@
 
 import os, base64, traceback, json, re, json, _thread, time, getpass, stat
 import paramiko
-from . import tools
+from . import tools, scheduler
 
 BUF_SIZE = 1024
 CR = '\r'
@@ -257,10 +257,11 @@ class SSHClient:
         return len(self.shellCacheAuto) == 0 and len(self.shellCacheHuman) == 0 and self.channel_available and self.isChannelIdle()
 
     def onChannelString(self, string):
+        # Output a string. Default is outputting as a SSH channel data
         self.onChannelData(string.encode())
 
     def onChannelData(self, bdata):
-        # To be overridden
+        # To be overridden. All SSH channel data will be passed here
         pass
 
     def onChannelClose(self):
@@ -281,6 +282,8 @@ class SSHClient:
                         pass
                     # time.sleep(0.01)
                 if self.output and (re.findall(pattern, self.output) or (self.prompt_endchar and self.output.strip().endswith(self.prompt_endchar))):
+                    if hasattr(self, 'channelCommandFinished') and callable(self.channelCommandFinished):
+                        self.channelCommandFinished(self.output)
                     self.updateChannelStatus('recv')
             if self.shellCacheAuto or self.shellCacheHuman:
                 if not self.isChannelActive(): self.openChannel()
@@ -291,6 +294,8 @@ class SSHClient:
                     self.output = ''
                 # time.sleep(0.01)
                 if (self.data1 and re.findall(pattern, self.data1)):
+                    if hasattr(self, 'channelCommandStart') and callable(self.channelCommandStart):
+                        self.channelCommandStart(self.data1)
                     self.updateChannelStatus('send')
                 self.data2 = ''
                 if self.channel and self.shellCacheHuman:
@@ -546,6 +551,10 @@ class SSHClient:
     def save_remote_file(self, thisPath, content):
         try:
             sftp = self.client.open_sftp()
+            try:
+                sftp.stat(os.path.dirname(thisPath))
+            except IOError:
+                sftp.mkdir(os.path.dirname(thisPath))
             with sftp.open(thisPath, "w") as remote_file:
                 remote_file.write(content)
             sftp.close()
@@ -744,6 +753,7 @@ class WebSocketSSHClient(SSHClient):
 
 class TerminalClient(WebSocketSSHClient):
     def onChannelData(self, bdata):
+        # Send output to frontend xterm
         data1 = base64.b64encode(bdata).decode()
         self.sendWebSocketData(data1)
 
@@ -755,6 +765,7 @@ class TerminalClient(WebSocketSSHClient):
 
 class WorkspaceClient(WebSocketSSHClient):
     def onChannelData(self, bdata):
+        # Send output to frontend xterm
         data1 = base64.b64encode(bdata).decode()
         pack1 = base64.b64encode(json.dumps({'data': data1, 'action': 'data'}).encode()).decode()
         self.sendWebSocketData(pack1)
@@ -766,14 +777,30 @@ class WorkspaceClient(WebSocketSSHClient):
 
 class SchedulerClient(WebSocketSSHClient):
     def onChannelData(self, bdata):
-        # save the output to file
-        filepath = os.path.join(os.path.expanduser(os.path.join('~', '.oysape')), 'scheduler.log')
-        with open(filepath, 'ab') as f:
-            f.write(bdata)
+        # All SSH channel data will be passed here directly. Do nothing for a Scheduler Client
+        pass
 
-    def onChannelClose(self):
-        super().onChannelClose()
+    def onChannelString(self, string):
+        # Some output from execTask and execPipeline will be passed here. Do nothing for a Scheduler Client
+        pass
 
     def updateWorkspaceTabTitle(self, serverKey):
-        # For the scheduler, we do not need to update the tab title
+        # Do not need to update the tab title for a Scheduler Client
         pass
+
+    def channelCommandStart(self, command):
+        # SSH channel will return a command input, so no need to save it here
+        pass
+        # print(self.__class__, 'channelCommandStart', command)
+        # if hasattr(self.parentApi, 'log_id'):
+        #     print('log_id', self.parentApi.log_id)
+        #     dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
+        #     logdb = tools.SQLiteDB(dbpath)
+        #     logdb.update("UPDATE schedule_logs SET out = COALESCE(out, '') || ? WHERE id = ?", (command, self.parentApi.log_id))
+
+    def channelCommandFinished(self, result):
+        if hasattr(self.parentApi, 'log_id'):
+            dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
+            logdb = tools.SQLiteDB(dbpath)
+            logdb.update("UPDATE schedule_logs SET out = COALESCE(out, '') || ? WHERE id = ?", (result, self.parentApi.log_id))
+

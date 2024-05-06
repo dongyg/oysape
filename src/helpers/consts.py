@@ -39,11 +39,11 @@ DEFAULT_EXCLUDE = [
 ]
 
 def initVariants(is_debug, version):
-    global HOME_ENTRY, IS_DEBUG, OYSAPE_HOST
+    global IS_DEBUG, HOME_ENTRY, OYSAPE_HOST
     IS_DEBUG = is_debug
     if is_debug:
-        HOME_ENTRY = 'http://localhost:3000'
+        HOME_ENTRY  = 'http://localhost:3000'
         OYSAPE_HOST = 'http://localhost:8080'
     else:
-        HOME_ENTRY = 'http://127.0.0.1:19790/index.html?v=%s' % version
+        HOME_ENTRY  = 'http://127.0.0.1:19790/index.html?v=%s' % version
         OYSAPE_HOST = 'https://oysape.aifetel.cc'

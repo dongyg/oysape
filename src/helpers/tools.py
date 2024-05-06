@@ -1,15 +1,35 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import hashlib, traceback, json, random
+import hashlib, traceback, json, random, re
 import urllib.request
 import urllib.parse
 import ssl
+import sqlite3
 from . import consts
 
 def getRandomString(size=8):
     import string
     return ''.join(random.choice(string.ascii_letters+string.digits) for i in range(size))
+
+def getRandomLowers(size=8):
+    import string
+    return ''.join(random.choice(string.ascii_lowercase+string.digits) for i in range(size))
+
+def intget(integer, default=None):
+    """
+    Returns `integer` as an int or `default` if it can't.
+
+        >>> intget('3')
+        3
+        >>> intget('3a')
+        >>> intget('3a', 0)
+        0
+    """
+    try:
+        return int(integer)
+    except (TypeError, ValueError):
+        return default
 
 def n10to62(value):
     stc = '0123456789abcdefghigklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -73,6 +93,10 @@ def colorizeText(text, fore=None, back=None):
     if back and back in backgrounds:
         text = backgrounds[back]%text
     return text
+
+def decolorizeText(text):
+    ansi_escape = re.compile(r'\x1b\[[0-9;]+m')
+    return ansi_escape.sub('', text)
 
 def rate_limit(kvobj, ip, limits={}):
     limits[1] = 2 if not limits.get(1) else limits.get(1)
@@ -173,5 +197,39 @@ def callServerApiDelete(url, params, localApiObj=None):
     data = send_delete_request(consts.OYSAPE_HOST + consts.API_ROOT + url, params, custom_headers)
     return data
 
-# send_get_request('http://localhost:8080/oyapi/user/test', {'c': 'test@localhost'})
-# send_post_request('http://localhost:8080/oyapi/user/test', {'c': 'test@localhost'})
+
+class SQLiteDB:
+    def __init__(self, db_path):
+        self.db_path = db_path
+        self.conn = sqlite3.connect(self.db_path)
+        self.conn.row_factory = sqlite3.Row
+        self.cursor = self.conn.cursor()
+
+    def query(self, query, params=None):
+        if params is None:
+            self.cursor.execute(query)
+        else:
+            self.cursor.execute(query, params)
+        return [dict(row) for row in self.cursor.fetchall()]
+
+    def insert(self, query, params):
+        self.cursor.execute(query, params)
+        self.conn.commit()
+        return self.cursor.lastrowid
+
+    def update(self, query, params):
+        self.cursor.execute(query, params)
+        self.conn.commit()
+        return self.cursor.rowcount
+
+    def delete(self, query, params):
+        self.cursor.execute(query, params)
+        self.conn.commit()
+        return self.cursor.rowcount
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.cursor.close()
+        self.conn.close()

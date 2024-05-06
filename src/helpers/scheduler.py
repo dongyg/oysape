@@ -2,8 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import sched
-import threading
+import threading, os
 import time
+
+from . import tools
 
 schedule_demo = [
     {"title":"Demo schedule task", "type": "interval", "team":"7g8RSa3WaJD0wZNgcGUYPE", "interval": 5, "start": 10, "end": 20, "priority": 1, "action": ":Git pull Oysape @myocipro"},
@@ -97,38 +99,59 @@ class ScheduledTaskRunner:
         with self.lock:
             self.scheduler.enterabs(start_time, 1, interval_task)  # Schedule first task at absolute time
 
+def execScheduleFunction(functionObj, parameterObj):
+    # Create a logdb instance to save the scheduler output
+    global apiSchedulers
+    if functionObj and callable(functionObj):
+        obh = parameterObj.get('obh')
+        sch = parameterObj.get('sch')
+        teamName = parameterObj.get('teamName')
+        dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
+        logdb = tools.SQLiteDB(dbpath)
+        apiSchedulers[teamName].log_id = logdb.insert('INSERT INTO schedule_logs (ts, obh, sch, out) VALUES (?, ?, ?, ?)', (int(time.time()), obh, sch, ''))
+        print('Scheduled item execute:', time.time(), obh, sch, apiSchedulers[teamName].log_id)
+        retval = functionObj(parameterObj)
+        # with open(os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.log')), 'a') as f:
+        #     f.write('Scheduled item execute: %s %s %s %s\n' % (obh, sch, time.time(), retval))
 
-def initScheduler(schedule_items):
+def initScheduler(obh, schedule_items):
     from . import apis
     global runner, apiSchedulers
+    dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
+    logdb = tools.SQLiteDB(dbpath)
+    logdb.query('CREATE TABLE IF NOT EXISTS schedule_logs (id INTEGER PRIMARY KEY,ts TIMESTAMP,obh TEXT,sch TEXT,out TEXT)')
     if runner:
         runner.stop()
-    else:
-        runner = ScheduledTaskRunner()
-        runner.start()
+    runner = ScheduledTaskRunner()
+    runner.start()
+    count = 0
+    # print('Initializing scheduler...')
     for item in schedule_items:
+        teamName = item['team']
+        if not teamName in apiSchedulers:
+            apiSchedulers[teamName] = apis.ApiScheduler(clientId='scheduler_for_'+teamName, clientUserAgent='OysapeScheduler/2024.0422.1')
+            apiSchedulers[teamName].teamName = teamName
+        apiSchedulers[teamName].reloadUserSession()
         if item.get('running'):
+            # print('Scheduled:', item.get('title'))
             functionObj = None
             parameterObj = None
-            teamName = item['team']
-            if not teamName in apiSchedulers:
-                apiSchedulers[teamName] = apis.ApiScheduler(clientId='scheduler_for_'+teamName, clientUserAgent='OysapeScheduler/2024.0422.1')
-                apiSchedulers[teamName].teamName = teamName
-            apiSchedulers[teamName].reloadUserSession()
             if item['action'].find(indexPipelineSign) == 0:
                 pipelineName = item['action'][1:]
                 functionObj = apiSchedulers[teamName].callPipeline
-                parameterObj = {'pipelineName': pipelineName}
+                parameterObj = {'obh': obh, 'sch': item.get('title'), 'teamName':teamName, 'pipelineName': pipelineName}
             elif item['action'].find(indexServerSign) >= 0 or item['action'].find(indexTaskSign) >= 0:
                 taskInput = parse_task_string0(item['action'])
                 if taskInput.get('serverKey') and taskInput.get('taskKey'):
                     functionObj = apiSchedulers[teamName].callTask
-                    parameterObj = taskInput
+                    parameterObj = {'obh': obh, 'sch': item.get('title'), 'teamName':teamName, **taskInput}
             if item['type'] == 'one_time':
                 delaySeconds = max(0, (item['start']/1000) - time.time())
-                runner.schedule_one_time_task(delaySeconds, item.get('priority', 1), functionObj, (parameterObj,))
+                runner.schedule_one_time_task(delaySeconds, item.get('priority', 1), execScheduleFunction, (functionObj, parameterObj,))
             elif item['type'] == 'interval':
-                runner.schedule_interval_task(item['start']/1000, item['interval'], item['end']/1000, functionObj, (parameterObj,))
+                runner.schedule_interval_task(item['start']/1000, item['interval'], item['end']/1000, execScheduleFunction, (functionObj, parameterObj,))
+            count += 1
+    print('Initialized', count, 'items in scheduler')
     return runner
 
 # Sample usage

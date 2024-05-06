@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import threading, traceback, os, json, hashlib, hmac
+import threading, traceback, os, json, hashlib, hmac, time
 from bottle import Bottle, request, static_file, abort, response, hook, redirect
 from geventwebsocket import WebSocketError
 from gevent.pywsgi import WSGIServer
@@ -134,14 +134,16 @@ def signout():
                 response.delete_cookie('client_token')
     return redirect('/index.html')
 
-@app.route('/callback/webhost')
-def checkWebhost():
+
+def checkSignature():
+    # Check the signature
     clientIpAddress = request.headers.get('X-Forwarded-For') or request.remote_addr
-    val = request.query.get('val')
+    nonce = request.query.get('nonce')
     sig = request.query.get('sig')
-    if not val or not sig:
+    ts = request.query.get('ts')
+    if not nonce or not sig or not ts or ts < str(int(time.time())-30):
         if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
-            return json.dumps({"errinfo": "Too many requests."})
+            return json.dumps({"errinfo": "Too many requests1."})
         return {'errinfo': 'Invalid request'}
     webhost_config = os.getenv('WEBHOST_CONFIG')
     if webhost_config and len(webhost_config.split('@'))==2:
@@ -149,30 +151,53 @@ def checkWebhost():
         obhs.keys[v2] = v1
     else:
         if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
-            return json.dumps({"errinfo": "Too many requests."})
+            return json.dumps({"errinfo": "Too many requests2."})
         return {'errinfo': 'Cannot find the oysape backend host configuration.'}
     secret_key = obhs.keys.get(v2)
     if not secret_key:
         if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
             return json.dumps({"errinfo": "Too many requests."})
         return {'errinfo': 'Cannot find the oysape backend host configuration. %s'%v2}
-    hmac_result = hmac.new(secret_key.encode('utf-8'), val.encode('utf-8'), hashlib.sha256)
+    hmac_result = hmac.new(secret_key.encode('utf-8'), (nonce+ts).encode('utf-8'), hashlib.sha256)
     if not hmac_result.hexdigest() == sig:
         if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
-            return json.dumps({"errinfo": "Too many requests."})
+            return json.dumps({"errinfo": "Too many requests3."})
         return {'errinfo': 'Invalid signature'}
-    # Validation is a necessary step after the webhost container is running. Once validation is passed, the webhost's schedules can be run.
+    return request.query
+
+@app.route('/callback/webhost')
+def checkWebhost():
+    # params: nonce, ts, sig
+    retval = checkSignature()
+    if retval.get('errinfo'):
+        return retval
+    # Because validation is a necessary step after the webhost container is running. Once validation is passed, the webhost's schedules can be run.
     webhostFile = os.path.join(apis.folder_base, 'webhost.json')
     if os.path.isfile(webhostFile):
         try:
             with open(webhostFile, 'r') as f:
                 webhostObject = json.load(f)
             if webhostObject.get('schedules'):
-                scheduler.initScheduler(webhostObject.get('schedules'))
+                scheduler.initScheduler(webhostObject.get('obh'), webhostObject.get('schedules'))
         except Exception as e:
             print('Error', e)
     return {'data': 'ok'}
 
+@app.route('/schedule/logs')
+def getScheduleLogs():
+    # params: nonce, ts, sig. tname, obh, sch, page, pageSize
+    clientIpAddress = request.headers.get('X-Forwarded-For') or request.remote_addr
+    retval = checkSignature()
+    if retval.get('errinfo'):
+        return retval
+    # Call the API
+    tname = retval.get('tname')
+    print(dict(retval))
+    if not tname in scheduler.apiSchedulers:
+        if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
+            return json.dumps({"errinfo": "Too many requests4."})
+        return {'errinfo': 'Invalid team name.'}
+    return scheduler.apiSchedulers[tname].execQueryScheduleLogs(retval)
 
 @app.route('/<:re:.*>', method='OPTIONS')
 def enable_cors_generic_route():

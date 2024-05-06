@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os, traceback, json, json, time, base64, fnmatch, platform
-from . import auth, tools, consts, scheduler
+import os, traceback, json, json, time, base64, fnmatch, platform, hmac, hashlib
+from . import auth, tools, consts
 
 BUF_SIZE = 1024
 CR = '\r'
@@ -262,9 +262,8 @@ class ApiOysape(ApiOauth):
                     serverKey = site.get('target')
                     if serverKey and site.get('verified') and site.get('target') in [x.get('key') for x in objs['servers']]:
                         filename = tools.get_key(self.userSession.get('tname'))+'.json'
-                        if not os.path.isdir(os.path.join(folder_base,'teams')):
-                            os.makedirs(os.path.join(folder_base,'teams'))
-                        self.save_remote_file({'target': serverKey, 'path': os.path.join(folder_base,'teams',filename), 'content': json.dumps(objs)})
+                        self.save_remote_file({'target': serverKey, 'path': os.path.join('.oysape','teams',filename), 'content': json.dumps(objs)})
+                        tools.callServerApiPost('/user/webhost/verify', {'obh': site.get('obh')}, self)
                 return retval
             return {}
         except Exception as e:
@@ -353,40 +352,45 @@ class ApiTerminal(ApiOysape):
         if uniqueKey in self.terminalConnections:
             self.terminalConnections[uniqueKey].send_to_channel(input)
 
-    def execTask(self, taskKey, taskObj, taskCmds, client, output=True):
+    def execTask(self, taskKey, taskObj, taskCmds, client, output=True, isSchedulerCall=False):
         bgColor = 'gray' if self.themeType == 'dark' else 'white'
+        retval = ''
+        def callOutput(message):
+            nonlocal retval
+            retval = retval + message
+            client.onChannelString(message)
         if not taskObj:
-            client.onChannelString((CRLF+'No such task defined: %s'%taskKey+CRLF))
+            callOutput(CRLF+'No such task defined: %s'%taskKey+CRLF)
         elif taskObj.get('interaction') == 'upload':
             # Upload a file/directory
-            if output: client.onChannelString((CRLF+CRLF+tools.colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF))
+            if output: callOutput(CRLF+CRLF+tools.colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF)
             if taskObj.get('source') and taskObj.get('destination'):
                 retdata = client.upload(taskObj.get('source'), taskObj.get('destination'), taskObj.get('excludes'))
                 number, transfered = retdata.get('count', 0), retdata.get('size', 0)
                 if output:
                     if retdata.get('errinfo'):
-                        client.onChannelString((CRLF+tools.colorizeText(retdata.get('errinfo'), 'red')+CRLF))
-                    client.onChannelString(CRLF+'Uploaded %s file(s). %s transfered'%(number, tools.convert_bytes(transfered))+CRLF)
+                        callOutput(CRLF+tools.colorizeText(retdata.get('errinfo'), 'red')+CRLF)
+                    callOutput(CRLF+'Uploaded %s file(s). %s transfered'%(number, tools.convert_bytes(transfered))+CRLF)
             else:
-                client.onChannelString((CRLF+'No source or destination defined: %s'%taskObj.get('name')+CRLF))
+                callOutput(CRLF+'No source or destination defined: %s'%taskObj.get('name')+CRLF)
         elif taskObj.get('interaction') == 'download':
             # Download a file/directory
-            if output: client.onChannelString((CRLF+CRLF+tools.colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF))
+            if output: callOutput(CRLF+CRLF+tools.colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF)
             if taskObj.get('source') and taskObj.get('destination'):
                 retdat = client.download(taskObj.get('source'), taskObj.get('destination'), taskObj.get('excludes'))
                 number, transfered = retdat.get('count', 0), retdat.get('size', 0)
                 if output:
                     if retdata.get('errinfo'):
-                        client.onChannelString((CRLF+tools.colorizeText(retdata.get('errinfo'), 'red')+CRLF))
-                    client.onChannelString(CRLF+'Downloaded %s file(s). %s transfered'%(number, tools.convert_bytes(transfered))+CRLF)
+                        callOutput(CRLF+tools.colorizeText(retdata.get('errinfo'), 'red')+CRLF)
+                    callOutput(CRLF+'Downloaded %s file(s). %s transfered'%(number, tools.convert_bytes(transfered))+CRLF)
             else:
-                client.onChannelString((CRLF+'No source or destination defined: %s'%taskObj.get('name')+CRLF))
+                callOutput(CRLF+'No source or destination defined: %s'%taskObj.get('name')+CRLF)
         elif not taskCmds:
-            client.onChannelString((CRLF+'No commands defined: %s'%taskKey+CRLF))
+            callOutput(CRLF+'No commands defined: %s'%taskKey+CRLF)
         else:
             # Execute the task's commands
             runmode = taskObj.get('runmode') or ''
-            if output and runmode!='script': client.onChannelString((CRLF+CRLF+tools.colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF))
+            if output and runmode!='script': callOutput(CRLF+CRLF+tools.colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF)
             if runmode.startswith('batch'):
                 # Send commands to the channel once for all
                 str_join = '&' if platform.system() == 'Windows' else ' && '
@@ -394,7 +398,10 @@ class ApiTerminal(ApiOysape):
                 if len(taskCmds)>1 and runmode.endswith('escape'):
                     command = es_home + command + es_end
                 if self._logging: print('execTask', client.serverKey, json.dumps(command))
-                client.send_to_channel(command + LF, human=False)
+                if False: # isSchedulerCall:
+                    callOutput(client.execute_command(command))
+                else:
+                    client.send_to_channel(command + LF, human=False)
             elif runmode=='script':
                 # Save the commands to a script file, then execute it
                 filename = tools.get_key(taskKey)+'.sh'
@@ -408,16 +415,24 @@ class ApiTerminal(ApiOysape):
                 if number==1 and transfered>0:
                     if self._logging: print('execTask', client.serverKey, taskKey)
                     client.client.exec_command(f'chmod +x ~/.oysape/cache/%s'%filename)
-                    client.send_to_channel('source ~/.oysape/cache/%s'%filename+LF, human=False)
+                    command = 'source ~/.oysape/cache/%s'%filename
+                    if False: # isSchedulerCall:
+                        callOutput(client.execute_command(command))
+                    else:
+                        client.send_to_channel(command + LF, human=False)
             else:
                 # Send commands to the channel line-by-line
                 if self._logging: print('execTask', client.serverKey, json.dumps(taskCmds))
                 while taskCmds:
-                    data = taskCmds.pop(0)
-                    data = data.strip()+LF
-                    if data.strip() and not data.startswith('#'):
-                        client.send_to_channel(data, human=False)
-                        time.sleep(0.01)
+                    command = taskCmds.pop(0)
+                    command = command.strip()+LF
+                    if command.strip() and not command.startswith('#'):
+                        if False: # isSchedulerCall:
+                            callOutput(client.execute_command(command))
+                        else:
+                            client.send_to_channel(command, human=False)
+                            time.sleep(0.01)
+        return retval
 
 class ApiWorkspace(ApiTerminal):
     workspaceWorkingChannel = ''
@@ -459,7 +474,7 @@ class ApiWorkspace(ApiTerminal):
             input = params.get('input')
             self.combinedConnections[serverKey].send_to_channel(input)
 
-    def taskOnServer(self, taskKey, serverKey):
+    def taskOnServer(self, taskKey, serverKey, isSchedulerCall=False):
         needNewLine = True
         if not serverKey in self.combinedConnections:
             ret1 = self.createCombConnection(serverKey)
@@ -476,16 +491,15 @@ class ApiWorkspace(ApiTerminal):
                     self.workspaceWorkingChannel = serverKey
                     self.combinedConnections[serverKey].updateWorkspaceTabTitle(self.workspaceWorkingChannel)
                 else:
-                    self.combinedConnections[serverKey].onChannelString((CRLF+CRLF+tools.colorizeText('This task is designated as interactive; however, you lack the permission to interact with terminals. It will still execute, but you will be unable to interact with it.', 'yellow') + CRLF+CRLF))
+                    self.combinedConnections[serverKey].onChannelString(CRLF+CRLF+tools.colorizeText('This task is designated as interactive; however, you lack the permission to interact with terminals. It will still execute, but you will be unable to interact with it.', 'yellow') + CRLF+CRLF)
                     self.workspaceWorkingChannel = ''
                     self.combinedConnections[serverKey].updateWorkspaceTabTitle(self.workspaceWorkingChannel)
             else:
                 self.workspaceWorkingChannel = ''
                 self.combinedConnections[serverKey].updateWorkspaceTabTitle(self.workspaceWorkingChannel)
-            self.execTask(taskKey, taskObj, taskCmds, self.combinedConnections[serverKey])
+            return self.execTask(taskKey, taskObj, taskCmds, self.combinedConnections[serverKey], True, isSchedulerCall)
         elif self.combinedConnections[serverKey].message:
-            outmsg = tools.colorizeText(serverKey,None,'gray') + ' ' + tools.colorizeText(self.combinedConnections[serverKey].message,'red')
-            self.combinedConnections[serverKey].onChannelString(outmsg)
+            self.combinedConnections[serverKey].onChannelString(tools.colorizeText(serverKey,None,'gray') + ' ' + tools.colorizeText(self.combinedConnections[serverKey].message,'red'))
 
     def testIfTaskCanRunOnServer(self, params):
         taskKey, serverKey = params.get('taskKey'), params.get('serverKey')
@@ -509,33 +523,38 @@ class ApiWorkspace(ApiTerminal):
 
     def callTask(self, params):
         taskKey, serverKey = params.get('taskKey'), params.get('serverKey')
+        isSchedulerCall = params.get('obh') and params.get('sch')
         if not self.testIfTaskCanRunOnServer({'taskKey': taskKey, 'serverKey': serverKey}):
-            self.combinedConnections[serverKey].onChannelString(tools.colorizeText(LF+'Waiting for tasks to finish...', 'red'))
+            if serverKey in self.combinedConnections:
+                self.combinedConnections[serverKey].onChannelString(tools.colorizeText(LF+'Other tasks are currently running.', 'red'))
             return {}
-        return self.taskOnServer(taskKey, serverKey)
+        return self.taskOnServer(taskKey, serverKey, isSchedulerCall)
 
     def callPipeline(self, params):
         pipeName = params.get('pipelineName')
         steps = self.getPipelineSteps(pipeName)
         steps = merge_steps(steps)
+        isSchedulerCall = params.get('obh') and params.get('sch')
         for step in steps:
             serverKey = step['target']
             tasks = step['tasks']
             for taskKey in tasks:
                 if not self.testIfTaskCanRunOnServer({'taskKey': taskKey, 'serverKey': serverKey}):
-                    self.combinedConnections[serverKey].onChannelString(tools.colorizeText(LF+'Waiting for tasks to finish...', 'red'))
+                    if serverKey in self.combinedConnections:
+                        self.combinedConnections[serverKey].onChannelString(tools.colorizeText(LF+'Other tasks are currently running.', 'red'))
                     return
         if self._logging: print(time.time(), 'execPipeline', pipeName)
+        retval = ''
         for step in steps:
             serverKey = step['target']
             tasks = step['tasks']
             for taskKey in tasks:
-                self.taskOnServer(taskKey, serverKey)
+                retval += self.taskOnServer(taskKey, serverKey, isSchedulerCall)
             while True: # Wait for all tasks on current server to finish
-                if self.combinedConnections.get(serverKey) and self.combinedConnections[serverKey].areAllTasksDone():
+                if serverKey in self.combinedConnections and self.combinedConnections[serverKey].areAllTasksDone():
                     break
                 time.sleep(0.5)
-
+        return retval
 
 class ApiSftp(ApiWorkspace):
     def sftpGetFileTree(self, params={}):
@@ -743,6 +762,22 @@ class ApiScheduler(ApiDockerManager):
                 print('createCombConnection', serverKey, e)
                 return {'errinfo': str(e)}
 
+    def execQueryScheduleLogs(self, params={}):
+        # params: obh, sch, page, pageSize
+        # Execute query schedule logs
+        obh = params.get('obh')
+        sch = params.get('sch')
+        page = tools.intget(params.get('page') or 1, 1)
+        pageSize = tools.intget(params.get('pageSize') or 10, 10)
+        print('execQueryScheduleLogs', obh, sch, page, pageSize)
+        dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
+        logdb = tools.SQLiteDB(dbpath)
+        total = logdb.query('SELECT COUNT(id) AS total FROM schedule_logs WHERE obh = ? AND sch = ?', (obh, sch))
+        total = total[0].get('total')
+        retdat = logdb.query('SELECT * FROM schedule_logs WHERE obh = ? AND sch = ? ORDER BY id DESC LIMIT ? OFFSET ?', (obh, sch, pageSize, (page-1)*pageSize))
+        retdat = [{'key': x.get('id'), **x} for x in retdat]
+        return {'list': retdat, 'total': total}
+
 
 class ApiOverHttp(ApiDockerManager):
     socketConnections = {}
@@ -905,8 +940,8 @@ class ApiDesktop(ApiOverHttp):
             self.combinedConnections[serverKey].onChannelString((CRLF+'Removing webhost container...'))
             retcmd = self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker ps --filter "name=^/'+containerName+'$" --format \'{{.Names}}\' | grep -qw '+containerName+' && ' + self.combinedConnections[serverKey].dockerCommandPrefix + 'docker stop '+containerName)
             self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
-            retcmd = self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rmi -f oysape/webhost')
-            self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
+            # retcmd = self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rmi -f oysape/webhost')
+            # self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
             self.combinedConnections[serverKey].onChannelString((CRLF+'Webhost stoped'+CRLF))
             if retval and not retval.get('errinfo'):
                 return self.update_session(retval)
@@ -917,6 +952,7 @@ class ApiDesktop(ApiOverHttp):
 
     def installWebHost(self, params={}):
         obh = params.get('obh')
+        initScript = params.get('initScript')
         serverKey = params.get('target')
         containerName = params.get('containerName') or 'oyhost'
         portMapping = params.get('port') or '19790:19790'
@@ -935,7 +971,7 @@ class ApiDesktop(ApiOverHttp):
                 if retval and retval.get('errinfo'): return retval
             # No need to remove the container
             # self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rm -f '+containerName)
-            self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rmi -f oysape/webhost')
+            # self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rmi -f oysape/webhost')
             # Pull the latest image first
             self.combinedConnections[serverKey].onChannelString((CRLF+'Pull the latest image...'))
             self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker pull oysape/webhost')
@@ -956,8 +992,13 @@ class ApiDesktop(ApiOverHttp):
             cmd3 = self.combinedConnections[serverKey].dockerCommandPrefix + 'docker restart '+containerName
             retcmd = self.combinedConnections[serverKey].execute_command(cmd3)
             self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
+            # Run the init script
+            if initScript:
+                for x in initScript.split('\n'):
+                    cmdText = self.combinedConnections[serverKey].dockerCommandPrefix + 'docker exec '+containerName+" bash -c '"+x+"'"
+                    retcmd = self.combinedConnections[serverKey].execute_command(cmdText)
             # Save the secret and others fields
-            adata = {'obh': obh, 'target': serverKey, 'secret': oneTimeSecret, 'title': params.get('title'), 'containerName': containerName, 'port': portMapping, 'volumes': (params.get('volumes') or [])}
+            adata = {'obh': obh, 'target': serverKey, 'secret': oneTimeSecret, 'title': params.get('title'), 'containerName': containerName, 'port': portMapping, 'volumes': (params.get('volumes') or []), 'initScript': initScript}
             if params.get('title'): adata['title'] = params.get('title')
             retval = tools.callServerApiPost('/user/webhosts', adata, self)
             self.combinedConnections[serverKey].onChannelString((CRLF+'Webhost started'+CRLF))
@@ -982,9 +1023,7 @@ class ApiDesktop(ApiOverHttp):
             serverKey = site.get('target')
             if serverKey and site.get('verified') and site.get('target') in [x.get('key') for x in objs['servers']]:
                 filename = tools.get_key(self.userSession.get('tname'))+'.json'
-                if not os.path.isdir(os.path.join(folder_base,'teams')):
-                    os.makedirs(os.path.join(folder_base,'teams'))
-                self.save_remote_file({'target': serverKey, 'path': os.path.join(folder_base,'teams',filename), 'content': json.dumps(objs)})
+                self.save_remote_file({'target': serverKey, 'path': os.path.join('.oysape','teams',filename), 'content': json.dumps(objs)})
         # Verify webhost
         obh = params.get('obh')
         retval = tools.callServerApiPost('/user/webhost/verify', {'obh': obh}, self)
@@ -1021,9 +1060,7 @@ class ApiDesktop(ApiOverHttp):
             serverKey = site.get('target')
             if serverKey and site.get('verified') and site.get('target') in [x.get('key') for x in objs['servers']]:
                 filename = tools.get_key(self.userSession.get('tname'))+'.json'
-                if not os.path.isdir(os.path.join(folder_base,'teams')):
-                    os.makedirs(os.path.join(folder_base,'teams'))
-                self.save_remote_file({'target': serverKey, 'path': os.path.join(folder_base,'teams',filename), 'content': json.dumps(objs)})
+                self.save_remote_file({'target': serverKey, 'path': os.path.join('.oysape','teams',filename), 'content': json.dumps(objs)})
         # Create or update webhost's schedule
         obh = params.get('obh')
         retval = tools.callServerApiPost('/user/webhost/schedule', {'obh': obh, 'schedule': params.get('schedule')}, self)
@@ -1032,7 +1069,7 @@ class ApiDesktop(ApiOverHttp):
             for site in (retval.get('sites') or []):
                 serverKey = site.get('target')
                 if obh == site.get('obh'):
-                    self.save_remote_file({'target': serverKey, 'path': os.path.join(folder_base,'webhost.json'), 'content': json.dumps(site)})
+                    self.save_remote_file({'target': serverKey, 'path': os.path.join('.oysape','webhost.json'), 'content': json.dumps(site)})
             # After the webhost's scheduled tasks are modified, perform a webhost validation. Once the validation is passed, the webhost will recreate the scheduler.
             tools.callServerApiPost('/user/webhost/verify', {'obh': obh}, self)
             # Return
@@ -1048,7 +1085,7 @@ class ApiDesktop(ApiOverHttp):
             for site in (retval.get('sites') or []):
                 serverKey = site.get('target')
                 if obh == site.get('obh'):
-                    self.save_remote_file({'target': serverKey, 'path': os.path.join(folder_base,'webhost.json'), 'content': json.dumps(site)})
+                    self.save_remote_file({'target': serverKey, 'path': os.path.join('.oysape','webhost.json'), 'content': json.dumps(site)})
             # After the webhost's scheduled tasks are modified, perform a webhost validation. Once the validation is passed, the webhost will recreate the scheduler.
             tools.callServerApiPost('/user/webhost/verify', {'obh': obh}, self)
             # Return
@@ -1056,6 +1093,26 @@ class ApiDesktop(ApiOverHttp):
         else:
             return retval
 
+    def callFetchScheduleLogs(self, params={}):
+        # params: tname, obh, sch, page, pageSize
+        # Send http request to webhost to query schedule logs. Need signature.
+        obh = params.get('obh')
+        secret_key = None
+        for site in self.userSession.get('sites'):
+            if site.get('obh') == obh:
+                secret_key = site.get('secret_key')
+                break
+        if not secret_key:
+            return {'list': [], 'total': 0}
+        ts = int(time.time())
+        nonce = tools.getRandomLowers(32)
+        sdata = nonce + str(ts)
+        onesig = hmac.new(secret_key.encode('utf-8'), sdata.encode('utf-8'), hashlib.sha256).hexdigest()
+        params['sig'] = onesig
+        params['ts'] = ts
+        params['nonce'] = nonce
+        retval = tools.send_get_request(obh+'/schedule/logs', params, {'Content-Type': 'application/json'})
+        return retval or {'list': [], 'total': 0}
 
 
 apiInstances = {}

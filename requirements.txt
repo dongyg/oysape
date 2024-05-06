@@ -1,6 +1,8 @@
 setuptools
 pywebview
 pyinstaller; sys_platform != 'darwin'
+py-cpuinfo; sys_platform != 'darwin'
 py2app; sys_platform == 'darwin'
 paramiko
+gevent-websocket
 distro

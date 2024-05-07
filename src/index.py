@@ -16,9 +16,11 @@ if __name__ == '__main__':
 
     consts.initVariants(args.debug, version)
 
-    server.start_http_server()
-    apis.apiInstances[webview.token] = apis.ApiDesktop(clientId=webview.token, clientUserAgent=clientAgent)
-    windowObj = apis.loadEntrypointWindow(apiObject=apis.apiInstances[webview.token])
-    # Give private_mode=False to save cookies persistently
-    webview.start(apis.mainloop, windowObj, debug=consts.IS_DEBUG, private_mode=False, user_agent=clientAgent)
-    print('Bye.')
+    if server.start_http_server():
+        apis.apiInstances[webview.token] = apis.ApiDesktop(clientId=webview.token, clientUserAgent=clientAgent)
+        windowObj = apis.loadEntrypointWindow(apiObject=apis.apiInstances[webview.token])
+        # Give private_mode=False to save cookies persistently
+        webview.start(apis.mainloop, windowObj, debug=consts.IS_DEBUG, private_mode=False, user_agent=clientAgent)
+        print('Bye.')
+    else:
+        print('Failed to start')

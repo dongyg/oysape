@@ -374,26 +374,3 @@ def start_http_server(host='', port=19790):
         logging.info(('Websocket server started on port', port))
         return True
 
-def wait_for_files_ready():
-    timeout = 30
-    passed = 0
-    aroot = ''
-    while True and passed < timeout:
-        if os.path.exists('./gui') and os.path.isfile('./gui/index.html'):
-            aroot = './gui'
-            break
-        elif os.path.exists('./../Resources/gui') and os.path.isfile('./../Resources/gui/index.html'):
-            aroot = './../Resources/gui'
-            break
-        elif os.path.exists('./../gui') and os.path.isfile('./../gui/index.html'):
-            aroot = './../gui'
-            break
-        elif os.path.exists('./public') and os.path.isfile('./public/index.html'):
-            aroot = './public'
-            break
-        else:
-            time.sleep(0.5)
-        passed += 0.5
-    if not aroot:
-        return ''
-    return aroot

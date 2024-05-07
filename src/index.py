@@ -17,9 +17,6 @@ def initialize_app():
     consts.initVariants(args.debug, version)
 
     if server.start_http_server():
-        # if not server.wait_for_files_ready():
-        #     tools.messageDialog("Message", "No GUI files found.")
-        # else:
         apis.apiInstances[webview.token] = apis.ApiDesktop(clientId=webview.token, clientUserAgent=clientAgent)
         windowObj = apis.loadEntrypointWindow(apiObject=apis.apiInstances[webview.token])
         # Give private_mode=False to save cookies persistently

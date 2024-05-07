@@ -138,9 +138,9 @@ export default function TaskEditor(props) {
       <Form
         name={uniqueKey}
         form={form}
-        labelCol={{ span: 4, }}
-        wrapperCol={{ span: 20, }}
-        style={{ paddingLeft: '20px', paddingRight: '60px', maxWidth: '100%' }}
+        labelCol={{ span: 6, }}
+        wrapperCol={{ span: 18, }}
+        style={{ paddingLeft: '20px', paddingRight: '20px', maxWidth: '100%' }}
         initialValues={{ interaction: 'none', runmode: 'byline', }}
         onFinish={onFinish}
         onFinishFailed={onFinishFailed}
@@ -198,7 +198,7 @@ export default function TaskEditor(props) {
         <Form.Item label="Tags" name="tags">
           <TagsComponent tags={tags} onChange={handleTagChange} backgroundColor={customTheme.colors["editor.background"]} />
         </Form.Item>
-        <Form.Item wrapperCol={{ offset: 4, span: 20, }}>
+        <Form.Item wrapperCol={{ offset: 6, span: 18, }}>
           <Button type="primary" htmlType="submit" loading={saving}>{saving ? 'Saving...' : 'Save'}</Button>
           <Button onClick={onSaveAsNew}>Save as New</Button>
           <Button onClick={onRunIt}>Run it</Button>

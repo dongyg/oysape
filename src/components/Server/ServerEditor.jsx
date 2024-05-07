@@ -141,7 +141,7 @@ export default function ServerEditor(props) {
         form={form}
         labelCol={{ span: 6, }}
         wrapperCol={{ span: 18, }}
-        style={{ maxWidth: 800, }}
+        style={{ paddingLeft: '20px', paddingRight: '20px', maxWidth: '100%' }}
         initialValues={{ }}
         onFinish={onFinish}
         onFinishFailed={onFinishFailed}

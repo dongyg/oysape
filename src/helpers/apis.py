@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os, traceback, json, json, time, base64, fnmatch, platform, hmac, hashlib
+import os, traceback, json, json, time, base64, fnmatch, platform, hmac, hashlib, logging
 from . import auth, tools, consts
 
 BUF_SIZE = 1024
@@ -67,7 +67,7 @@ class ApiBase:
         self.signInMessage = ''
 
     def callApi(self, functionName, args=None):
-        if self._logging: print('ApiBase.callApi', self.clientId, functionName)
+        logging.info((f'{self.__class__.__name__}.callApi', self.clientId, functionName))
         if hasattr(self, functionName):
             function = getattr(self, functionName)
             if callable(function):
@@ -314,7 +314,7 @@ class ApiTerminal(ApiOysape):
         if len(slist) == 0:
             return {"errinfo": "Server not found"}
         if not uniqueKey in self.terminalConnections:
-            if self._logging: print('createTermConnection', slist)
+            logging.info(('createTermConnection', slist))
             try:
                 conn_str = sshutils.create_ssh_string(slist[0].get("address"), slist[0].get("username"), slist[0].get("port"))
                 self.terminalConnections[uniqueKey] = sshutils.TerminalClient(conn_str, private_key=slist[0].get("prikey"), serverKey=serverKey, parentApi=self, uniqueKey=uniqueKey, startup=slist[0].get("tasks"))
@@ -326,13 +326,13 @@ class ApiTerminal(ApiOysape):
                     self.execTask(taskKey, taskObj, taskCmds, self.terminalConnections[uniqueKey])
             except Exception as e:
                 traceback.print_exc()
-                print('createTermConnection', e)
+                logging.error(('createTermConnection', e))
                 return {"errinfo": str(e)}
 
     def closeTermConnection(self, params={}):
         uniqueKey = params.get('uniqueKey')
         if self.terminalConnections.get(uniqueKey):
-            if self._logging: print('closeTermConnection', uniqueKey)
+            logging.info(('closeTermConnection', uniqueKey))
             self.terminalConnections[uniqueKey].close()
             del self.terminalConnections[uniqueKey]
 
@@ -397,7 +397,7 @@ class ApiTerminal(ApiOysape):
                 command = (str_join if runmode.endswith('join') else LF).join(taskCmds)
                 if len(taskCmds)>1 and runmode.endswith('escape'):
                     command = es_home + command + es_end
-                if self._logging: print('execTask', client.serverKey, json.dumps(command))
+                logging.info(('execTask', client.serverKey, json.dumps(command)))
                 if False: # isSchedulerCall:
                     callOutput(client.execute_command(command))
                 else:
@@ -413,7 +413,7 @@ class ApiTerminal(ApiOysape):
                     f.write(content)
                 number, transfered = client.upload_file(filepath, '~/.oysape/cache/%s'%filename)
                 if number==1 and transfered>0:
-                    if self._logging: print('execTask', client.serverKey, taskKey)
+                    logging.info(('execTask', client.serverKey, taskKey))
                     client.client.exec_command(f'chmod +x ~/.oysape/cache/%s'%filename)
                     command = 'source ~/.oysape/cache/%s'%filename
                     if False: # isSchedulerCall:
@@ -422,7 +422,7 @@ class ApiTerminal(ApiOysape):
                         client.send_to_channel(command + LF, human=False)
             else:
                 # Send commands to the channel line-by-line
-                if self._logging: print('execTask', client.serverKey, json.dumps(taskCmds))
+                logging.info(('execTask', client.serverKey, json.dumps(taskCmds)))
                 while taskCmds:
                     command = taskCmds.pop(0)
                     command = command.strip()+LF
@@ -444,18 +444,18 @@ class ApiWorkspace(ApiTerminal):
         if len(slist) == 0:
             return {"errinfo": "Server not found"}
         if not serverKey in self.combinedConnections:
-            if self._logging: print('createCombConnection', serverKey)
+            logging.info(('createCombConnection', serverKey))
             try:
                 conn_str = sshutils.create_ssh_string(slist[0].get("address"), slist[0].get("username"), slist[0].get("port"))
                 self.combinedConnections[serverKey] = sshutils.WorkspaceClient(conn_str, private_key=slist[0].get("prikey"), serverKey=serverKey, parentApi=self, uniqueKey='workspace', startup=slist[0].get("tasks"))
             except Exception as e:
                 traceback.print_exc()
-                print('createCombConnection', serverKey, e)
+                logging.error(('createCombConnection', serverKey, e))
                 return {'errinfo': str(e)}
 
     def closeCombConnections(self, params={}):
         for serverKey in self.combinedConnections.keys():
-            if self._logging: print('closeCombConnections', serverKey)
+            logging.info(('closeCombConnections', serverKey))
             self.combinedConnections[serverKey].close()
         self.combinedConnections = {}
 
@@ -543,7 +543,7 @@ class ApiWorkspace(ApiTerminal):
                     if serverKey in self.combinedConnections:
                         self.combinedConnections[serverKey].onChannelString(tools.colorizeText(LF+'Other tasks are currently running.', 'red'))
                     return
-        if self._logging: print(time.time(), 'execPipeline', pipeName)
+        logging.info((time.time(), 'execPipeline', pipeName))
         retval = ''
         for step in steps:
             serverKey = step['target']
@@ -753,13 +753,13 @@ class ApiScheduler(ApiDockerManager):
         if len(slist) == 0:
             return {"errinfo": "Server not found"}
         if not serverKey in self.combinedConnections:
-            if self._logging: print('createCombConnection', serverKey)
+            logging.info(('createCombConnection', serverKey))
             try:
                 conn_str = sshutils.create_ssh_string(slist[0].get("address"), slist[0].get("username"), slist[0].get("port"))
                 self.combinedConnections[serverKey] = sshutils.SchedulerClient(conn_str, private_key=slist[0].get("prikey"), serverKey=serverKey, parentApi=self, uniqueKey='workspace', startup=slist[0].get("tasks"))
             except Exception as e:
                 traceback.print_exc()
-                print('createCombConnection', serverKey, e)
+                logging(('createCombConnection', serverKey, e))
                 return {'errinfo': str(e)}
 
     def execQueryScheduleLogs(self, params={}):
@@ -769,7 +769,7 @@ class ApiScheduler(ApiDockerManager):
         sch = params.get('sch')
         page = tools.intget(params.get('page') or 1, 1)
         pageSize = tools.intget(params.get('pageSize') or 10, 10)
-        print('execQueryScheduleLogs', obh, sch, page, pageSize)
+        # logging.info(('execQueryScheduleLogs', obh, sch, page, pageSize))
         dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
         logdb = tools.SQLiteDB(dbpath)
         total = logdb.query('SELECT COUNT(id) AS total FROM schedule_logs WHERE obh = ? AND sch = ?', (obh, sch))

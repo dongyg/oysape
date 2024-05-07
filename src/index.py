@@ -3,10 +3,10 @@
 
 import argparse, platform, distro
 import webview
-from helpers import server, consts, apis
+from helpers import server, consts, apis, tools
 
-if __name__ == '__main__':
-    version = '2024.0506.1'
+def initialize_app():
+    version = '2024.0507.1'
     os_info = distro.name(pretty=True) if platform.system() == 'Linux' else platform.platform()
     clientAgent = f'{os_info} OysapeDesktop/{version}'
 
@@ -17,10 +17,17 @@ if __name__ == '__main__':
     consts.initVariants(args.debug, version)
 
     if server.start_http_server():
+        # if not server.wait_for_files_ready():
+        #     tools.messageDialog("Message", "No GUI files found.")
+        # else:
         apis.apiInstances[webview.token] = apis.ApiDesktop(clientId=webview.token, clientUserAgent=clientAgent)
         windowObj = apis.loadEntrypointWindow(apiObject=apis.apiInstances[webview.token])
         # Give private_mode=False to save cookies persistently
         webview.start(apis.mainloop, windowObj, debug=consts.IS_DEBUG, private_mode=False, user_agent=clientAgent)
         print('Bye.')
     else:
-        print('Failed to start')
+        tools.messageDialog("Message", "Failed to start websocket server.")
+
+
+if __name__ == '__main__':
+    initialize_app()

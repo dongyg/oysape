@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import threading, traceback, os, json, hashlib, hmac, time
+import sys, threading, traceback, os, json, hashlib, hmac, time
+import logging
+from queue import Queue
 from bottle import Bottle, request, static_file, abort, response, hook, redirect
 from geventwebsocket import WebSocketError
 from gevent.pywsgi import WSGIServer
@@ -48,15 +50,15 @@ def handle_websocket():
             try:
                 recvData = json.loads(init_message)
             except Exception as e:
-                print('Socket Error:', clientIpAddress, clientId, init_message)
+                logging.info(('Socket Error:', clientIpAddress, clientId, init_message))
                 break
-            # if consts.IS_LOGGING: print(recvData)
+            # logging.info((recvData))
             action = recvData.get('action')
             uniqueKey = recvData.get('uniqueKey')
             apiObject = apis.apiInstances.get(clientId) if clientId else None
             if apiObject and uniqueKey and clientToken and clientToken == apiObject.userToken:
                 if action == 'init':
-                    if consts.IS_LOGGING: print('Socket Init', clientIpAddress, clientId, uniqueKey)
+                    logging.info(('Socket Init', clientIpAddress, clientId, uniqueKey))
                     apiObject.socketConnections[uniqueKey] = wsock
                 elif action == 'resize':
                     apiObject.resizeAllCombChannel(recvData) if uniqueKey == 'workspace' else apiObject.resizeTermChannel(recvData)
@@ -72,16 +74,16 @@ def handle_websocket():
         wsock.close()
         if clientId and clientId in apis.apiInstances:
             if uniqueKey in apis.apiInstances[clientId].socketConnections:
-                if consts.IS_LOGGING: print('Socket Close', clientIpAddress, clientId, uniqueKey)
+                logging.info(('Socket Close', clientIpAddress, clientId, uniqueKey))
                 del apis.apiInstances[clientId].socketConnections[uniqueKey]
             if uniqueKey == 'workspace':
-                if consts.IS_LOGGING: print('Workspace Close', clientIpAddress, clientId, 'terminal:', len(apis.apiInstances[clientId].terminalConnections), 'combined:', len(apis.apiInstances[clientId].combinedConnections))
+                logging.info(('Workspace Close', clientIpAddress, clientId, 'terminal:', len(apis.apiInstances[clientId].terminalConnections), 'combined:', len(apis.apiInstances[clientId].combinedConnections)))
                 apis.apiInstances[clientId].closeCombConnections()
                 apis.apiInstances[clientId].closeAllTerminals()
                 if apis.apiInstances[clientId].isDesktopVersion():
                     import webview
                     if clientId != webview.token:
-                        if consts.IS_LOGGING: print('Workspace Api Object Remove', clientIpAddress, clientId)
+                        logging.info(('Workspace Api Object Remove', clientIpAddress, clientId))
                         del apis.apiInstances[clientId]
                 else:
                     del apis.apiInstances[clientId]
@@ -131,7 +133,7 @@ def signout():
             method = getattr(apis.apiInstances[clientId], functionName)
             retval = method(params={}) or {}
             if not retval.get('errinfo'):
-                print('Client signout', clientIpAddress, clientId)
+                logging(('Client signout', clientIpAddress, clientId))
                 response.delete_cookie('client_id')
                 response.delete_cookie('client_token')
     return redirect('/index.html')
@@ -184,7 +186,7 @@ def checkWebhost():
             if webhostObject.get('schedules'):
                 scheduler.initScheduler(webhostObject.get('obh'), webhostObject.get('schedules'))
         except Exception as e:
-            print('Error', e)
+            logging(('Error', e))
     return {'data': 'ok'}
 
 @app.route('/schedule/logs')
@@ -196,7 +198,6 @@ def getScheduleLogs():
         return retval
     # Call the API
     tname = retval.get('tname')
-    print(dict(retval))
     if not tname in scheduler.apiSchedulers:
         if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
             return json.dumps({"errinfo": "Too many requests4."})
@@ -206,6 +207,45 @@ def getScheduleLogs():
 
 ################################################################################
 # For GitHub webhook
+@app.route('/webhook/github', method='POST')
+def github_webhook():
+    # Get the request body
+    payload = request.body.read()
+    # Get the signature
+    signature = request.headers.get('X-Hub-Signature-256')
+    if not is_valid_signature(payload, signature):
+        response.status = 401  # Unauthorized
+        return "Invalid signature"
+    # Decode the JSON payload
+    data = json.loads(payload.decode('utf-8'))
+    # Do something to handle the event
+    event_type = request.headers.get('X-GitHub-Event')
+    return handle_github_event(event_type, data)
+
+def is_valid_signature(payload, signature):
+    # Use the HMAC algorithm and SHA256 hash function
+    webhostFile = os.path.join(apis.folder_base, 'webhost.json')
+    if os.path.isfile(webhostFile):
+        try:
+            with open(webhostFile, 'r') as f:
+                webhostObject = json.load(f)
+            if webhostObject.get('github_hook_secret'):
+                SECRET = webhostObject.get('github_hook_secret')
+                hash = hmac.new(SECRET, payload, hashlib.sha256)
+                expected_signature = 'sha256=' + hash.hexdigest()
+                return hmac.compare_digest(expected_signature, signature)
+        except Exception as e:
+            traceback.print_exc()
+
+def handle_github_event(event_type, data):
+    #TODO: 调用用户自定义的 Github Webhook 事件处理函数
+    if event_type == 'push':
+        print(f"Pushed to {data['repository']['full_name']}")
+        print(f"Commit message: {data['head_commit']['message']}")
+        print(data)
+    elif event_type == 'pull_request':
+        print(f"Pull request action: {data['action']}")
+        print(f"Pull request title: {data['pull_request']['title']}")
 
 
 ################################################################################
@@ -239,7 +279,7 @@ def api(functionName):
     add_cors_headers()
     data = request.json
     clientIpAddress, clientId, clientToken = getClientIdAndToken(request)
-    if consts.IS_LOGGING: print('OverHttp', clientIpAddress, clientId, functionName)
+    logging.info(('OverHttp', clientIpAddress, clientId, functionName))
     if functionName in ['signInWithEmail','signInWithGithub','signInWithGoogle']:
         # Request to sign in is limited. These 3 requests have no clientId in the headers
         if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
@@ -275,7 +315,7 @@ def api(functionName):
         method = getattr(apis.apiInstances[clientId], functionName)
         retval = method(params=data) or {}
         if functionName == 'signout' and not retval.get('errinfo'):
-            if consts.IS_LOGGING: print('Client signout', clientIpAddress, clientId, retval)
+            logging.info(('Client signout', clientIpAddress, clientId, retval))
             redirect('/signout')
             response.delete_cookie('client_id')
             response.delete_cookie('client_token')
@@ -292,33 +332,68 @@ def serve_root():
 
 @app.route('/<filename:path>')
 def serve_static(filename):
-    aroot = './public'
-    if os.path.exists('./gui'):
-        aroot = './gui'
-    elif os.path.exists('./../Resources/gui'):
-        aroot = './../Resources/gui'
-    elif os.path.exists('./../gui'):
-        aroot = './../gui'
-    elif os.path.exists('./public'):
-        aroot = './public'
-    return static_file(filename, root=aroot)
+    try:
+        # The directory where the temporary files are created by PyInstaller
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    if os.path.exists(os.path.join(base_path, 'gui')):
+        base_path = os.path.join(base_path, 'gui')
+    elif os.path.exists(os.path.join(base_path, '..', 'Resources', 'gui')):
+        base_path = os.path.join(base_path, '..', 'Resources', 'gui')
+    elif os.path.exists(os.path.join(base_path, '..', 'gui')):
+        base_path = os.path.join(base_path, '..', 'gui')
+    elif os.path.exists(os.path.join(base_path, 'public')):
+        base_path = os.path.join(base_path, 'public')
+    logging.info('File requested: ' + os.path.join(base_path, filename))
+    return static_file(filename, root=base_path)
 
 
 ################################################################################
-def open_http_server(host='', port=19790):
+def open_http_server(host='', port=19790, queue=None):
     # run(app, host='127.0.0.1', port=port)
-    server = WSGIServer((host or "127.0.0.1", port), app, handler_class=WebSocketHandler)
-    server.serve_forever()
-
+    try:
+        server = WSGIServer((host or "127.0.0.1", port), app, handler_class=WebSocketHandler)
+        server.serve_forever()
+    except Exception as e:
+        logging.info(('Websocket server failed to start on port', port, str(e)))
+        result = False
+        if queue is not None:
+            queue.put(result)
 
 def start_http_server(host='', port=19790):
-    try:
-        # Start a thread with the server
-        http_server_thread = threading.Thread(target=open_http_server, kwargs={'host': host, 'port': port})
-        http_server_thread.daemon = True  # Set as a daemon thread
-        http_server_thread.start()
+    # Start a thread with the server
+    result_queue = Queue()
+    http_server_thread = threading.Thread(target=open_http_server, kwargs={'host': host, 'port': port, 'queue': result_queue})
+    http_server_thread.daemon = True  # Set as a daemon thread
+    http_server_thread.start()
+    # Get the thread's result
+    if not result_queue.empty():
+        return result_queue.get()
+    else:
+        logging.info(('Websocket server started on port', port))
         return True
-    except:
-        traceback.print_exc()
-        return False
 
+def wait_for_files_ready():
+    timeout = 30
+    passed = 0
+    aroot = ''
+    while True and passed < timeout:
+        if os.path.exists('./gui') and os.path.isfile('./gui/index.html'):
+            aroot = './gui'
+            break
+        elif os.path.exists('./../Resources/gui') and os.path.isfile('./../Resources/gui/index.html'):
+            aroot = './../Resources/gui'
+            break
+        elif os.path.exists('./../gui') and os.path.isfile('./../gui/index.html'):
+            aroot = './../gui'
+            break
+        elif os.path.exists('./public') and os.path.isfile('./public/index.html'):
+            aroot = './public'
+            break
+        else:
+            time.sleep(0.5)
+        passed += 0.5
+    if not aroot:
+        return ''
+    return aroot

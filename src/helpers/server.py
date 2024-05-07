@@ -31,6 +31,8 @@ def getClientIdAndToken(req):
     clientToken = req.cookies.get('client_token')
     return clientIpAddress, clientId, clientToken
 
+
+################################################################################
 @app.route('/websocket')
 def handle_websocket():
     wsock = request.environ.get('wsgi.websocket')
@@ -135,6 +137,8 @@ def signout():
     return redirect('/index.html')
 
 
+################################################################################
+# For webhost
 def checkSignature():
     # Check the signature
     clientIpAddress = request.headers.get('X-Forwarded-For') or request.remote_addr
@@ -159,7 +163,7 @@ def checkSignature():
             return json.dumps({"errinfo": "Too many requests."})
         return {'errinfo': 'Cannot find the oysape backend host configuration. %s'%v2}
     hmac_result = hmac.new(secret_key.encode('utf-8'), (nonce+ts).encode('utf-8'), hashlib.sha256)
-    if not hmac_result.hexdigest() == sig:
+    if not hmac.compare_digest(hmac_result.hexdigest(), sig):
         if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
             return json.dumps({"errinfo": "Too many requests3."})
         return {'errinfo': 'Invalid signature'}
@@ -199,6 +203,13 @@ def getScheduleLogs():
         return {'errinfo': 'Invalid team name.'}
     return scheduler.apiSchedulers[tname].execQueryScheduleLogs(retval)
 
+
+################################################################################
+# For GitHub webhook
+
+
+################################################################################
+# For API call
 @app.route('/<:re:.*>', method='OPTIONS')
 def enable_cors_generic_route():
     """
@@ -272,6 +283,9 @@ def api(functionName):
     else:
         return json.dumps({"errinfo": "Function not found."})
 
+
+################################################################################
+# Home page and static files
 @app.route('/')
 def serve_root():
     redirect('/index.html')
@@ -290,6 +304,7 @@ def serve_static(filename):
     return static_file(filename, root=aroot)
 
 
+################################################################################
 def open_http_server(host='', port=19790):
     # run(app, host='127.0.0.1', port=port)
     server = WSGIServer((host or "127.0.0.1", port), app, handler_class=WebSocketHandler)
@@ -302,6 +317,8 @@ def start_http_server(host='', port=19790):
         http_server_thread = threading.Thread(target=open_http_server, kwargs={'host': host, 'port': port})
         http_server_thread.daemon = True  # Set as a daemon thread
         http_server_thread.start()
+        return True
     except:
         traceback.print_exc()
+        return False
 

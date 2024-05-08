@@ -2,8 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import hashlib, traceback, json, random, re
-import tkinter as tk
-from tkinter import messagebox
 import urllib.request
 import urllib.parse
 import ssl
@@ -116,14 +114,6 @@ def rate_limit(kvobj, ip, limits={}):
             return True
         else:
             return False
-
-
-################################################################################
-def messageDialog(title, message):
-    root = tk.Tk()
-    root.withdraw()
-    messagebox.showinfo(title, message)
-    root.destroy()
 
 
 ################################################################################

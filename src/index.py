@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import argparse, platform, distro
+import argparse, platform, distro, logging
 import webview
-from helpers import server, consts, apis, tools
+from helpers import server, consts, apis
 
 def initialize_app():
     version = '2024.0507.1'
@@ -23,7 +23,7 @@ def initialize_app():
         webview.start(apis.mainloop, windowObj, debug=consts.IS_DEBUG, private_mode=False, user_agent=clientAgent)
         print('Bye.')
     else:
-        tools.messageDialog("Message", "Failed to start websocket server.")
+        logging.error("Failed to start websocket server.")
 
 
 if __name__ == '__main__':

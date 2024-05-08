@@ -61,10 +61,10 @@ def create_ssh_connection(hostname, username=None, port=22, password=None, priva
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     if password:
-        client.connect(hostname, port=port, username=username, password=password)
+        client.connect(hostname, port=port, username=username, password=password, timeout=10)
     elif private_key:
         private_key = get_paramiko_key_from_file(private_key, passphrase)
-        client.connect(hostname, port=port, username=username, pkey=private_key)
+        client.connect(hostname, port=port, username=username, pkey=private_key, timeout=10)
     client.get_transport().set_keepalive(30)
     return client
 

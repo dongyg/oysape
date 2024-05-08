@@ -971,7 +971,7 @@ class ApiDesktop(ApiOverHttp):
                 if retval and retval.get('errinfo'): return retval
             # No need to remove the container
             # self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rm -f '+containerName)
-            # self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rmi -f oysape/webhost')
+            self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rmi -f oysape/webhost')
             # Pull the latest image first
             self.combinedConnections[serverKey].onChannelString((CRLF+'Pull the latest image...'))
             self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker pull oysape/webhost')

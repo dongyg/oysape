@@ -3,7 +3,7 @@
 
 import os, base64, traceback, json, re, json, _thread, time, getpass, stat
 import paramiko
-from . import tools, scheduler
+from . import tools
 
 BUF_SIZE = 1024
 CR = '\r'

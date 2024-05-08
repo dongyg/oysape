@@ -1,4 +1,5 @@
 import React from 'react';
+import { App } from 'antd';
 import { Base64 } from 'js-base64';
 import { Terminal } from "xterm";
 import { FitAddon } from "xterm-addon-fit";
@@ -9,7 +10,6 @@ import { useCustomContext } from '../Contexts/CustomContext'
 import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
 import { callApi, writeWelcome, colorizeText } from '../Common/global';
 import "./Terminal.css";
-import { message } from 'antd';
 
 const termOptions = {
     fontFamily: 'Menlo, Monaco, "Courier New", monospace',
@@ -21,7 +21,8 @@ const termOptions = {
 }
 
 export default function WorkspaceTerminal(props) {
-    const { customTheme, setTabActiveKey, tabItems, setTabItems, setBrowserInfo, userSession } = useCustomContext();
+  const { message, notification } = App.useApp();
+  const { customTheme, setTabActiveKey, tabItems, setTabItems, setBrowserInfo, userSession } = useCustomContext();
     const xtermRef = React.useRef(null)
     const divTerminalContainer = React.useRef(null)
     const currentWorkingChannel = React.useRef('')
@@ -162,6 +163,10 @@ export default function WorkspaceTerminal(props) {
             };
             socketObject.current.onerror = (error) => {
                 // console.error('WebSocket Error: ', error);
+                notification.error({
+                    message: 'WebSocket Error',
+                    description: 'Failed to connect to WebSocket. Terminal communication will be unavailable.',
+                });
                 socketPinger.current && clearInterval(socketPinger.current);
             };
         }
@@ -171,7 +176,7 @@ export default function WorkspaceTerminal(props) {
                 socketObject.current = null;
             }
         }
-    }, [uniqueKey]);
+    }, [notification, uniqueKey]);
 
     React.useEffect(() => {
         xtermRef.current.setOption('theme', {

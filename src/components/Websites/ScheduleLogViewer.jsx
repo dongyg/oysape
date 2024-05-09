@@ -24,8 +24,9 @@ function decolorizeText(text) {
 }
 
 const ScheduleLogViewer = ({ obh, sch, tname }) => {
-  const { message } = App.useApp();
-  const { customTheme } = useCustomContext();
+    //TODO: sch can be empty string
+    const { message } = App.useApp();
+    const { customTheme } = useCustomContext();
     const [logs, setLogs] = useState([]);
     const [logTitle, setLogTitle] = useState('');
     const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0, showSizeChanger: false });

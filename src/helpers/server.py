@@ -126,7 +126,6 @@ def oauthCallback():
 
 @app.route('/signout')
 def signout():
-    #TODO: 网页版, signout 的时候, Internal Server Error
     clientIpAddress, clientId, clientToken = getClientIdAndToken(request)
     if clientToken and clientId and clientId in apis.apiInstances and clientToken == apis.apiInstances[clientId].userToken:
         functionName = 'signout'
@@ -239,7 +238,7 @@ def is_valid_signature(payload, signature):
             traceback.print_exc()
 
 def handle_github_event(event_type, data):
-    #TODO: 调用用户自定义的 Github Webhook 事件处理函数
+    #TODO: Call the user-defined function
     if event_type == 'push':
         print(f"Pushed to {data['repository']['full_name']}")
         print(f"Commit message: {data['head_commit']['message']}")

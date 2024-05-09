@@ -765,6 +765,7 @@ class ApiScheduler(ApiDockerManager):
     def execQueryScheduleLogs(self, params={}):
         # params: obh, sch, page, pageSize
         # Execute query schedule logs
+        #TODO: sch can be empty string
         obh = params.get('obh')
         sch = params.get('sch')
         page = tools.intget(params.get('page') or 1, 1)
@@ -1111,6 +1112,7 @@ class ApiDesktop(ApiOverHttp):
         params['sig'] = onesig
         params['ts'] = ts
         params['nonce'] = nonce
+        # Send http request, will call execQueryScheduleLogs
         retval = tools.send_get_request(obh+'/schedule/logs', params, {'Content-Type': 'application/json'})
         return retval or {'list': [], 'total': 0}
 

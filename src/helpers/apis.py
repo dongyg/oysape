@@ -940,8 +940,8 @@ class ApiDesktop(ApiOverHttp):
             self.combinedConnections[serverKey].onChannelString((CRLF+'Removing webhost container...'))
             retcmd = self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker ps --filter "name=^/'+containerName+'$" --format \'{{.Names}}\' | grep -qw '+containerName+' && ' + self.combinedConnections[serverKey].dockerCommandPrefix + 'docker stop '+containerName)
             self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
-            # retcmd = self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rmi -f oysape/webhost')
-            # self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
+            retcmd = self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rmi -f oysape/webhost')
+            self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
             self.combinedConnections[serverKey].onChannelString((CRLF+'Webhost stoped'+CRLF))
             if retval and not retval.get('errinfo'):
                 return self.update_session(retval)

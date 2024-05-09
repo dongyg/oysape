@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect, useRef} from 'react';
 import { App, Dropdown, Space, Switch, Avatar, theme } from 'antd';
 import { CheckOutlined, ReloadOutlined, SettingOutlined, LogoutOutlined, QuestionCircleFilled, UserOutlined } from "@ant-design/icons";
 
@@ -11,6 +11,8 @@ export default function ProfileButton() {
   const { message, modal } = App.useApp();
   const { customTheme, toggleCustomTheme, userSession, setUserSession } = useCustomContext();
   const { token } = useToken();
+  const isSignOut = useRef(false);
+
   const contentStyle = {
     backgroundColor: token.colorBgElevated,
     borderRadius: token.borderRadiusLG,
@@ -112,6 +114,8 @@ export default function ProfileButton() {
               }
             });
           } else {
+            isSignOut.current = true;
+            console.log('signout. Clear user session');
             setUserSession({});
             window.location.href = '/signout';
           }
@@ -139,6 +143,19 @@ export default function ProfileButton() {
       }
     }
   };
+
+  useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      console.log('before unload');
+      if(!isSignOut.current) event.returnValue = 'Are you sure you want to leave?';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [userSession]);
 
   return (
     <Dropdown menu={{ items: menuItems, onClick: onClickMenu }} placement="topRight" trigger={['click']}

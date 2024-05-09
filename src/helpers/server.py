@@ -135,8 +135,8 @@ def signout():
             retval = method(params={}) or {}
             if not retval.get('errinfo'):
                 logging.info(('Client signout', clientIpAddress, clientId))
-                response.delete_cookie('client_id')
-                response.delete_cookie('client_token')
+            response.set_cookie("client_token", '', path="/", httponly=True)
+            response.set_cookie("client_id", '', path="/", httponly=True)
     return redirect('/index.html')
 
 

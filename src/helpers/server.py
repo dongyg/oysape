@@ -126,6 +126,7 @@ def oauthCallback():
 
 @app.route('/signout')
 def signout():
+    #TODO: 网页版, signout 的时候, Internal Server Error
     clientIpAddress, clientId, clientToken = getClientIdAndToken(request)
     if clientToken and clientId and clientId in apis.apiInstances and clientToken == apis.apiInstances[clientId].userToken:
         functionName = 'signout'
@@ -133,7 +134,7 @@ def signout():
             method = getattr(apis.apiInstances[clientId], functionName)
             retval = method(params={}) or {}
             if not retval.get('errinfo'):
-                logging(('Client signout', clientIpAddress, clientId))
+                logging.info(('Client signout', clientIpAddress, clientId))
                 response.delete_cookie('client_id')
                 response.delete_cookie('client_token')
     return redirect('/index.html')
@@ -186,7 +187,7 @@ def checkWebhost():
             if webhostObject.get('schedules'):
                 scheduler.initScheduler(webhostObject.get('obh'), webhostObject.get('schedules'))
         except Exception as e:
-            logging(('Error', e))
+            logging.info(('Error', e))
     return {'data': 'ok'}
 
 @app.route('/schedule/logs')

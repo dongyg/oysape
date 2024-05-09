@@ -759,7 +759,7 @@ class ApiScheduler(ApiDockerManager):
                 self.combinedConnections[serverKey] = sshutils.SchedulerClient(conn_str, private_key=slist[0].get("prikey"), serverKey=serverKey, parentApi=self, uniqueKey='workspace', startup=slist[0].get("tasks"))
             except Exception as e:
                 traceback.print_exc()
-                logging(('createCombConnection', serverKey, e))
+                logging.info(('createCombConnection', serverKey, e))
                 return {'errinfo': str(e)}
 
     def execQueryScheduleLogs(self, params={}):

@@ -139,8 +139,8 @@ export default function ServerEditor(props) {
       <Form
         name={uniqueKey}
         form={form}
-        labelCol={hideSidebar ? { xs:24, sm:6, md:5, lg:4, xl:3, xxl:2 } : {xs:24, sm:24, md:24, lg:6, xl:5, xxl:4}}
-        wrapperCol={hideSidebar ? { xs:24, sm:18, md:19, lg:20, xl:21, xxl:22 } : {xs:24, sm:24, md:24, lg:18, xl:19, xxl:20}}
+        labelCol={hideSidebar ? { xs:24, sm:6, md:5, lg:4, xl:3, xxl:2 } : {xs:24, sm:24, md:24, lg:6, xl:5, xxl:3}}
+        wrapperCol={hideSidebar ? { xs:24, sm:18, md:19, lg:20, xl:21, xxl:22 } : {xs:24, sm:24, md:24, lg:18, xl:19, xxl:21}}
         style={{ paddingLeft: '20px', paddingRight: '20px', maxWidth: '100%' }}
         initialValues={{ }}
         onFinish={onFinish}

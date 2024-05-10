@@ -11,7 +11,7 @@ import './PipelineEditor.css';
 
 export default function PipelineEditor(props) {
   const { message } = App.useApp();
-  const { customTheme, tabActiveKey, tabItems, setTabItems, setFooterStatusText, userSession, setUserSession } = useCustomContext();
+  const { customTheme, tabActiveKey, tabItems, setTabItems, setFooterStatusText, userSession, setUserSession, hideSidebar } = useCustomContext();
   const pipelineKey = React.useRef(props.pipelineKey)
   const uniqueKey = props.uniqueKey;
   // tags
@@ -106,8 +106,8 @@ export default function PipelineEditor(props) {
       <Form
         name={uniqueKey}
         form={form}
-        labelCol={{ span: 6, }}
-        wrapperCol={{ span: 18, }}
+        labelCol={hideSidebar ? { xs:24, sm:6, md:5, lg:4, xl:3, xxl:2 } : {xs:24, sm:24, md:24, lg:7, xl:5, xxl:4}}
+        wrapperCol={hideSidebar ? { xs:24, sm:18, md:19, lg:20, xl:21, xxl:22 } : {xs:24, sm:24, md:24, lg:17, xl:19, xxl:20}}
         style={{ paddingLeft: '20px', paddingRight: '20px', maxWidth: '100%' }}
         initialValues={{ port: 22, }}
         onFinish={onFinish}
@@ -124,7 +124,7 @@ export default function PipelineEditor(props) {
         <Form.Item label="Steps" name="steps" tooltip="All steps will be run in serial">
           <StepsComponent steps={steps} onChange={setSteps} />
         </Form.Item>
-        <Form.Item wrapperCol={{ offset: 6, span: 18, }}>
+        <Form.Item label=" " colon={false}>
           <Button type="primary" htmlType="submit" loading={saving}>{saving ? 'Saving...' : 'Save'}</Button>
           <Button onClick={onSaveAsNew}>Save as New</Button>
           <Button onClick={onRunIt}>Run it</Button>

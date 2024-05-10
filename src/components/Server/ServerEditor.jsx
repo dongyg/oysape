@@ -11,7 +11,7 @@ import './ServerEditor.css';
 
 export default function ServerEditor(props) {
   const { message } = App.useApp();
-  const { customTheme, tabActiveKey, tabItems, setTabItems, setFooterStatusText, userSession, setUserSession } = useCustomContext();
+  const { customTheme, tabActiveKey, tabItems, setTabItems, setFooterStatusText, userSession, setUserSession, hideSidebar } = useCustomContext();
   const serverKey = React.useRef(props.serverKey)
   const uniqueKey = props.uniqueKey;
   // tags
@@ -139,8 +139,8 @@ export default function ServerEditor(props) {
       <Form
         name={uniqueKey}
         form={form}
-        labelCol={{ span: 6, }}
-        wrapperCol={{ span: 18, }}
+        labelCol={hideSidebar ? { xs:24, sm:6, md:5, lg:4, xl:3, xxl:2 } : {xs:24, sm:24, md:24, lg:6, xl:5, xxl:4}}
+        wrapperCol={hideSidebar ? { xs:24, sm:18, md:19, lg:20, xl:21, xxl:22 } : {xs:24, sm:24, md:24, lg:18, xl:19, xxl:20}}
         style={{ paddingLeft: '20px', paddingRight: '20px', maxWidth: '100%' }}
         initialValues={{ }}
         onFinish={onFinish}
@@ -189,7 +189,7 @@ export default function ServerEditor(props) {
             )
           })}
         </Form.Item>
-        <Form.Item wrapperCol={{ offset: 6, span: 18, }}>
+        <Form.Item label=" " colon={false}>
           <Button type="primary" htmlType="submit" loading={saving}>{saving ? 'Saving...' : 'Save'}</Button>
           <Button onClick={onRunIt}>Run it</Button>
         </Form.Item>

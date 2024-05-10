@@ -59,7 +59,7 @@ export const ThemeProvider = ({ children }) => {
     // Monitoring screen size changes
     const handleResize = () => {
       if(sideWidthUse!==menuWidth) {
-        if(window.innerWidth <= 800) {
+        if(window.innerWidth <= 768) {
           setSideWidthUse('100%');
         } else if(sideWidthUse === '100%') {
           setSideWidthUse(400);

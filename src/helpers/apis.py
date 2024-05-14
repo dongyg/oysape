@@ -333,13 +333,13 @@ class ApiTerminal(ApiOysape):
         uniqueKey = params.get('uniqueKey')
         if self.terminalConnections.get(uniqueKey):
             logging.info(('closeTermConnection', uniqueKey))
-            self.terminalConnections[uniqueKey].close()
-            del self.terminalConnections[uniqueKey]
+            conn = self.terminalConnections.pop(uniqueKey)
+            conn.close()
 
     def closeAllTerminals(self, params={}):
-        v1 = self.terminalConnections.keys()
-        for uniqueKey in v1:
-            self.closeTermConnection({'uniqueKey':uniqueKey})
+        while self.terminalConnections:
+            uniqueKey, conn = self.terminalConnections.popitem()
+            conn.close()
 
     def resizeTermChannel(self, params):
         uniqueKey, width, height = params.get('uniqueKey'), params.get('cols'), params.get('rows')

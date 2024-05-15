@@ -1,22 +1,12 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { App, Table, Layout, } from 'antd';
-import { Terminal } from "xterm";
-import { FitAddon } from "xterm-addon-fit";
 import dayjs from 'dayjs';
-import "xterm/css/xterm.css";
 
+import AnsiText from './AnsiText';
 import { useCustomContext } from '../Contexts/CustomContext';
 import { callApi } from '../Common/global';
-import "../Modules/Terminal.css";
 
 const { Content, Sider } = Layout;
-
-const termOptions = {
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-    fontWeight: 400,
-    fontSize: 14,
-    cursorBlink: false,
-}
 
 function decolorizeText(text) {
     const ansiEscape = /[\u001b\u009b][[\]()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*[0-9A-ORZcf-nqry=><]?|[^\x1b\x9b]*[\x1b\x9b]?[0-9A-ORZcf-nqry=><])/g;
@@ -24,39 +14,16 @@ function decolorizeText(text) {
 }
 
 const ScheduleLogViewer = ({ obh, sch, tname }) => {
-    //TODO: sch can be empty string
     const { message } = App.useApp();
     const { customTheme } = useCustomContext();
     const [logs, setLogs] = useState([]);
     const [logTitle, setLogTitle] = useState('');
+    const [currLogContent, setCurrLogContent] = useState('');
     const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0, showSizeChanger: false });
-    const xtermRef = useRef(null);
-
-    useEffect(() => {
-        const terminal = new Terminal(termOptions);
-        const fitAddon = new FitAddon();
-        xtermRef.current = terminal;
-        terminal.loadAddon(fitAddon);
-        const termDom = document.getElementById("xterm_schedule_log");
-        terminal.open(termDom);
-        fitAddon.fit();
-
-        return () => {
-            terminal.dispose();
-        };
-    }, []);
-
-    useEffect(() => {
-      xtermRef.current.setOption('theme', {
-          background: customTheme.colors["editor.background"],
-          cursor: customTheme.isDark?'white':'darkgrey',
-          foreground: customTheme.colors["editor.foreground"],
-      });
-    }, [customTheme])
 
     const fetchLogs = useCallback((page = pagination.current, pageSize = pagination.pageSize) => {
         callApi('callFetchScheduleLogs', { obh, sch, page, pageSize, tname }).then((data) => {
-            console.log(data);
+            console.log('fetchLogs', data);
             if(data && data.errinfo) {
                 message.error(data.errinfo);
             }else if(data && data.list){
@@ -67,7 +34,7 @@ const ScheduleLogViewer = ({ obh, sch, tname }) => {
                 setPagination(prev => ({ ...prev, total: data.total, current: page, pageSize }));
             }
         });
-    }, [obh, sch]); // remove pagination from dependencies to avoid re-running
+    }, [obh, sch, message]); // remove pagination from dependencies to avoid re-running
 
     const handleTableChange = useCallback((pagination) => {
         fetchLogs(pagination.current, pagination.pageSize);
@@ -77,24 +44,19 @@ const ScheduleLogViewer = ({ obh, sch, tname }) => {
         fetchLogs();
     }, []); // empty dependency array to avoid re-running
 
-    const columns = [
-        {
-            title: 'Time',
-            dataIndex: 'ts',
-            key: 'ts',
-            width: 178,
-        },
-        {
-            title: 'Output',
-            dataIndex: 'out',
-            key: 'out',
-            render: text => `${decolorizeText(text||'').substring(0, 24)}${decolorizeText(text||'').length>24?'...':''}`,
-        }
-    ];
+    let columns = [ { title: 'Time', dataIndex: 'ts', key: 'ts', width: 178, }, ]
+    if(!sch) {
+        columns.push(
+            { title: 'Task', dataIndex: 'sch', key: 'sch', width: 120, },
+        );
+    }
+    columns.push(
+        { title: 'Output', dataIndex: 'out', key: 'out', render: text => `${decolorizeText(text||'').substring(0, 24)}${decolorizeText(text||'').length>24?'...':''}`, }
+    );
 
     return (
         <Layout>
-            <Sider width={440} height="100%" theme="light">
+            <Sider width={sch?440:560} height="100%" theme="light">
                 <Table style={{ height: "100%" }}
                     dataSource={logs}
                     columns={columns}
@@ -104,17 +66,15 @@ const ScheduleLogViewer = ({ obh, sch, tname }) => {
                     onRow={(record) => ({
                         onClick: () => {
                           setLogTitle(`Log Viewer - ${record.ts}`);
-                          xtermRef.current.write('\x1bc');
-                          xtermRef.current.clear();
-                          xtermRef.current.write(record.out||'');
+                          setCurrLogContent(record.out);
                         }
                     })}
                 />
             </Sider>
-            <Content>
+            <Content className='withScrollContent enableHighlight'>
                 <div style={{ height: "55px", lineHeight: "55px", padding: "0 20px", fontWeight: 700 }}>{logTitle}</div>
-                <div className={customTheme.className} style={{ height: "calc(100% - 55px)" }}>
-                    <div id="xterm_schedule_log" style={{ height: "100%", width: "100%" }}></div>
+                <div className={customTheme.className} style={{ height: "calc(100% - 55px)", backgroundColor: customTheme.colors["editor.background"], padding: "4px" }}>
+                    <div style={{ height: "100%", width: "100%" }}><AnsiText text={currLogContent} /></div>
                 </div>
             </Content>
         </Layout>

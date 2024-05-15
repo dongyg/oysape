@@ -115,6 +115,17 @@ def rate_limit(kvobj, ip, limits={}):
         else:
             return False
 
+def getDatetimeStrFromTimestamp(t=None):
+    # timestamp to yyyy-mm-dd hh:mm:ss
+    import time
+    retval = int(t) if t else int(time.time())
+    if str(retval).isdigit():
+        try:
+            retval = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(float(retval)))
+        except Exception as e:
+            pass
+    return retval
+
 
 ################################################################################
 def send_get_request(url, data, headers=None):

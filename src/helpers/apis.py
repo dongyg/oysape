@@ -765,7 +765,6 @@ class ApiScheduler(ApiDockerManager):
     def execQueryScheduleLogs(self, params={}):
         # params: obh, sch, page, pageSize
         # Execute query schedule logs
-        #TODO: sch can be empty string
         obh = params.get('obh')
         sch = params.get('sch')
         page = tools.intget(params.get('page') or 1, 1)
@@ -773,9 +772,23 @@ class ApiScheduler(ApiDockerManager):
         # logging.info(('execQueryScheduleLogs', obh, sch, page, pageSize))
         dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
         logdb = tools.SQLiteDB(dbpath)
-        total = logdb.query('SELECT COUNT(id) AS total FROM schedule_logs WHERE obh = ? AND sch = ?', (obh, sch))
+        # count
+        sql_str = "SELECT COUNT(id) AS total FROM schedule_logs WHERE obh = ?"
+        arg_arr = [obh]
+        if sch:
+            sql_str += " AND sch = ?"
+            arg_arr.append(sch)
+        total = logdb.query(sql_str, arg_arr)
         total = total[0].get('total')
-        retdat = logdb.query('SELECT * FROM schedule_logs WHERE obh = ? AND sch = ? ORDER BY id DESC LIMIT ? OFFSET ?', (obh, sch, pageSize, (page-1)*pageSize))
+        # query
+        sql_str = "SELECT * FROM schedule_logs WHERE obh = ?"
+        arg_arr = [obh]
+        if sch:
+            sql_str += " AND sch = ?"
+            arg_arr.append(sch)
+        sql_str += " ORDER BY id DESC LIMIT ? OFFSET ?"
+        arg_arr.extend([pageSize, (page-1)*pageSize])
+        retdat = logdb.query(sql_str, arg_arr)
         retdat = [{'key': x.get('id'), **x} for x in retdat]
         return {'list': retdat, 'total': total}
 
@@ -971,7 +984,7 @@ class ApiDesktop(ApiOverHttp):
                 retval = self.combinedConnections[serverKey].dockerCheckEnv()
                 if retval and retval.get('errinfo'): return retval
             # No need to remove the container
-            # self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rm -f '+containerName)
+            self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rm -f '+containerName)
             self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rmi -f oysape/webhost')
             # Pull the latest image first
             self.combinedConnections[serverKey].onChannelString((CRLF+'Pull the latest image...'))
@@ -980,7 +993,8 @@ class ApiDesktop(ApiOverHttp):
             self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker ps --filter "name=^/'+containerName+'$" --format \'{{.Names}}\' | grep -qw '+containerName+' && ' + self.combinedConnections[serverKey].dockerCommandPrefix + 'docker stop '+containerName)
             self.combinedConnections[serverKey].onChannelString((CRLF+'Running webhost container...'))
             oneTimeSecret = tools.getRandomString(60)
-            cmd1 = self.combinedConnections[serverKey].dockerCommandPrefix + f'docker run --rm --name {containerName} -p {portMapping} -e WEBHOST_CONFIG=' + oneTimeSecret+'@'+obh + f' {volumes} -itd oysape/webhost'
+            # cmd1 = self.combinedConnections[serverKey].dockerCommandPrefix + f'docker run --rm --name {containerName} -p {portMapping} -e WEBHOST_CONFIG=' + oneTimeSecret+'@'+obh + f' {volumes} -itd oysape/webhost'
+            cmd1 = self.combinedConnections[serverKey].dockerCommandPrefix + f'docker run --name {containerName} -p {portMapping} -e WEBHOST_CONFIG=' + oneTimeSecret+'@'+obh + f' {volumes} -itd oysape/webhost'
             # self.dockerExecCommand({'command': cmd1, 'target': serverKey, 'output': True})
             retcmd = self.combinedConnections[serverKey].execute_command(cmd1)
             self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))

@@ -66,7 +66,7 @@ class ScheduledTaskRunner:
     def run(self):
         """Run scheduler"""
         while self.running:
-            self.scheduler.run()
+            self.scheduler.run(blocking=False)
 
     def stop(self):
         """Stop scheduler"""
@@ -84,20 +84,21 @@ class ScheduledTaskRunner:
 
     def schedule_interval_task(self, start_time, interval, end_time, action, argument=(), kwargs={}):
         """Add interval task to scheduler"""
-        def interval_task():
+        def interval_task(*args, **kw):
             next_time = time.time() + interval  # Calculate next time to run
             action(*argument, **kwargs)  # Execute the task
             with self.lock:
                 if not end_time or next_time < end_time:
-                    self.scheduler.enterabs(next_time, 1, interval_task)  # Schedule next task at absolute time
+                    # Schedule next task, passing along args and kw which are not used here but preserved
+                    self.scheduler.enterabs(next_time, 1, interval_task, argument, kwargs)
 
         current_time = time.time()
         if current_time > start_time:
             # If current time is already past the initial start time, calculate the next valid start time
             start_time += ((current_time - start_time) // interval + 1) * interval
-
         with self.lock:
-            self.scheduler.enterabs(start_time, 1, interval_task)  # Schedule first task at absolute time
+            # Schedule first task, passing initial argument and kwargs
+            self.scheduler.enterabs(start_time, 1, interval_task, argument, kwargs)
 
 def execScheduleFunction(functionObj, parameterObj):
     # Create a logdb instance to save the scheduler output
@@ -109,7 +110,7 @@ def execScheduleFunction(functionObj, parameterObj):
         dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
         logdb = tools.SQLiteDB(dbpath)
         apiSchedulers[teamName].log_id = logdb.insert('INSERT INTO schedule_logs (ts, obh, sch, out) VALUES (?, ?, ?, ?)', (int(time.time()), obh, sch, ''))
-        print('Scheduled item execute:', time.time(), obh, sch, apiSchedulers[teamName].log_id)
+        print('Scheduled item execute:', tools.getDatetimeStrFromTimestamp(time.time()), obh, sch, apiSchedulers[teamName].log_id)
         retval = functionObj(parameterObj)
         # with open(os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.log')), 'a') as f:
         #     f.write('Scheduled item execute: %s %s %s %s\n' % (obh, sch, time.time(), retval))
@@ -152,6 +153,8 @@ def initScheduler(obh, schedule_items):
                 runner.schedule_interval_task(item['start']/1000, item['interval'], item['end']/1000, execScheduleFunction, (functionObj, parameterObj,))
             count += 1
     print('Initialized', count, 'items in scheduler')
+    for event in runner.scheduler.queue:
+        print(tools.getDatetimeStrFromTimestamp(event.time), event.argument[1].get('sch'))
     return runner
 
 # Sample usage

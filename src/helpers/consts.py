@@ -44,6 +44,7 @@ def initVariants(is_debug, version):
     global IS_DEBUG, HOME_ENTRY, OYSAPE_HOST
     IS_DEBUG = is_debug
     if is_debug:
+        # HOME_ENTRY  = 'http://127.0.0.1:19790/index.html?v=%s&r=%s' % (version, datetime.datetime.now().strftime('%Y.%m%d.%H%M%S'))
         HOME_ENTRY  = 'http://localhost:3000'
         OYSAPE_HOST = 'http://localhost:8080'
     else:

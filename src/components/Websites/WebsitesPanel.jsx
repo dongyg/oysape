@@ -6,14 +6,14 @@ import { BsPlusLg, BsThreeDots } from "react-icons/bs";
 // import { BiUserCheck } from "react-icons/bi";
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { callApi, getUniqueKey, isDesktopVersion } from '../Common/global';
+import { callApi, getUniqueKey } from '../Common/global';
 
 import TextInputModal from '../Modules/TextInputModal';
 import WebsiteManage from './WebsiteManage';
 import './WebsitesPanel.css';
 
 export default function WebsitesPanel() {
-  const { message, modal } = App.useApp();
+  const { message } = App.useApp();
   const { hideSidebarIfNeed, userSession, setUserSession, tabItems, setTabItems, setTabActiveKey } = useCustomContext();
   const headerHeight = '56px';
   const [ showInput, setShowInput ] = useState(false);

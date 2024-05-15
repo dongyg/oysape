@@ -4,7 +4,7 @@ import { solarizedLight, solarizedDark } from '@uiw/codemirror-theme-solarized';
 import { loadLanguage } from '@uiw/codemirror-extensions-langs';
 import { App, Dropdown, Button, Typography, Steps, Tabs, Checkbox, Divider, Row, Col, List, Form, Input, Modal, Tooltip } from 'antd';
 import { DeleteOutlined, QuestionCircleFilled, EditOutlined, PlusOutlined, ClockCircleOutlined, PlayCircleOutlined, CheckCircleOutlined, RedoOutlined, MinusCircleOutlined } from '@ant-design/icons';
-import { SolutionOutlined, CaretRightOutlined, PauseOutlined } from "@ant-design/icons";
+import { SolutionOutlined, CaretRightOutlined, PauseOutlined, DeleteFilled } from "@ant-design/icons";
 import { RiInstallLine, RiUninstallLine } from "react-icons/ri";
 import { TbCalendarRepeat } from "react-icons/tb";
 import { RxActivityLog } from "react-icons/rx";
@@ -261,7 +261,6 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
     <div className={customTheme.className+' withScrollContent'} style={{ backgroundColor: customTheme.colors["editor.background"], color: customTheme.colors["editor.foreground"], height: '100%', padding: '24px', overflowY: 'auto', overflowX: 'hidden', }}>
       {/* Top bar */}
       <Steps labelPlacement="vertical" current={currentStep} onChange={(value) => {
-        console.log(value);
         setCurrentStep(value);
       }}
         items={[
@@ -406,12 +405,90 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                     header={<Row justify="space-between">
                       <Col span={12}><b>{(webhostObject.schedules&&webhostObject.schedules.length)||0} Scheduled Tasks</b></Col>
                       <Col span={12} style={{ textAlign: 'right' }}>
-                        <Button type="text" icon={<PlusOutlined />} onClick={() => {
+                        <Tooltip title="New schedule"><Button type="text" icon={<PlusOutlined />} onClick={() => {
                           setShowScheduleForm(true);
                           setTimeout(() => {
                             scheduleFormRef.current&&scheduleFormRef.current.setFormValues({});
                           }, 100);
-                        } } />
+                        } } /></Tooltip>
+                        <Tooltip title="Delete all"><Button type="text" icon={<DeleteFilled />} onClick={() => {
+                          modal.confirm({
+                            title: 'Are you sure you want to delete all schedule?',
+                            content: `All schedules will be deleted.`,
+                            icon: <QuestionCircleFilled />,
+                            onOk: () => {
+                              callApi('setSchedule', {obh: webhostObject.obh, schedule: [] }).then((data) => {
+                                if(data && data.errinfo) {
+                                  message.error(data.errinfo);
+                                } else if(data && data.sites){
+                                  message.success('Deleted successfully');
+                                  setUserSession({...userSession, sites: data.sites});
+                                  setWebHostObject( data.sites.filter((item) => item.key === webhostObject.key)[0] );
+                                }
+                              })
+                            },
+                            onCancel() {},
+                          })
+                        } } /></Tooltip>
+                        <Divider type="vertical" />
+                        <Tooltip title="Start all"><Button type="text" icon={<CaretRightOutlined />} onClick={() => {
+                          if(webhostObject.schedules&&webhostObject.schedules.length) {
+                            modal.confirm({
+                              title: 'Are you sure you want to start all schedule?',
+                              content: `All schedules will be started.`,
+                              icon: <QuestionCircleFilled />,
+                              onOk: () => {
+                                callApi('setSchedule', {obh: webhostObject.obh, schedule: webhostObject.schedules.map((item) => { item.running = true; item.oldkey = item.title; return item; }) }).then((data) => {
+                                  if(data && data.errinfo) {
+                                    message.error(data.errinfo);
+                                  } else if(data && data.sites){
+                                    message.success('Started successfully');
+                                    setUserSession({...userSession, sites: data.sites});
+                                    setWebHostObject( data.sites.filter((item) => item.key === webhostObject.key)[0] );
+                                  }
+                                })
+                              },
+                              onCancel() {},
+                            })
+                          }else{
+                            message.warning('No schedule to start');
+                          }
+                        } } /></Tooltip>
+                        <Tooltip title="Stop all"><Button type="text" icon={<PauseOutlined />} onClick={() => {
+                          if(webhostObject.schedules&&webhostObject.schedules.length) {
+                            modal.confirm({
+                              title: 'Are you sure you want to stop all schedule?',
+                              content: `All schedules will be stoped.`,
+                              icon: <QuestionCircleFilled />,
+                              onOk: () => {
+                                callApi('setSchedule', {obh: webhostObject.obh, schedule: webhostObject.schedules.map((item) => { item.running = false; item.oldkey = item.title; return item; }) }).then((data) => {
+                                  if(data && data.errinfo) {
+                                    message.error(data.errinfo);
+                                  } else if(data && data.sites){
+                                    message.success('Stoped successfully');
+                                    setUserSession({...userSession, sites: data.sites});
+                                    setWebHostObject( data.sites.filter((item) => item.key === webhostObject.key)[0] );
+                                  }
+                                })
+                              },
+                              onCancel() {},
+                            })
+                          }else{
+                            message.warning('No schedule to stop');
+                          }
+                        } } /></Tooltip>
+                        <Divider type="vertical" />
+                        <Tooltip title="Logs"><Button type="text" icon={<RxActivityLog />} onClick={() => {
+                          if(webhostObject.schedules&&webhostObject.schedules.length) {
+                            modal.info({
+                              title: 'Schedules Log',
+                              content: <ScheduleLogViewer obh={webhostObject.obh} sch={''} tname={webhostObject.schedules[0].team} />,
+                              width: '80%',
+                              okText: 'Close',
+                              icon: null,
+                            })
+                          }
+                        } } /></Tooltip>
                       </Col>
                     </Row>}
                     renderItem={(item) => (

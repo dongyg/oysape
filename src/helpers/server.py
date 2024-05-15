@@ -157,17 +157,17 @@ def checkSignature():
         obhs.keys[v2] = v1
     else:
         if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
-            return json.dumps({"errinfo": "Too many requests2."})
+            return {"errinfo": "Too many requests2."}
         return {'errinfo': 'Cannot find the oysape backend host configuration.'}
     secret_key = obhs.keys.get(v2)
     if not secret_key:
         if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
-            return json.dumps({"errinfo": "Too many requests."})
+            return {"errinfo": "Too many requests."}
         return {'errinfo': 'Cannot find the oysape backend host configuration. %s'%v2}
     hmac_result = hmac.new(secret_key.encode('utf-8'), (nonce+ts).encode('utf-8'), hashlib.sha256)
     if not hmac.compare_digest(hmac_result.hexdigest(), sig):
         if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
-            return json.dumps({"errinfo": "Too many requests3."})
+            return {"errinfo": "Too many requests3."}
         return {'errinfo': 'Invalid signature'}
     return request.query
 

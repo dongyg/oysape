@@ -116,7 +116,7 @@ export default function ProfileButton() {
           } else {
             isSignOut.current = true;
             console.log('signout. Clear user session');
-            setUserSession({});
+            // setUserSession({});
             window.location.href = '/signout';
           }
         },

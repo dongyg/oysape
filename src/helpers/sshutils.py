@@ -92,7 +92,7 @@ def remove_ansi_color_codes(text):
     ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
     return ansi_escape.sub('', text)
 
-def get_prompt_endchar(channel, debug=False):
+def get_prompt_string(channel, debug=False):
     while not channel.recv_ready(): pass
     output = ''
     while channel.recv_ready():
@@ -100,12 +100,10 @@ def get_prompt_endchar(channel, debug=False):
         output += chunk.decode()
         time.sleep(0.1)
     if debug: print(json.dumps(output))
-    output = remove_ansi_color_codes(output).strip()
-    if debug: print(json.dumps(output))
-    if output:
-        return output[-1]
-    else:
-        return None
+    output = remove_ansi_color_codes(output).strip().splitlines()
+    retval = output[-1] if output else None
+    if debug: print(json.dumps(retval))
+    return retval
 
 def get_tty_number(channel, debug=False):
     channel.send('tty\n')
@@ -181,15 +179,17 @@ class SSHClient:
         self.shellCacheHuman = []
         self.message = ''
         self.sentChannelCloseEvent = True
+        self.prompt_string = None
         self.prompt_endchar = None
         self.tty_number = None
         self.ps_list = []
-        self.output = ''
         self.channel_available = False
         self.check_ps_source = ''
         self.check_ps_time = time.time()
         self.data1 = ''
         self.data2 = ''
+        self.input = []
+        self.output = ''
         self.client = create_ssh_connection(self.hostname, self.username, self.port, self.password, self.private_key, self.passphrase)
         self.transport = self.client._transport
         self.openChannel()
@@ -202,8 +202,9 @@ class SSHClient:
             try:
                 self.channel = self.client.invoke_shell(term='xterm')
                 # self.channel.setblocking(0)
-                time.sleep(0.3) # wait for a while to get the prompt correctly
-                self.prompt_endchar = get_prompt_endchar(self.channel)
+                time.sleep(0.4) # wait for a while to get the prompt correctly
+                self.prompt_string = get_prompt_string(self.channel, debug=False)
+                self.prompt_endchar = self.prompt_string[-1] if self.prompt_string else None
                 time.sleep(0.2) # wait for a while to get the tty number correctly
                 self.tty_number = get_tty_number(self.channel)
                 self.ps_list = get_ps(self, self.tty_number)
@@ -247,6 +248,14 @@ class SSHClient:
                 self.channel_available = True
         else:
             self.channel_available = True
+        if source == 'recv' and self.channel_available:
+            if hasattr(self, 'channelCommandFinished') and callable(self.channelCommandFinished):
+                self.channelCommandFinished(self.output)
+            self.input = []
+        elif source == 'send':
+            self.input.append(self.data1)
+            if hasattr(self, 'channelCommandStart') and callable(self.channelCommandStart):
+                self.channelCommandStart(self.data1)
         # print(' done', time.time() - time1, self.channel_available)
         self.output = ''
         self.check_ps_source = source
@@ -281,9 +290,7 @@ class SSHClient:
                     except:
                         pass
                     # time.sleep(0.01)
-                if self.output and (re.findall(pattern, self.output) or (self.prompt_endchar and self.output.strip().endswith(self.prompt_endchar))):
-                    if hasattr(self, 'channelCommandFinished') and callable(self.channelCommandFinished):
-                        self.channelCommandFinished(self.output)
+                if self.output and re.findall(pattern, self.output):
                     self.updateChannelStatus('recv')
             if self.shellCacheAuto or self.shellCacheHuman:
                 if not self.isChannelActive(): self.openChannel()
@@ -293,9 +300,7 @@ class SSHClient:
                     self.channel.send(self.data1)
                     self.output = ''
                 # time.sleep(0.01)
-                if (self.data1 and re.findall(pattern, self.data1)):
-                    if hasattr(self, 'channelCommandStart') and callable(self.channelCommandStart):
-                        self.channelCommandStart(self.data1)
+                if self.data1 and re.findall(pattern, self.data1):
                     self.updateChannelStatus('send')
                 self.data2 = ''
                 if self.channel and self.shellCacheHuman:
@@ -484,6 +489,13 @@ class SSHClient:
         return {'count': ret1, 'size': ret2}
 
     def upload(self, local_path, remote_path, excludes=None):
+        timeout = 5
+        passed = 0
+        while not self.areAllTasksDone() and passed < timeout:
+            time.sleep(0.1)
+            passed += 0.1
+        if passed >= timeout:
+            return {'errinfo': 'Please wait until all tasks are done'}
         if not (self.transport and self.transport.is_alive()):
             self.reconnect()
         if local_path.startswith('~/'):
@@ -496,6 +508,13 @@ class SSHClient:
             return {'errinfo': 'Local path not found: %s' % local_path, 'count': 0, 'size': 0}
 
     def download(self, remote_path, local_path, excludes=None):
+        timeout = 5
+        passed = 0
+        while not self.areAllTasksDone() and passed < timeout:
+            time.sleep(0.1)
+            passed += 0.1
+        if passed >= timeout:
+            return {'errinfo': 'Please wait until all tasks are done'}
         if not (self.transport and self.transport.is_alive()):
             self.reconnect()
         if local_path.startswith('~/'):
@@ -800,7 +819,19 @@ class SchedulerClient(WebSocketSSHClient):
 
     def channelCommandFinished(self, result):
         if hasattr(self.parentApi, 'log_id'):
+            # Try to remove: prompt string, control characters, command lines, etc.
+            # It's really diffcult to remove them all from output string.
+            # Just save the whole channel output for now.
+            # out2 = remove_ansi_color_codes(result)
+            # if self.prompt_string:
+            #     out2 = out2.replace(self.prompt_string, '')
+            #     self.input.insert(0, self.prompt_string)
+            # for line in self.input:
+            #     out2 = out2.replace(line, '')
+            print('Scheduled:', self.parentApi.log_id, result)
             dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
             logdb = tools.SQLiteDB(dbpath)
-            logdb.update("UPDATE schedule_logs SET out = COALESCE(out, '') || ? WHERE id = ?", (result, self.parentApi.log_id))
+            logdb.update("UPDATE schedule_logs SET out1 = COALESCE(out1, '') || ? WHERE id = ?", (result, self.parentApi.log_id))
+        else:
+            print('Scheduled: no log_id')
 

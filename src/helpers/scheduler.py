@@ -109,18 +109,18 @@ def execScheduleFunction(functionObj, parameterObj):
         teamName = parameterObj.get('teamName')
         dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
         logdb = tools.SQLiteDB(dbpath)
-        apiSchedulers[teamName].log_id = logdb.insert('INSERT INTO schedule_logs (ts, obh, sch, out) VALUES (?, ?, ?, ?)', (int(time.time()), obh, sch, ''))
-        print('Scheduled item execute:', tools.getDatetimeStrFromTimestamp(time.time()), obh, sch, apiSchedulers[teamName].log_id)
+        apiSchedulers[teamName].log_id = logdb.insert('INSERT INTO schedule_logs (ts, obh, sch, out1, out2) VALUES (?, ?, ?, ?, ?)', (int(time.time()), obh, sch, '', ''))
+        print('Scheduled:', apiSchedulers[teamName].log_id, tools.getDatetimeStrFromTimestamp(time.time()), obh, sch)
         retval = functionObj(parameterObj)
         # with open(os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.log')), 'a') as f:
-        #     f.write('Scheduled item execute: %s %s %s %s\n' % (obh, sch, time.time(), retval))
+        #     f.write('Scheduled execute: %s %s %s %s\n' % (obh, sch, time.time(), retval))
 
 def initScheduler(obh, schedule_items):
     from . import apis
     global runner, apiSchedulers
     dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
     logdb = tools.SQLiteDB(dbpath)
-    logdb.query('CREATE TABLE IF NOT EXISTS schedule_logs (id INTEGER PRIMARY KEY,ts TIMESTAMP,obh TEXT,sch TEXT,out TEXT)')
+    logdb.query('CREATE TABLE IF NOT EXISTS schedule_logs (id INTEGER PRIMARY KEY,ts TIMESTAMP,obh TEXT,sch TEXT,out1 TEXT, out2 TEXT, ext1 TEXT, ext2 TEXT)')
     if runner:
         runner.stop()
     runner = ScheduledTaskRunner()

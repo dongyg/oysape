@@ -322,7 +322,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                 {fields.map((field, index) => (
                   <>
                     <Form.Item wrapperCol={{ offset: index === 0 ? 0 : 4, span: 18, }}
-                      label={index === 0 ? <><Button type="link" onClick={() => add()} icon={<PlusOutlined />}></Button>Volumes</> : null}
+                      label={index === 0 ? <>{!webhostObject.target?<Button type="link" onClick={() => add()} icon={<PlusOutlined />}></Button>:null}Volumes</> : null}
                       tooltip={<>"You probably want to add ~/.ssh so that the container can access your SSH keys"<Button size='small' onClick={() => {add({'volume':'~/.ssh:/root/.ssh'});}}>Add it for me</Button></>}
                       {...field}
                       name={[field.name, 'volume']}

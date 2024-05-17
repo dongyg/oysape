@@ -14,22 +14,22 @@ export default function BodyContainer() {
   const [ loading, setLoading ] = useState(true);
 
   const handleSigninWithEmail = () => {
-    setLoading(true);
-    showMessageOnSigninPage('');
+    setLoading(true); setMessageContent('');
+    // showMessageOnSigninPage('');
     callApi('signInWithEmail', {obh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
       callWaitForSigninResult(data);
     });
   }
   const handleSigninWithGithub = () => {
-    setLoading(true);
-    showMessageOnSigninPage('');
+    setLoading(true); setMessageContent('');
+    // showMessageOnSigninPage('');
     callApi('signInWithGithub', {obh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
       callWaitForSigninResult(data);
     });
   }
   const handleSigninWithGoogle = () => {
-    setLoading(true);
-    showMessageOnSigninPage('');
+    setLoading(true); setMessageContent('');
+    // showMessageOnSigninPage('');
     callApi('signInWithGoogle', {obh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
       callWaitForSigninResult(data);
     });
@@ -38,7 +38,6 @@ export default function BodyContainer() {
     let secondPassed = 0;
     if(waitData?.errinfo) {
       showMessageOnSigninPage(waitData.errinfo, 'error');
-      setLoading(false);
     } else {
       if(isDesktopVersion) {
         // Won't be here in web version

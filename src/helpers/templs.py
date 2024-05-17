@@ -12,7 +12,7 @@ template_signin_success_close = """
 </head>
 <body>
     <div class="container mt-5 col-6" style="text-align: center;">
-        <h3>Success. You can close this window now.</h3>
+        <h4>Success. You can close this window now.</h4>
     </div>
     <script>
         setTimeout(function(){window.close();},50);
@@ -32,7 +32,7 @@ template_signin_success_redirect = """
 </head>
 <body>
     <div class="container mt-5 col-6" style="text-align: center;">
-        <h3>Success. You will be redirected to the app</h3>
+        <h4>Success. You will be redirected to the app</h4>
     </div>
     <script>
         setTimeout(function(){window.location.href = "{url}";},1000);

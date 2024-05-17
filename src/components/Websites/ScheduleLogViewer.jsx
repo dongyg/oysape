@@ -51,7 +51,7 @@ const ScheduleLogViewer = ({ obh, sch, tname }) => {
         );
     }
     columns.push(
-        { title: 'Output', dataIndex: 'out', key: 'out', render: text => `${decolorizeText(text||'').substring(0, 24)}${decolorizeText(text||'').length>24?'...':''}`, }
+        { title: 'Output', dataIndex: 'out1', key: 'out1', render: text => `${decolorizeText(text||'').substring(0, 24)}${decolorizeText(text||'').length>24?'...':''}`, }
     );
 
     return (
@@ -66,7 +66,7 @@ const ScheduleLogViewer = ({ obh, sch, tname }) => {
                     onRow={(record) => ({
                         onClick: () => {
                           setLogTitle(`Log Viewer - ${record.ts}`);
-                          setCurrLogContent(record.out);
+                          setCurrLogContent(record.out1);
                         }
                     })}
                 />

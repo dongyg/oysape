@@ -15,21 +15,21 @@ export default function BodyContainer() {
 
   const handleSigninWithEmail = () => {
     setLoading(true);
-    showMessageOnSigninPage('');
+    showMessageOnSigninPage(''); // Don't show loading after clicking sign in. Because the user might want to don't sign in and choose another way immediately
     callApi('signInWithEmail', {obh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
       callWaitForSigninResult(data);
     });
   }
   const handleSigninWithGithub = () => {
     setLoading(true);
-    showMessageOnSigninPage('');
+    showMessageOnSigninPage(''); // Don't show loading after clicking sign in. Because the user might want to don't sign in and choose another way immediately
     callApi('signInWithGithub', {obh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
       callWaitForSigninResult(data);
     });
   }
   const handleSigninWithGoogle = () => {
     setLoading(true);
-    showMessageOnSigninPage('');
+    showMessageOnSigninPage(''); // Don't show loading after clicking sign in. Because the user might want to don't sign in and choose another way immediately
     callApi('signInWithGoogle', {obh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
       callWaitForSigninResult(data);
     });

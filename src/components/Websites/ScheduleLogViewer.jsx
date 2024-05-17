@@ -19,7 +19,7 @@ const ScheduleLogViewer = ({ obh, sch, tname }) => {
     const [logs, setLogs] = useState([]);
     const [logTitle, setLogTitle] = useState('');
     const [currLogContent, setCurrLogContent] = useState('');
-    const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0, showSizeChanger: false });
+    const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0, showSizeChanger: false, showQuickJumper: true, showTotal: total => `Total ${total}` });
 
     const fetchLogs = useCallback((page = pagination.current, pageSize = pagination.pageSize) => {
         callApi('callFetchScheduleLogs', { obh, sch, page, pageSize, tname }).then((data) => {

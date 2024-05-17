@@ -130,7 +130,7 @@ def initScheduler(obh, schedule_items):
     for item in schedule_items:
         teamName = item['team']
         if not teamName in apiSchedulers:
-            apiSchedulers[teamName] = apis.ApiScheduler(clientId='scheduler_for_'+teamName, clientUserAgent='OysapeScheduler/2024.0507.1')
+            apiSchedulers[teamName] = apis.ApiScheduler(clientId='scheduler_for_'+teamName, clientUserAgent='OysapeScheduler/2.5.17')
             apiSchedulers[teamName].teamName = teamName
         apiSchedulers[teamName].reloadUserSession()
         if item.get('running'):

@@ -8,7 +8,7 @@ def sig_handler(signum, frame):
     raise SystemExit()
 
 if __name__ == '__main__':
-    version = '2024.0507.1'
+    version = '2.5.17'
     parser = argparse.ArgumentParser(description="Oysape Webhost Entry Point")
     parser.add_argument('--debug', type=bool, help="Debug mode", default=False)
     parser.add_argument('--port', type=int, help="Port", default=19790)

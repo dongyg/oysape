@@ -14,22 +14,22 @@ export default function BodyContainer() {
   const [ loading, setLoading ] = useState(true);
 
   const handleSigninWithEmail = () => {
-    setLoading(true); setMessageContent('');
-    // showMessageOnSigninPage('');
+    setLoading(true);
+    showMessageOnSigninPage('');
     callApi('signInWithEmail', {obh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
       callWaitForSigninResult(data);
     });
   }
   const handleSigninWithGithub = () => {
-    setLoading(true); setMessageContent('');
-    // showMessageOnSigninPage('');
+    setLoading(true);
+    showMessageOnSigninPage('');
     callApi('signInWithGithub', {obh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
       callWaitForSigninResult(data);
     });
   }
   const handleSigninWithGoogle = () => {
-    setLoading(true); setMessageContent('');
-    // showMessageOnSigninPage('');
+    setLoading(true);
+    showMessageOnSigninPage('');
     callApi('signInWithGoogle', {obh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
       callWaitForSigninResult(data);
     });

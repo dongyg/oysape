@@ -323,7 +323,7 @@ class ApiTerminal(ApiOysape):
             logging.info(('createTermConnection', slist))
             try:
                 conn_str = sshutils.create_ssh_string(slist[0].get("address"), slist[0].get("username"), slist[0].get("port"))
-                self.terminalConnections[uniqueKey] = sshutils.TerminalClient(conn_str, private_key=slist[0].get("prikey"), serverKey=serverKey, parentApi=self, uniqueKey=uniqueKey, startup=slist[0].get("tasks"))
+                self.terminalConnections[uniqueKey] = sshutils.TerminalClient(conn_str, password=slist[0].get("password"), private_key=slist[0].get("prikey"), serverKey=serverKey, parentApi=self, uniqueKey=uniqueKey, startup=slist[0].get("tasks"))
                 if not self.terminalConnections[uniqueKey].client:
                     self.terminalConnections[uniqueKey].onChannelString(tools.colorizeText(self.terminalConnections[uniqueKey].message,'red'))
                 elif taskKey:
@@ -455,7 +455,7 @@ class ApiWorkspace(ApiTerminal):
             logging.info(('createCombConnection', serverKey))
             try:
                 conn_str = sshutils.create_ssh_string(slist[0].get("address"), slist[0].get("username"), slist[0].get("port"))
-                self.combinedConnections[serverKey] = sshutils.WorkspaceClient(conn_str, private_key=slist[0].get("prikey"), serverKey=serverKey, parentApi=self, uniqueKey='workspace', startup=slist[0].get("tasks"))
+                self.combinedConnections[serverKey] = sshutils.WorkspaceClient(conn_str, password=slist[0].get("password"), private_key=slist[0].get("prikey"), serverKey=serverKey, parentApi=self, uniqueKey='workspace', startup=slist[0].get("tasks"))
             except Exception as e:
                 traceback.print_exc()
                 logging.error(('createCombConnection', serverKey, e))
@@ -766,7 +766,7 @@ class ApiScheduler(ApiDockerManager):
             logging.info(('createCombConnection', serverKey))
             try:
                 conn_str = sshutils.create_ssh_string(slist[0].get("address"), slist[0].get("username"), slist[0].get("port"))
-                self.combinedConnections[serverKey] = sshutils.SchedulerClient(conn_str, private_key=slist[0].get("prikey"), serverKey=serverKey, parentApi=self, uniqueKey='workspace', startup=slist[0].get("tasks"))
+                self.combinedConnections[serverKey] = sshutils.SchedulerClient(conn_str, password=slist[0].get("password"), private_key=slist[0].get("prikey"), serverKey=serverKey, parentApi=self, uniqueKey='workspace', startup=slist[0].get("tasks"))
             except Exception as e:
                 traceback.print_exc()
                 logging.info(('createCombConnection', serverKey, e))

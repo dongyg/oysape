@@ -32,6 +32,8 @@ def get_paramiko_key_from_data(data):
     return key
 
 def get_paramiko_key_from_file(key_file, passphrase=None):
+    if key_file.startswith('~'):
+        key_file = os.path.expanduser(key_file)
     with open(key_file, "r") as f:
         key_data = f.read()
     if "BEGIN RSA PRIVATE KEY" in key_data:

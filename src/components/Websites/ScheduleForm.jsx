@@ -152,7 +152,6 @@ const ScheduleForm = (props, ref) => {
     submitForm: async (callback) => {
       try {
         const values = await scheduleFormRef.validateFields();
-        console.log('Received values of form: ', values);
         values['oldkey'] = oldKey;
         values['interval'] = parseInt(values.interval);
         values.start = values.start.toDate().getTime(); // get time stamp

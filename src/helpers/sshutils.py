@@ -821,6 +821,7 @@ class SchedulerClient(WebSocketSSHClient):
 
     def channelCommandFinished(self, result):
         if hasattr(self.parentApi, 'log_id'):
+            # Only schedule Api will have a log_id
             # Try to remove: prompt string, control characters, command lines, etc.
             # It's really diffcult to remove them all from output string.
             # Just save the whole channel output for now.
@@ -830,10 +831,30 @@ class SchedulerClient(WebSocketSSHClient):
             #     self.input.insert(0, self.prompt_string)
             # for line in self.input:
             #     out2 = out2.replace(line, '')
-            print('Scheduled:', self.parentApi.log_id, result)
+            # print('Scheduled:', self.parentApi.log_id, result)
             dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
             logdb = tools.SQLiteDB(dbpath)
+            # Get the obh, sch. Then get the schedule object
+            sql_str = "SELECT * FROM schedule_logs WHERE id = ?"
+            arg_arr = [self.parentApi.log_id]
+            retdat = logdb.query(sql_str, arg_arr)
+            if retdat and retdat[0]:
+                sch = retdat[0]['sch']
+                scheduleObj = None
+                webhostFile = os.path.expanduser(os.path.join('~', '.oysape', 'webhost.json'))
+                if os.path.isfile(webhostFile):
+                    try:
+                        with open(webhostFile, 'r') as f:
+                            webhostObject = json.load(f)
+                        if webhostObject.get('schedules'):
+                            for y in webhostObject.get('schedules',[]):
+                                if y['title'] == sch:
+                                    scheduleObj = y
+                                    break
+                    except Exception as e:
+                        pass
+                if scheduleObj and scheduleObj.get('recipients'):
+                    out2 = re.search(scheduleObj.get('regex'), result) if scheduleObj.get('regex') else [result]
+                    if out2:
+                        self.parentApi.sendNotification({'recipients': scheduleObj.get('recipients'), 'message': out2[0], 'mid': self.parentApi.log_id, 'title': sch})
             logdb.update("UPDATE schedule_logs SET out1 = COALESCE(out1, '') || ? WHERE id = ?", (result, self.parentApi.log_id))
-        else:
-            print('Scheduled: no log_id')
-

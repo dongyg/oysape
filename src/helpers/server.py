@@ -147,7 +147,7 @@ def checkSignature():
     nonce = request.query.get('nonce')
     sig = request.query.get('sig')
     ts = request.query.get('ts')
-    if not nonce or not sig or not ts or ts < str(int(time.time())-30):
+    if not nonce or not sig or not ts or ts < str(int(time.time())-10):
         if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
             return json.dumps({"errinfo": "Too many requests1."})
         return {'errinfo': 'Invalid request'}

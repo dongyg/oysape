@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os, traceback, json, json, time, base64, fnmatch, platform, hmac, hashlib, logging
-from . import auth, tools, consts
+from . import auth, tools, consts, obhs
 
 BUF_SIZE = 1024
 CR = '\r'
@@ -791,6 +791,23 @@ class ApiScheduler(ApiDockerManager):
         retdat = logdb.query(sql_str, arg_arr)
         retdat = [{'key': x.get('id'), **x} for x in retdat]
         return {'list': retdat, 'total': total}
+
+    def sendNotification(self, params={}):
+        recipients = params.get('recipients')
+        message = params.get('message')
+        webhost_config = os.getenv('WEBHOST_CONFIG')
+        if webhost_config and len(webhost_config.split('@'))==2:
+            v1, v2 = webhost_config.split('@')
+            obhs.keys[v2] = v1
+        secret_key = obhs.keys.get(v2)
+        if secret_key and recipients and message:
+            ts = str(int(time.time()))
+            nonce = tools.getRandomString(size=8)
+            hmac_result = hmac.new(secret_key.encode('utf-8'), (nonce+ts).encode('utf-8'), hashlib.sha256)
+            signature = hmac_result.hexdigest()
+            custom_headers = {'nonce': nonce, 'timestamp': ts, 'signature': signature, 'obh': v2}
+            params = {'recipients': recipients, 'title': params.get('title', ''), 'message': message, 'mid': params.get('mid', '')}
+            return tools.send_post_request(consts.OYSAPE_HOST + consts.API_ROOT + '/notification', params, custom_headers)
 
 
 class ApiOverHttp(ApiDockerManager):

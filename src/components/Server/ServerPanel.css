@@ -9,5 +9,6 @@
 }
 /* ant-table 组件必须设置 rowSelection 才能选择行. 但每行行首就一定有radiobox或checkbox. 这个 display:none; 就是可以让它不显示 */
 .hide-selection-column .ant-table-selection-column {
+    width: 0 !important;
     display: none;
 }

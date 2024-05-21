@@ -136,7 +136,7 @@ def send_get_request(url, data, headers=None):
         headers['Content-Type'] = 'application/json'
         context = ssl._create_unverified_context()
         request = urllib.request.Request(url+'?'+data_encoded, headers=headers, method='GET')
-        with urllib.request.urlopen(request, context=context) as response:
+        with urllib.request.urlopen(request, context=context, timeout=10) as response:
             response_data = response.read()
             response_text = response_data.decode('utf-8')
             # print(response_text, type(response_text))
@@ -154,7 +154,7 @@ def send_post_request(url, data, headers=None):
         headers['Content-Type'] = 'application/json'
         context = ssl._create_unverified_context()
         request = urllib.request.Request(url, data=json_data, headers=headers, method='POST')
-        with urllib.request.urlopen(request, context=context) as response:
+        with urllib.request.urlopen(request, context=context, timeout=10) as response:
             response_data = response.read()
             response_text = response_data.decode('utf-8')
             json_data = json.loads(response_text)
@@ -171,7 +171,7 @@ def send_delete_request(url, data, headers=None):
         headers['Content-Type'] = 'application/json'
         context = ssl._create_unverified_context()
         request = urllib.request.Request(url+'?'+data_encoded, headers=headers, method='DELETE')
-        with urllib.request.urlopen(request, context=context) as response:
+        with urllib.request.urlopen(request, context=context, timeout=10) as response:
             response_data = response.read()
             response_text = response_data.decode('utf-8')
             # print(response_text, type(response_text))

@@ -1,5 +1,5 @@
 import React, { useImperativeHandle, forwardRef, useRef, useState } from 'react';
-import { App, Form, Input, DatePicker, Radio, Row, Col, AutoComplete, Tag } from 'antd';
+import { App, Form, Input, DatePicker, Radio, Row, Col, AutoComplete, Tag, Select } from 'antd';
 import dayjs from 'dayjs';
 
 import { useCustomContext } from '../Contexts/CustomContext'
@@ -152,6 +152,7 @@ const ScheduleForm = (props, ref) => {
     submitForm: async (callback) => {
       try {
         const values = await scheduleFormRef.validateFields();
+        console.log('Received values of form: ', values);
         values['oldkey'] = oldKey;
         values['interval'] = parseInt(values.interval);
         values.start = values.start.toDate().getTime(); // get time stamp
@@ -179,6 +180,8 @@ const ScheduleForm = (props, ref) => {
         interval: values.interval||60,
         start: values.start ? dayjs(values.start) : null,
         end: values.end ? dayjs(values.end) : null,
+        recipients: values.recipients||[],
+        regex: values.regex||'',
       });
       setSearchValue(values.action);
     }
@@ -186,6 +189,10 @@ const ScheduleForm = (props, ref) => {
 
   const onFinish = (values) => {
     console.log('Received values from form:', values);
+  };
+
+  const handleMembersChange = (value) => {
+    // console.log(`selected ${value}`);
   };
 
   return (
@@ -262,6 +269,25 @@ const ScheduleForm = (props, ref) => {
             placeholder="Type : for choosing a Task, or @ for Server, or ! for Pipeline"
           />
         </AutoComplete>
+      </Form.Item>
+
+      <Form.Item name="recipients" label="Notification" tooltip="Send a notification if the task output matches the Regex. No notification will be sent if the recipients are not specified">
+        <Select
+          mode="multiple"
+          allowClear
+          style={{
+            width: '100%',
+          }}
+          placeholder="Recipients"
+          defaultValue={[]}
+          onChange={handleMembersChange}
+          options={[{email:userSession.email, status:'Active'}].concat(userSession.teams[userSession.team0].members.filter(member => member.status==='Active')).map(member => {
+            return { label: member.email, value: member.email };
+          })}
+        />
+      </Form.Item>
+      <Form.Item name='regex'>
+        <Input.TextArea autoComplete="off" autoCapitalize="off" autoCorrect="off" rows={2} autoSize={{ minRows: 1, maxRows: 4 }} placeholder='Regex' />
       </Form.Item>
 
     </Form>

@@ -16,6 +16,7 @@ function decolorizeText(text) {
 const ScheduleLogViewer = ({ obh, sch, tname }) => {
     const { message } = App.useApp();
     const { customTheme } = useCustomContext();
+    const [selectedRowKeys, setSelectedRowKeys] = useState([]);
     const [logs, setLogs] = useState([]);
     const [logTitle, setLogTitle] = useState('');
     const [currLogContent, setCurrLogContent] = useState('');
@@ -23,14 +24,10 @@ const ScheduleLogViewer = ({ obh, sch, tname }) => {
 
     const fetchLogs = useCallback((page = pagination.current, pageSize = pagination.pageSize) => {
         callApi('callFetchScheduleLogs', { obh, sch, page, pageSize, tname }).then((data) => {
-            console.log('fetchLogs', data);
             if(data && data.errinfo) {
                 message.error(data.errinfo);
             }else if(data && data.list){
-                setLogs(data.list.map(log => ({
-                    ...log,
-                    ts: dayjs.unix(log.ts).format('YYYY-MM-DD HH:mm:ss')
-                })));
+                setLogs(data.list);
                 setPagination(prev => ({ ...prev, total: data.total, current: page, pageSize }));
             }
         });
@@ -44,20 +41,37 @@ const ScheduleLogViewer = ({ obh, sch, tname }) => {
         fetchLogs();
     }, []); // empty dependency array to avoid re-running
 
-    let columns = [ { title: 'Time', dataIndex: 'ts', key: 'ts', width: 178, }, ]
+    let columns = [ { title: 'Time', dataIndex: 'ts', key: 'ts', render: text => dayjs.unix(text).format('MM-DD HH:mm:ss')  }, ]
     if(!sch) {
         columns.push(
-            { title: 'Task', dataIndex: 'sch', key: 'sch', width: 120, },
+            { title: 'Task', dataIndex: 'sch', key: 'sch',  },
         );
     }
     columns.push(
         { title: 'Output', dataIndex: 'out1', key: 'out1', render: text => `${decolorizeText(text||'').substring(0, 24)}${decolorizeText(text||'').length>24?'...':''}`, }
     );
 
+    const selectRow = (record) => {
+        setSelectedRowKeys([record.key]);
+    };
+    const onSelectedRowKeysChange = (selectedRowKeys) => {
+        setSelectedRowKeys(selectedRowKeys);
+    };
+    const rowSelection = {
+        selectedRowKeys,
+        hideSelectAll: true,
+        columnTitle: '',
+        type: 'radio',
+        onChange: onSelectedRowKeysChange,
+        columnWidth: 0,
+    };
+
     return (
         <Layout>
             <Sider width={sch?440:560} height="100%" theme="light">
                 <Table style={{ height: "100%" }}
+                    className='hide-selection-column'
+                    rowSelection={rowSelection}
                     dataSource={logs}
                     columns={columns}
                     rowKey="id"
@@ -65,8 +79,15 @@ const ScheduleLogViewer = ({ obh, sch, tname }) => {
                     onChange={handleTableChange}
                     onRow={(record) => ({
                         onClick: () => {
-                          setLogTitle(`Log Viewer - ${record.ts}`);
-                          setCurrLogContent(record.out1);
+                            selectRow(record);
+                            setLogTitle(`Log Viewer - ${ dayjs.unix(record.ts).format('YYYY-MM-DD HH:mm:ss')}`);
+                            setCurrLogContent(record.out1);
+                        },
+                        onContextMenu: () => {
+                            selectRow(record);
+                        },
+                        onDoubleClick: () => {
+                            selectRow(record);
                         }
                     })}
                 />

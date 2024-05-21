@@ -88,8 +88,10 @@ class ApiBase:
 
 
 class ApiOauth(ApiBase):
-    userToken = ''
-    userSession = {}
+    def __init__(self, clientId='', clientUserAgent='', _logging=consts.IS_LOGGING):
+        super().__init__(clientId, clientUserAgent, _logging)
+        self.userToken = ''
+        self.userSession = {}
 
     def signInWithEmail(self, params):
         self.backendHost = params.get('obh', self.backendHost)
@@ -112,8 +114,10 @@ class ApiOauth(ApiBase):
 
 
 class ApiOysape(ApiOauth):
-    listFolder = []
-    listExclude = []
+    def __init__(self, clientId='', clientUserAgent='', _logging=consts.IS_LOGGING):
+        super().__init__(clientId, clientUserAgent, _logging)
+        self.listFolder = []
+        self.listExclude = []
 
     def testApi(self, params):
         # print('ApiOysape.testApi', params)
@@ -300,7 +304,9 @@ class ApiOysape(ApiOauth):
             return {"errinfo": str(e)}
 
 class ApiTerminal(ApiOysape):
-    terminalConnections = {}
+    def __init__(self, clientId='', clientUserAgent='', _logging=consts.IS_LOGGING):
+        super().__init__(clientId, clientUserAgent, _logging)
+        self.terminalConnections = {}
 
     def createTermConnection(self, params):
         if not self.hasPermission('terminal'): return {"errinfo": "Terminal access denied"}
@@ -435,8 +441,10 @@ class ApiTerminal(ApiOysape):
         return retval
 
 class ApiWorkspace(ApiTerminal):
-    workspaceWorkingChannel = ''
-    combinedConnections = {}
+    def __init__(self, clientId='', clientUserAgent='', _logging=consts.IS_LOGGING):
+        super().__init__(clientId, clientUserAgent, _logging)
+        self.workspaceWorkingChannel = ''
+        self.combinedConnections = {}
 
     def createCombConnection(self, serverKey):
         from . import sshutils
@@ -728,7 +736,9 @@ class ApiDockerManager(ApiSftp):
 
 class ApiScheduler(ApiDockerManager):
     # This is for the web version scheduler
-    teamName = ''
+    def __init__(self, clientId='', clientUserAgent='', _logging=consts.IS_LOGGING):
+        super().__init__(clientId, clientUserAgent, _logging)
+        self.teamName = ''
 
     def reloadUserSession(self, params={}):
         # Override the method reloadUserSession, load servers/tasks/pipelines from disk
@@ -811,7 +821,9 @@ class ApiScheduler(ApiDockerManager):
 
 
 class ApiOverHttp(ApiDockerManager):
-    socketConnections = {}
+    def __init__(self, clientId='', clientUserAgent='', _logging=consts.IS_LOGGING):
+        super().__init__(clientId, clientUserAgent, _logging)
+        self.socketConnections = {}
 
 
 class ApiDesktop(ApiOverHttp):

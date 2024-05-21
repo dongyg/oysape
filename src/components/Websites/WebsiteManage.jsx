@@ -87,6 +87,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
 
   const [formInstall] = Form.useForm();
   const [showScheduleForm, setShowScheduleForm] = useState(false);
+  const [formSaving, setFormSaving] = useState(false);
   const scheduleFormRef = useRef();
 
   const onChange = (list) => {
@@ -245,7 +246,9 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
   };
 
   const handleScheduleOk = () => {
+    setFormSaving(true);
     scheduleFormRef.current.submitForm((data) => {
+      setFormSaving(false);
       if(data) {
         const record = data.filter((item) => item.obh === webhostObject.obh)[0];
         if(record) {
@@ -571,7 +574,10 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
             { key: 'webhost_bitbucket', label: 'Bitbucket hook', children: comingSoon },
           ]}
         />
-        <Modal title={"Schedule Task (Team: "+userSession.tname+")"} open={showScheduleForm} onOk={handleScheduleOk} onCancel={handleScheduleCancel} okText="Save" cancelText="Cancel">
+        <Modal title={"Schedule Task (Team: "+userSession.tname+")"} open={showScheduleForm} onOk={handleScheduleOk} onCancel={handleScheduleCancel}
+          okText={formSaving ? "Saving..." : "Save"} cancelText="Cancel"
+          okButtonProps={{ loading: formSaving }}
+          cancelButtonProps={{ disabled: formSaving }}>
           <ScheduleForm ref={scheduleFormRef} obh={webhostObject.obh} />
         </Modal>
       </div>

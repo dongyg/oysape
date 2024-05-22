@@ -89,6 +89,7 @@ export default function WebTerminal(props) {
         const hasSocket = !!socketObject.current;
         if(!hasSocket) {
             socketObject.current = new WebSocket((window.OYSAPE_BACKEND_HOST||'').replace('http', 'ws')+'/websocket');
+            // socketObject.current = new WebSocket(`ws://${window.location.hostname}:19790/websocket`); // for local testing
             socketObject.current.onopen = () => {
                 // console.log('WebSocket Connected');
                 socketObject.current.send(JSON.stringify({ action: 'init', uniqueKey:uniqueKey }));

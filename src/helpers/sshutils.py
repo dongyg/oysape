@@ -292,8 +292,7 @@ class SSHClient:
                     except:
                         pass
                     # time.sleep(0.01)
-                # if self.output and re.findall(pattern, self.output):
-                if self.output:
+                if self.output and re.findall(pattern, self.output):
                     self.updateChannelStatus('recv')
             if self.shellCacheAuto or self.shellCacheHuman:
                 if not self.isChannelActive(): self.openChannel()
@@ -303,8 +302,7 @@ class SSHClient:
                     self.channel.send(self.data1)
                     self.output = ''
                 # time.sleep(0.01)
-                # if self.data1 and re.findall(pattern, self.data1):
-                if self.data1:
+                if self.data1 and re.findall(pattern, self.data1):
                     self.updateChannelStatus('send')
                 self.data2 = ''
                 if self.channel and self.shellCacheHuman:
@@ -833,7 +831,7 @@ class SchedulerClient(WebSocketSSHClient):
             #     self.input.insert(0, self.prompt_string)
             # for line in self.input:
             #     out2 = out2.replace(line, '')
-            # print('Scheduled:', self.parentApi.log_id, result)
+            print('Scheduled:', self.parentApi.log_id, result)
             dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
             logdb = tools.SQLiteDB(dbpath)
             # Get the obh, sch. Then get the schedule object

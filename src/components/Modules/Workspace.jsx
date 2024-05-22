@@ -136,7 +136,9 @@ export default function WorkspaceTerminal(props) {
     React.useEffect(() => {
         const hasSocket = !!socketObject.current;
         if(!hasSocket) {
-            socketObject.current = new WebSocket((window.OYSAPE_BACKEND_HOST||'').replace('http', 'ws')+'/websocket');
+            socketObject.current = process.env.NODE_ENV === 'development'
+                ? new WebSocket(`ws://${window.location.hostname}:19790/websocket`) // for local testing
+                : new WebSocket((window.OYSAPE_BACKEND_HOST||'').replace('http', 'ws')+'/websocket');
             socketObject.current.onopen = () => {
                 // console.log('WebSocket Connected');
                 socketObject.current.send(JSON.stringify({action: 'init', uniqueKey:uniqueKey }));
@@ -163,10 +165,12 @@ export default function WorkspaceTerminal(props) {
             };
             socketObject.current.onerror = (error) => {
                 // console.error('WebSocket Error: ', error);
-                notification.error({
-                    message: 'WebSocket Error',
-                    description: 'Failed to connect to WebSocket. Terminal communication will be unavailable.',
-                });
+                if(process.env.NODE_ENV !== 'development'){
+                    notification.error({
+                        message: 'WebSocket Error',
+                        description: 'Failed to connect to WebSocket. Terminal communication will be unavailable.',
+                    });
+                }
                 socketPinger.current && clearInterval(socketPinger.current);
             };
         }

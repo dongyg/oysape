@@ -11,10 +11,13 @@ export function getDataFromCookie(key) {
   return '';
 }
 
-export function setDataToCookie(key, value, days = 30) {
-  const now = new Date();
-  now.setDate(now.getDate() + days);
-  const cookieValue = `${key}=${value}; path=/; expires=${now.toUTCString()};`;
+export function setDataToCookie(key, value, days) {
+  let cookieValue = `${key}=${value}; path=/;`;
+  if (days !== undefined) {
+    const now = new Date();
+    now.setDate(now.getDate() + days);
+    cookieValue += `expires=${now.toUTCString()};`;
+  }
   document.cookie = cookieValue;
 }
 

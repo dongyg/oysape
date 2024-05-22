@@ -160,10 +160,10 @@ export default function ServerEditor(props) {
         <Form.Item label="Port" name="port" tooltip="The port number ( default: 22 )">
           <InputNumber min={1} max={65535} placeholder='22' autoCapitalize='off' autoComplete='off' autoCorrect='off' />
         </Form.Item>
-        <Form.Item label="Password" name="password" validateStatus={passStatus} help={passHint} tooltip="Use the password to log in">
-          <Input placeholder='Password' autoCapitalize='off' autoComplete='off' autoCorrect='off' />
-        </Form.Item>
-        <Form.Item label="Private Key" name="prikey" validateStatus={passStatus} help={passHint} tooltip="Give the private key file. It can start with ~/. If it is not given, password will be used, or the default ssh private key will be used.">
+        {/* <Form.Item label="Password" name="password" validateStatus={passStatus} help={passHint} tooltip="Use the password to log in. The password will not be uploaded and will only be stored locally in current session. Servers that rely on password authentication cannot be used for scheduled tasks.">
+          <Input.Password placeholder='Password' autoCapitalize='off' autoComplete='off' autoCorrect='off' />
+        </Form.Item> */}
+        <Form.Item label="Private Key" name="prikey" validateStatus={passStatus} help={passHint} tooltip={<>The private key file. <br/>• The file path can start with ~. <br/>• The private key will not be uploaded. <br/>• When this server is used on other devices, the corresponding device must have the same private key file. <br/>• If the private key file is not specified, you will be prompted to provide a password when you use this server. If you give a empty password, the default SSH private key on the device will be used.<br/>• A server without a valid private key will not be able to be connected on a self-hosted Webhost.</>}>
           <Input placeholder='Private Key' autoCapitalize='off' autoComplete='off' autoCorrect='off' addonAfter={<Button type="text" onClick={openFile} icon={<FolderOpenOutlined />} style={{ height: "30px", borderTopLeftRadius: "0px", borderBottomLeftRadius: "0px" }}></Button>} />
         </Form.Item>
         <Form.Item label="Passphrase" name="passphrase" tooltip="The passphrase for the private key">

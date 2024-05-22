@@ -13,7 +13,7 @@ const ThemeContext = React.createContext({
   toggleCustomTheme: () => {},
 });
 
-const statusDefaultText = 'Oysape 2.5.17';
+const statusDefaultText = 'Oysape 2.5.22';
 
 export const ThemeProvider = ({ children }) => {
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);

@@ -303,6 +303,19 @@ class ApiOysape(ApiOauth):
         except Exception as e:
             return {"errinfo": str(e)}
 
+    def set_password_for_server(self, params):
+        serverKey = params.get('serverKey')
+        password = params.get('pass')
+        if serverKey and self.userSession.get('servers'):
+            for item in self.userSession['servers']:
+                if item.get('key') == serverKey:
+                    item['password'] = password
+                    break
+            return self.userSession
+        else:
+            return {}
+
+
 class ApiTerminal(ApiOysape):
     def __init__(self, clientId='', clientUserAgent='', _logging=consts.IS_LOGGING):
         super().__init__(clientId, clientUserAgent, _logging)

@@ -11,17 +11,21 @@ import { getShowTitle, getPathAndName, flatFileTree, parseTaskString0, getUnique
 import CodeEditor from '../Modules/CodeEditor';
 import Terminal from '../Modules/UITerminal1';
 import IframeComponent from './IframeComponent';
+import PassInputModal from '../Modules/PassInputModal';
 
 import './SearchInput.css';
 
 const SearchInput = () => {
   const { message } = App.useApp();
-  const { folderFiles, tabItems, setTabItems, setTabActiveKey, userSession } = useCustomContext();
+  const { folderFiles, tabItems, setTabItems, setTabActiveKey, userSession, setUserSession } = useCustomContext();
   const [options, setOptions] = useState([]);
   const [showSearch, setShowSearch] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [dropMenuShowed, setDropMenuShowed] = useState(false);
+  const [showPassInputModal, setShowPassInputModal] = useState(false);
+  const passForServer = useRef('');
+  const callbackExecuteInput = useRef(null);
   const inputSearch = useRef(null);
   const searchMode = useRef(''); // '' | '@' | ':' | '!'
   const indexServerSign = '@';
@@ -182,23 +186,68 @@ const SearchInput = () => {
     }
   }
 
+  const execFunctionByEnsuringServer = (serverKey, callback) => {
+    // Findout if the server has password or private key. If not, ask user to provide a password.
+    // If the password user given is empty, then the system default SSH private key will be used.
+    // callTask or openServerTerminal will be called when the password is provided, through callbackExecuteInput
+    const callMe = () => {
+      callbackExecuteInput.current = null;
+      if(callback) callback();
+    }
+    const servers = userSession.servers.filter((item) => item.name === serverKey);
+    if(servers.length===1 && !servers[0].password && !servers[0].prikey) {
+      passForServer.current = servers[0].key;
+      callbackExecuteInput.current = callMe;
+      setShowPassInputModal(true);
+    } else {
+      callMe();
+    }
+  }
   const openServerTerminal = (serverKey, taskKey) => {
-    const newIdx = tabItems.filter((item) => item.serverKey === serverKey).length + 1;
-    const uniqueKey = getUniqueKey();
-    setTabItems([...tabItems || [], {
-      key: uniqueKey,
-      serverKey: serverKey,
-      label: serverKey+'('+newIdx+')',
-      children: <Terminal uniqueKey={uniqueKey} serverKey={serverKey} taskKey={taskKey} />,
-    }]);
-    setTabActiveKey(uniqueKey);
+    const callMe = () => {
+      const newIdx = tabItems.filter((item) => item.serverKey === serverKey).length + 1;
+      const uniqueKey = getUniqueKey();
+      setTabItems([...tabItems || [], {
+        key: uniqueKey,
+        serverKey: serverKey,
+        label: serverKey+'('+newIdx+')',
+        children: <Terminal uniqueKey={uniqueKey} serverKey={serverKey} taskKey={taskKey} />,
+      }]);
+      setTabActiveKey(uniqueKey);
+    }
+    execFunctionByEnsuringServer(serverKey, callMe);
   };
 
   const executeInput = (text) => {
     if(text.indexOf(indexPipelineSign) === 0){
       const pipelineName = text.substring(1);
       const pipelineObj = userSession.pipelines.filter((item) => item.name === pipelineName)[0];
-      window.callPipeline(pipelineObj);
+      // If there are servers without password and private key, will ask user to provide a password.
+      // The pipeline will be executed only when all servers have password or private key.
+      // But, the passwords user given could be empty, then the system default SSH private key files will be used.
+      // Furthermore, if the password user given is not correct, the user has to restart the App. He/she will be asked to provide password again.
+      // Loop 1, findout if all servers have password
+      let allHavePass = true;
+      let lastNoPass = null;
+      pipelineObj.steps.forEach((step) => {
+        const servers = userSession.servers.filter((item) => item.name === step.target && step.target !== '');
+        if(servers.length===1 && !servers[0].password && !servers[0].prikey) {
+          allHavePass = false;
+          lastNoPass = JSON.stringify(step);
+        }
+      })
+      // Loop 2, ask user to provide password for servers without password
+      pipelineObj.steps.forEach((step) => {
+        const callMe = () => {
+          passForServer.current = null;
+          message.info('Please run this pipeline again.');
+        }
+        execFunctionByEnsuringServer(step.target, lastNoPass===JSON.stringify(step)?callMe:null);
+      })
+      // Finally, execute the pipeline if all servers have password
+      if(allHavePass) {
+        window.callPipeline(pipelineObj);
+      }
     } else if (text.indexOf(indexServerSign) >= 0 || text.indexOf(indexTaskSign) >= 0) {
       const taskInput = parseTaskString0(text);
       // console.log('executeInput', text, taskInput);
@@ -214,7 +263,10 @@ const SearchInput = () => {
         openServerTerminal(taskInput.server, taskInput.task);
       } else if (tasks.length>0 && servers.length>0) {
         // Run a task in Workspace. Could be interactive or not
-        window.callTask(tasks[0], servers[0], taskInput);
+        const callMe = () => {
+          window.callTask(tasks[0], servers[0], taskInput);
+        }
+        execFunctionByEnsuringServer(servers[0].key, callMe);
       }
     } else {
       openProjectFile(text, text.split(/[\\/]/).pop());
@@ -358,6 +410,18 @@ const SearchInput = () => {
           }>{!dropMenuShowed?(window.oypaseTabs&&window.oypaseTabs.workspace&&window.oypaseTabs.workspace._core.browser.isMac?<BsCommand/>:<PiControl/>):null}<BsArrowReturnLeft /></div> }}
         />
       </AutoComplete>
+      <PassInputModal visible={showPassInputModal} defaultValue={""} title={"Password for " + passForServer.current}
+        placeholder={"The default SSH private key will be used if the password is empty"} extra={"If you give a wrong password, you will need to restart the App to have chance to input it again."}
+        onCancel={() => setShowPassInputModal(false)}
+        onCreate={(pass) => {
+          setShowPassInputModal(false);
+          callApi('set_password_for_server', {pass: pass, serverKey: passForServer.current}).then((res) => {
+            if(res&&res.email) setUserSession(res);
+            if(callbackExecuteInput.current) {
+              callbackExecuteInput.current();
+            }
+          })
+        }}></PassInputModal>
     </div>
   )
 };

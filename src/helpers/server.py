@@ -28,9 +28,12 @@ def getClientIdAndToken(req):
         # Use the pywebview token as the clientId for desktop version. It should have a apiObject in apis.apiInstances
         import webview
         clientId = webview.token
+        apiObject = apis.apiInstances.get(clientId) if clientId else None
+        clientToken = apiObject.userToken if apiObject else None
     else:
         clientId = req.cookies.get('client_id')
-    clientToken = req.cookies.get('client_token')
+        clientToken = req.cookies.get('client_token')
+    # logging.info(('getClientIdAndToken', req.path, clientIpAddress, clientId, clientToken))
     return clientIpAddress, clientId, clientToken
 
 
@@ -68,6 +71,7 @@ def handle_websocket():
                 else:
                     apiObject.sendCombinedInput(recvData) if uniqueKey == 'workspace' else apiObject.sendTerminalInput(recvData)
             else:
+                logging.info(('Socket Error:', clientIpAddress, clientId, uniqueKey, apiObject, clientToken, clientToken == apiObject.userToken))
                 break
     except WebSocketError:
         traceback.print_exc()
@@ -187,6 +191,7 @@ def checkWebhost():
             if webhostObject.get('schedules'):
                 scheduler.initScheduler(webhostObject.get('obh'), webhostObject.get('schedules'))
         except Exception as e:
+            traceback.print_exc()
             logging.info(('Error', e))
     return {'data': 'ok'}
 

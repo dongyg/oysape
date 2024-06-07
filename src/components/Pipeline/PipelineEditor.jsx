@@ -78,14 +78,14 @@ export default function PipelineEditor(props) {
   }
   const onRunIt = () => {
     if(form.getFieldValue('name')) {
-      if(tabItems.filter((item) => item.key === uniqueKey && item.hasSomethingNew).length > 0) form.submit();
+      if(tabItems.find((item) => item.key === uniqueKey && item.hasSomethingNew)) form.submit();
       if(window.fillSearchPipeline) window.fillSearchPipeline(form.getFieldValue('name'));
     }
   }
 
   // init form
   useEffect(() => {
-    const pipelineObj = (userSession.pipelines||[]).filter((item) => item.key === pipelineKey.current)[0]||{};
+    const pipelineObj = (userSession.pipelines||[]).find((item) => item.key === pipelineKey.current)||{};
     setTags(pipelineObj.tags||[]);
     setSteps(JSON.parse(JSON.stringify(pipelineObj.steps||[])));
     form.setFieldsValue(pipelineObj);

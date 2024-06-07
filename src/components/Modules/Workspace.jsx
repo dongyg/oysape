@@ -130,15 +130,19 @@ export default function WorkspaceTerminal(props) {
             callApi('closeCombConnections', {});
             window.removeEventListener('resize', onResize);
             xtermRef.current.dispose();
+            delete window.oypaseTabs[uniqueKey];
         }
     }, [setBrowserInfo, uniqueKey]);
 
     React.useEffect(() => {
         const hasSocket = !!socketObject.current;
         if(!hasSocket) {
-            socketObject.current = process.env.NODE_ENV === 'development'
-                ? new WebSocket(`ws://${window.location.hostname}:19790/websocket`) // for local testing
-                : new WebSocket((window.OYSAPE_BACKEND_HOST||'').replace('http', 'ws')+'/websocket');
+            const url = process.env.NODE_ENV === 'development'
+                ? `ws://${window.location.hostname}:19790/websocket` // for local testing
+                : ((window.OYSAPE_BACKEND_HOST||'').replace('http', 'ws')+'/websocket');
+            console.log(url);
+            socketObject.current = new WebSocket(url);
+            xtermRef.current.socketObject = socketObject.current;
             socketObject.current.onopen = () => {
                 // console.log('WebSocket Connected');
                 socketObject.current.send(JSON.stringify({action: 'init', uniqueKey:uniqueKey }));

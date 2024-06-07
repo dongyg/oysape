@@ -4,7 +4,7 @@ import { Layout, Button, Image, Alert, } from 'antd';
 import { GithubOutlined, GoogleOutlined, GlobalOutlined, LoadingOutlined } from "@ant-design/icons";
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { isDesktopVersion, callApi, setTokenToCookie, delTokenFromCookie } from '../Common/global';
+import { isDesktopVersion, callApi, getCredentials, setTokenToCookie, delTokenFromCookie } from '../Common/global';
 
 export default function BodyContainer() {
   const { setUserSession } = useCustomContext();
@@ -78,7 +78,7 @@ export default function BodyContainer() {
   window.showMessageOnSigninPage = showMessageOnSigninPage;
 
   const reloadUserSession = () => {
-    callApi('reloadUserSession', {refresh: true}).then((data) => {
+    callApi('reloadUserSession', getCredentials()).then((data) => {
       // console.log('reloadUserSession', data);
       if(data?.uid) {
         setUserSession(data);

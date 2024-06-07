@@ -37,7 +37,8 @@ const ContentFrame = () => {
         description: 'Workspace tab cannot be closed.',
       });
     } else if (tabTitle) {
-      const hasSomethingNew = tabItems.filter((pane) => pane.key === targetKey)[0].hasSomethingNew;
+      const findItem = tabItems.find((pane) => pane.key === targetKey)
+      const hasSomethingNew = findItem && findItem.hasSomethingNew;
       if (force || !hasSomethingNew) {
         removeTab(targetKey);
       } else {

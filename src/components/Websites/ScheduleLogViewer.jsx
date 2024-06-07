@@ -9,7 +9,10 @@ import { callApi } from '../Common/global';
 const { Content, Sider } = Layout;
 
 function decolorizeText(text) {
-    const ansiEscape = /[\u001b\u009b][[\]()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*[0-9A-ORZcf-nqry=><]?|[^\x1b\x9b]*[\x1b\x9b]?[0-9A-ORZcf-nqry=><])/g;
+    // const ansiEscape = /[\u001b\u009b][[\]()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*[0-9A-ORZcf-nqry=><]?|[^\x1b\x9b]*[\x1b\x9b]?[0-9A-ORZcf-nqry=><])/g;
+    // const ansiEscape = /[\u001b\u009b][[\]()#;?]*(?:\d{1,4}(?:;\d{0,4})*\d?[A-ORZcf-nqry=><]?|[^\u001b\u009b]*[\u001b\u009b]?\d[A-ORZcf-nqry=><])/g;
+    const ansiEscapeStr = '[\\u001b\\u009b][[\\]()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*[0-9A-ORZcf-nqry=><]?|[^\\u001b\\u009b]*[\\u001b\\u009b]?[0-9A-ORZcf-nqry=><])';
+    const ansiEscape = new RegExp(ansiEscapeStr, 'g');
     return text.replace(ansiEscape, '');
 }
 
@@ -22,7 +25,7 @@ const ScheduleLogViewer = ({ obh, sch, tname }) => {
     const [currLogContent, setCurrLogContent] = useState('');
     const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0, showSizeChanger: false, showQuickJumper: true, showTotal: total => `Total ${total}` });
 
-    const fetchLogs = useCallback((page = pagination.current, pageSize = pagination.pageSize) => {
+    const fetchLogs = useCallback((page, pageSize) => {
         callApi('callFetchScheduleLogs', { obh, sch, page, pageSize, tname }).then((data) => {
             if(data && data.errinfo) {
                 message.error(data.errinfo);
@@ -31,15 +34,15 @@ const ScheduleLogViewer = ({ obh, sch, tname }) => {
                 setPagination(prev => ({ ...prev, total: data.total, current: page, pageSize }));
             }
         });
-    }, [obh, sch, message]); // remove pagination from dependencies to avoid re-running
+    }, [obh, sch, message, tname]);
 
     const handleTableChange = useCallback((pagination) => {
         fetchLogs(pagination.current, pagination.pageSize);
     }, [fetchLogs]);
 
     useEffect(() => {
-        fetchLogs();
-    }, []); // empty dependency array to avoid re-running
+        fetchLogs(1, 10);
+    }, [fetchLogs]); // empty dependency array to avoid re-running
 
     let columns = [ { title: 'Time', dataIndex: 'ts', key: 'ts', render: text => dayjs.unix(text).format('MM-DD HH:mm:ss')  }, ]
     if(!sch) {
@@ -69,7 +72,7 @@ const ScheduleLogViewer = ({ obh, sch, tname }) => {
     return (
         <Layout>
             <Sider width={sch?440:560} height="100%" theme="light">
-                <Table style={{ height: "100%" }}
+                <Table size="small" style={{ height: "100%" }}
                     className='hide-selection-column'
                     rowSelection={rowSelection}
                     dataSource={logs}

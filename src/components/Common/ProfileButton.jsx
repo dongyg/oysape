@@ -1,15 +1,17 @@
-import React, {useEffect, useRef} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import { App, Dropdown, Space, Switch, Avatar, theme } from 'antd';
-import { CheckOutlined, ReloadOutlined, SettingOutlined, LogoutOutlined, QuestionCircleFilled, UserOutlined } from "@ant-design/icons";
+import { CheckOutlined, ReloadOutlined, SettingOutlined, LogoutOutlined, QuestionCircleFilled, UserOutlined, KeyOutlined } from "@ant-design/icons";
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { callApi, delTokenFromCookie, isDesktopVersion } from './global';
+import { callApi, getCredentials, delTokenFromCookie, isDesktopVersion } from './global';
+import CredentialsModal from '../Server/CredentialsModal';
 
 const { useToken } = theme;
 
 export default function ProfileButton() {
   const { message, modal } = App.useApp();
   const { customTheme, toggleCustomTheme, userSession, setUserSession } = useCustomContext();
+  const [visibleCredentialsModal, setVisibleCredentialsModal] = useState(false);
   const { token } = useToken();
   const isSignOut = useRef(false);
 
@@ -54,7 +56,7 @@ export default function ProfileButton() {
     return userSession.last_login_agent ? userSession.email + ' (' + userSession.last_login_agent + ')' : 'Sign In';
   }
   const reloadEverything = (callDone) => {
-    callApi('reloadUserSession', {}).then((res) => {
+    callApi('reloadUserSession', getCredentials()).then((res) => {
       setUserSession(res);
       window.reloadFolderFiles && window.reloadFolderFiles();
       if(callDone) callDone();
@@ -70,11 +72,12 @@ export default function ProfileButton() {
       children: userSession ? [
         { key: 'menuReloadTeams', label: 'Reload everything', icon: <ReloadOutlined />, },
         { key: 'menuAccount', label: ('Manage Account'), icon: <SettingOutlined />, },
+        { key: 'menuCredentials', label: ('My Credentials'), icon: <KeyOutlined />, },
         { key: 'menuSignOut', label: ('Sign Out'), icon: <LogoutOutlined />, },
       ] : undefined,
     },
-    // { type: 'divider', },
-    // { key: 'menuTest3', label: ( 'testApi' ), },
+    process.env.NODE_ENV === 'development' ? { type: 'divider', } : undefined,
+    process.env.NODE_ENV === 'development' ? { key: 'menuTest3', label: ( 'testApi' ), } : undefined,
   ];
   const onClickMenu = ({ key }) => {
     if(key === 'menuManageTeams') {
@@ -98,6 +101,8 @@ export default function ProfileButton() {
           window.open(res.url);
         }
       });
+    } else if(key === 'menuCredentials') {
+      setVisibleCredentialsModal(true);
     } else if(key === 'menuSignOut') {
       modal.confirm({
         title: 'Confirm to Sign Out',
@@ -125,9 +130,10 @@ export default function ProfileButton() {
         },
       });
     }else if(key === 'menuTest3') {
-      callApi('testApi', {}).then((res) => {
-        message.info(JSON.stringify(res));
-      })
+      // callApi('testApi', {}).then((res) => {
+      //   message.info(JSON.stringify(res));
+      // })
+      console.log(userSession)
     }else{
       // If key is teamId, switch team
       if(userSession && userSession.teams){
@@ -144,6 +150,14 @@ export default function ProfileButton() {
     }
   };
 
+  const handleCredentialsCancel = () => {
+    setVisibleCredentialsModal(false);
+  }
+
+  const handleCredentialsChoose = (data) => {
+    console.log('data', data);
+  }
+
   useEffect(() => {
     const handleBeforeUnload = (event) => {
       console.log('before unload');
@@ -158,17 +172,20 @@ export default function ProfileButton() {
   }, [userSession]);
 
   return (
-    <Dropdown menu={{ items: menuItems, onClick: onClickMenu }} placement="topRight" trigger={['click']}
-      dropdownRender={(menu) => (
-        <div style={contentStyle}>
-          <Space style={{ padding: '8px 16px' }}>
-            Theme: <Switch checkedChildren="Light" unCheckedChildren="Dark" defaultChecked={!customTheme.isDark} onChange={toggleCustomTheme} />
-          </Space>
-          {React.cloneElement(menu, { style: menuStyle })}
-        </div>
-      )}
-    >
-      { getAvatar() }
-    </Dropdown>
+    <>
+      <Dropdown menu={{ items: menuItems, onClick: onClickMenu }} placement="topRight" trigger={['click']}
+        dropdownRender={(menu) => (
+          <div style={contentStyle}>
+            <Space style={{ padding: '8px 16px' }}>
+              Theme: <Switch checkedChildren="Light" unCheckedChildren="Dark" defaultChecked={!customTheme.isDark} onChange={toggleCustomTheme} />
+            </Space>
+            {React.cloneElement(menu, { style: menuStyle })}
+          </div>
+        )}
+      >
+        { getAvatar() }
+      </Dropdown>
+      <CredentialsModal visible={visibleCredentialsModal} onCancel={handleCredentialsCancel} onChoose={handleCredentialsChoose} initialMode="list" />
+    </>
 )
 }

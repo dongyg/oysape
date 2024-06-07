@@ -53,9 +53,9 @@ export default function StepsComponent({steps, onChange, ...props}) {
   const handleOpenServer = useCallback((serverKey)=>{
     // Same with editServer in ServerList.jsx
     const tabKey = serverKey+'-server-editor';
-    const findItems = tabItems.filter((item) => item.serverKey === tabKey);
-    if(findItems.length > 0) {
-      setTabActiveKey(findItems[0].key);
+    const findItem = tabItems.find((item) => item.serverKey === tabKey);
+    if(findItem) {
+      setTabActiveKey(findItem.key);
     }else{
       const uniqueKey = getUniqueKey();
       setTabItems([...tabItems || [], {
@@ -71,9 +71,9 @@ export default function StepsComponent({steps, onChange, ...props}) {
   const handleOpenTask = useCallback((taskKey)=>{
     // Same with editTask in TaskList.jsx
     const tabKey = taskKey+'-task-editor';
-    const findItems = tabItems.filter((item) => item.taskKey === tabKey);
-    if(findItems.length > 0) {
-      setTabActiveKey(findItems[0].key);
+    const findItem = tabItems.find((item) => item.taskKey === tabKey);
+    if(findItem) {
+      setTabActiveKey(findItem.key);
     }else{
       const uniqueKey = getUniqueKey();
       setTabItems([...tabItems || [], {

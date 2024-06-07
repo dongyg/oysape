@@ -7,6 +7,8 @@ import { getUniqueKey, callApi } from '../Common/global';
 import TaskList from './TaskList';
 import TaskEditor from './TaskEditor';
 
+import '../Server/ServersPanel.css';
+
 export default function TasksPanel() {
   const { message, modal } = App.useApp();
   const { hideSidebarIfNeed, tabItems, setTabItems, setTabActiveKey, userSession, setUserSession } = useCustomContext();

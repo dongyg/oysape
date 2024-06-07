@@ -4,14 +4,14 @@ import { SearchOutlined } from "@ant-design/icons";
 import { BsCommand, BsArrowReturnLeft } from "react-icons/bs";
 import { PiControl } from "react-icons/pi";
 
-import { callApi } from '../Common/global';
+import { callApi, saveCredentialMapping } from '../Common/global';
 import { useCustomContext } from '../Contexts/CustomContext'
 import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
 import { getShowTitle, getPathAndName, flatFileTree, parseTaskString0, getUniqueKey, calculateMD5 } from '../Common/global';
 import CodeEditor from '../Modules/CodeEditor';
 import Terminal from '../Modules/UITerminal1';
 import IframeComponent from './IframeComponent';
-import PassInputModal from '../Modules/PassInputModal';
+import CredentialsModal from '../Server/CredentialsModal';
 
 import './SearchInput.css';
 
@@ -23,8 +23,8 @@ const SearchInput = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [dropMenuShowed, setDropMenuShowed] = useState(false);
-  const [showPassInputModal, setShowPassInputModal] = useState(false);
-  const passForServer = useRef('');
+  const [visibleCredentialsModal, setVisibleCredentialsModal] = useState(false);
+  const [passForServer, setPassForServer] = useState(null);
   const callbackExecuteInput = useRef(null);
   const inputSearch = useRef(null);
   const searchMode = useRef(''); // '' | '@' | ':' | '!'
@@ -173,9 +173,9 @@ const SearchInput = () => {
 
   const openWebpageInTab = (url, title) => {
     let tabKey = calculateMD5(url);
-    const findItems = tabItems.filter((item) => item.key === tabKey);
-    if(findItems.length > 0) {
-      setTabActiveKey(findItems[0].key);
+    const findItem = tabItems.find((item) => item.key === tabKey);
+    if(findItem) {
+      setTabActiveKey(findItem.key);
     }else{
       setTabItems([...tabItems || [], {
         key: tabKey,
@@ -187,18 +187,17 @@ const SearchInput = () => {
   }
 
   const execFunctionByEnsuringServer = (serverKey, callback) => {
-    // Findout if the server has password or private key. If not, ask user to provide a password.
-    // If the password user given is empty, then the system default SSH private key will be used.
-    // callTask or openServerTerminal will be called when the password is provided, through callbackExecuteInput
+    // Findout if the server has a credential. If not, ask user to provide one.
+    // callTask or openServerTerminal will be called when the credential is provided, through callbackExecuteInput
     const callMe = () => {
       callbackExecuteInput.current = null;
       if(callback) callback();
     }
-    const servers = userSession.servers.filter((item) => item.name === serverKey);
-    if(servers.length===1 && !servers[0].password && !servers[0].prikey) {
-      passForServer.current = servers[0].key;
+    const v1 = userSession.servers.find((item) => item.name === serverKey);
+    if(v1 && typeof v1.credType === 'undefined') {
+      setPassForServer( v1.key );
       callbackExecuteInput.current = callMe;
-      setShowPassInputModal(true);
+      setVisibleCredentialsModal(true);
     } else {
       callMe();
     }
@@ -230,8 +229,8 @@ const SearchInput = () => {
       let allHavePass = true;
       let lastNoPass = null;
       pipelineObj.steps.forEach((step) => {
-        const servers = userSession.servers.filter((item) => item.name === step.target && step.target !== '');
-        if(servers.length===1 && !servers[0].password && !servers[0].prikey) {
+        const v1 = userSession.servers.find((item) => item.name === step.target);
+        if(v1 && typeof v1.credType === 'undefined') {
           allHavePass = false;
           lastNoPass = JSON.stringify(step);
         }
@@ -239,7 +238,7 @@ const SearchInput = () => {
       // Loop 2, ask user to provide password for servers without password
       pipelineObj.steps.forEach((step) => {
         const callMe = () => {
-          passForServer.current = null;
+          setPassForServer(null);
           message.info('Please run this pipeline again.');
         }
         execFunctionByEnsuringServer(step.target, lastNoPass===JSON.stringify(step)?callMe:null);
@@ -337,7 +336,7 @@ const SearchInput = () => {
           callApi('read_file', {path:absPath}).then((fileBody)=>{
             if(typeof fileBody === 'string' && fileBody.length>0) {
               const uniqueKey = calculateMD5(absPath);
-              if (tabItems.filter((item) => item.key === uniqueKey)[0]) {
+              if (tabItems.find((item) => item.key === uniqueKey)) {
               } else {
                 setTabItems([...tabItems || [], {
                   key: uniqueKey,
@@ -356,6 +355,24 @@ const SearchInput = () => {
         }
       }else if(absPath && absPath.errinfo) {
         message.error(absPath.errinfo);
+      }
+    })
+  }
+
+  const handleCredentialsCancel = () => {
+    setVisibleCredentialsModal(false);
+  }
+
+  const handleCredentialsChoose = (data) => {
+    callApi('set_credential_for_server', {credential: data, serverKey: passForServer}).then((res) => {
+      if(res&&res.email) {
+        saveCredentialMapping(userSession.team0, passForServer, data['alias']);
+        setUserSession(res);
+        if(callbackExecuteInput.current) {
+          callbackExecuteInput.current();
+        }
+      }else if (res && res.errinfo) {
+        message.error(res.errinfo);
       }
     })
   }
@@ -410,18 +427,7 @@ const SearchInput = () => {
           }>{!dropMenuShowed?(window.oypaseTabs&&window.oypaseTabs.workspace&&window.oypaseTabs.workspace._core.browser.isMac?<BsCommand/>:<PiControl/>):null}<BsArrowReturnLeft /></div> }}
         />
       </AutoComplete>
-      <PassInputModal visible={showPassInputModal} defaultValue={""} title={"Password for " + passForServer.current}
-        placeholder={"The default SSH private key will be used if the password is empty"} extra={"If you give a wrong password, you will need to restart the App to have chance to input it again."}
-        onCancel={() => setShowPassInputModal(false)}
-        onCreate={(pass) => {
-          setShowPassInputModal(false);
-          callApi('set_password_for_server', {pass: pass, serverKey: passForServer.current}).then((res) => {
-            if(res&&res.email) setUserSession(res);
-            if(callbackExecuteInput.current) {
-              callbackExecuteInput.current();
-            }
-          })
-        }}></PassInputModal>
+      <CredentialsModal visible={visibleCredentialsModal} onCancel={handleCredentialsCancel} onChoose={handleCredentialsChoose} initialMode="choose" initTitle={'Choose Credential'+(passForServer?' for '+passForServer:'')} />
     </div>
   )
 };

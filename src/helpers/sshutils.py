@@ -60,15 +60,19 @@ def create_ssh_connection(hostname, username=None, port=22, password=None, priva
     username = username or getpass.getuser()
     if not password and not private_key:
         raise ValueError("No password or private key provided")
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    if password:
-        client.connect(hostname, port=port, username=username, password=password, timeout=10)
-    elif private_key:
-        private_key = get_paramiko_key_from_file(private_key, passphrase)
-        client.connect(hostname, port=port, username=username, pkey=private_key, timeout=10)
-    client.get_transport().set_keepalive(30)
-    return client
+    try:
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        if password:
+            client.connect(hostname, port=port, username=username, password=password, timeout=10)
+        elif private_key:
+            private_key = get_paramiko_key_from_file(private_key, passphrase)
+            client.connect(hostname, port=port, username=username, pkey=private_key, timeout=10)
+        client.get_transport().set_keepalive(30)
+        return client
+    except Exception as e:
+        traceback.print_exc()
+        return str(e)
 
 def create_ssh_string(hostname, username=None, port=22):
     return 'ssh://%s@%s:%s'%(username or getpass.getuser(), hostname, (port or 22))
@@ -192,11 +196,15 @@ class SSHClient:
         self.data2 = ''
         self.input = []
         self.output = ''
-        self.client = create_ssh_connection(self.hostname, self.username, self.port, self.password, self.private_key, self.passphrase)
-        self.transport = self.client._transport
-        self.openChannel()
-        self.running = True
-        _thread.start_new_thread(self.mainloop,())
+        v1 = create_ssh_connection(self.hostname, self.username, self.port, self.password, self.private_key, self.passphrase)
+        if isinstance(v1, paramiko.SSHClient):
+            self.client = v1
+            self.transport = self.client._transport
+            self.openChannel()
+            self.running = True
+            _thread.start_new_thread(self.mainloop,())
+        else:
+            self.message = v1
 
     def openChannel(self):
         if not self.isChannelActive():
@@ -491,6 +499,7 @@ class SSHClient:
         return {'count': ret1, 'size': ret2}
 
     def upload(self, local_path, remote_path, excludes=None):
+        if not self.client: return {'errinfo': 'No server connection'}
         timeout = 5
         passed = 0
         while not self.areAllTasksDone() and passed < timeout:
@@ -510,6 +519,7 @@ class SSHClient:
             return {'errinfo': 'Local path not found: %s' % local_path, 'count': 0, 'size': 0}
 
     def download(self, remote_path, local_path, excludes=None):
+        if not self.client: return {'errinfo': 'No server connection'}
         timeout = 5
         passed = 0
         while not self.areAllTasksDone() and passed < timeout:
@@ -536,6 +546,7 @@ class SSHClient:
             return {'errinfo': str(e), 'count': 0, 'size': 0}
 
     def getServerFiles(self, folder):
+        if not self.client: return {'errinfo': 'No server connection'}
         try:
             sftp = self.client.open_sftp()
             files = []
@@ -552,6 +563,7 @@ class SSHClient:
             return {'errinfo': str(e)}
 
     def open_remote_file(self, thisPath):
+        if not self.client: return {'errinfo': 'No server connection'}
         try:
             content = ''
             sftp = self.client.open_sftp()
@@ -570,6 +582,7 @@ class SSHClient:
             return {'errinfo': str(e)}
 
     def save_remote_file(self, thisPath, content):
+        if not self.client: return {'errinfo': 'No server connection'}
         try:
             sftp = self.client.open_sftp()
             try:
@@ -586,6 +599,7 @@ class SSHClient:
             return {'errinfo': str(e)}
 
     def dockerCheckEnv(self):
+        self.dockerCommandPrefix = ''
         tryCmds = ['', '/usr/local/bin/' ]
         for cmd in tryCmds:
             retval = self.dockerGetCommandResult(cmd+'docker version')
@@ -605,6 +619,7 @@ class SSHClient:
         return {'errinfo': 'Docker is not found'}
 
     def dockerComposeCheckEnv(self):
+        self.dockerComposePrefix = ''
         tryCmds = ['docker compose', 'docker-compose', ]
         for cmd in tryCmds:
             retval = self.dockerGetCommandResult(cmd)
@@ -681,9 +696,9 @@ class SSHClient:
             {'label': 'pause', 'key': 'tree_menu_command_container_pause', 'command': self.dockerCommandPrefix+'docker container pause {theName}', 'icon':'PauseOutlined' },
             {'label': 'stop', 'key': 'tree_menu_command_container_stop', 'command': self.dockerCommandPrefix+'docker container stop {theName}', 'icon':'BorderOutlined' },
             {'type': 'divider' },
-            {'label': 'logs -f', 'key': 'tree_menu_command_container_logs', 'command': self.dockerCommandPrefix+'docker container logs -f {theName}', 'terminal': True, },
-            {'label': 'inspect', 'key': 'tree_menu_command_container_inspect', 'command': self.dockerCommandPrefix+'docker container inspect {theName}', },
-            {'label': 'stats --no-stream', 'key': 'tree_menu_command_container_stats', 'command': self.dockerCommandPrefix+'docker container stats --no-stream {theName}', },
+            {'label': 'logs -f', 'key': 'tree_menu_command_container_logs', 'command': self.dockerCommandPrefix+'docker container logs -f {theName}', 'terminal': True, 'icon':'UnorderedListOutlined'},
+            {'label': 'inspect', 'key': 'tree_menu_command_container_inspect', 'command': self.dockerCommandPrefix+'docker container inspect {theName}', 'icon':'EyeOutlined'},
+            {'label': 'stats --no-stream', 'key': 'tree_menu_command_container_stats', 'command': self.dockerCommandPrefix+'docker container stats --no-stream {theName}', 'icon':'LineChartOutlined'},
             {'type': 'divider' },
             {'label': 'rm', 'key': 'tree_menu_command_container_rm', 'command': self.dockerCommandPrefix+'docker container rm {theName}', 'icon':'DeleteOutlined', 'confirm': 'Are you sure you want to delete this container' },
         ]}
@@ -697,8 +712,8 @@ class SSHClient:
         else:
             imageList = [{'key': self.serverKey+'_docker_image_'+x['ID'], 'theName': x['Repository'], 'title': x['Repository']+':'+x['Tag']+' ('+x['Size']+')', 'isLeaf': True, 'parent': imagesParentKey, 'raw':x } for x in (retval.get('output') or [])]
         return {'key': imagesParentKey, 'title': 'Images', 'isLeaf': False, 'children': imageList, 'subMenus':[
-            {'label': 'inspect', 'key': 'tree_menu_command_image_inspect', 'command': self.dockerCommandPrefix+'docker image inspect {theName}', },
-            {'label': 'history', 'key': 'tree_menu_command_image_history', 'command': self.dockerCommandPrefix+'docker image history {theName}', },
+            {'label': 'inspect', 'key': 'tree_menu_command_image_inspect', 'command': self.dockerCommandPrefix+'docker image inspect {theName}', 'icon':'EyeOutlined'},
+            {'label': 'history', 'key': 'tree_menu_command_image_history', 'command': self.dockerCommandPrefix+'docker image history {theName}', 'icon':'HistoryOutlined'},
             {'type': 'divider' },
             {'label': 'rm', 'key': 'tree_menu_command_image_rm', 'command': self.dockerCommandPrefix+'docker image rm {theName}', 'icon':'DeleteOutlined', 'confirm': 'Are you sure you want to delete this image' },
         ]}
@@ -708,16 +723,15 @@ class SSHClient:
         composeParentKey = self.serverKey+'_docker_composes'
         if self.dockerComposePrefix == None:
             retval = self.dockerComposeCheckEnv()
-        else:
-            retval = None
-        if retval and retval.get('errinfo'):
+            if isinstance(retval, str):
+                composeList = [{'key': self.serverKey+'_docker_compose_error', 'title': retval, 'isLeaf': True, }]
+            elif retval and retval.get('errinfo'):
+                composeList = [{'key': self.serverKey+'_docker_compose_error', 'title': retval.get('errinfo'), 'isLeaf': True, }]
+        retval = self.dockerComposeJsonResult(' ls --format=json -a')
+        if retval.get('errinfo'):
             composeList = [{'key': self.serverKey+'_docker_compose_error', 'title': retval.get('errinfo'), 'isLeaf': True, }]
         else:
-            retval = self.dockerComposeJsonResult(' ls --format=json -a')
-            if retval.get('errinfo'):
-                composeList = [{'key': self.serverKey+'_docker_compose_error', 'title': retval.get('errinfo'), 'isLeaf': True, }]
-            else:
-                composeList = [{'key': self.serverKey+'_docker_compose_'+x['Name'], 'theName':x['ConfigFiles'], 'title': x['Name']+' - '+x['Status'], 'isLeaf': True, 'parent': composeParentKey, 'raw':x } for x in (retval.get('output') or [])]
+            composeList = [{'key': self.serverKey+'_docker_compose_'+x['Name'], 'theName':x['ConfigFiles'], 'title': x['Name']+' - '+x['Status'], 'isLeaf': True, 'parent': composeParentKey, 'raw':x } for x in (retval.get('output') or [])]
         return {'key': composeParentKey, 'title': 'Composes', 'isLeaf': False, 'children': composeList, 'subMenus':[
             {'label': 'restart', 'key': 'tree_menu_command_compose_restart', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} restart', 'icon':'ReloadOutlined', },
             {'type': 'divider' },
@@ -725,7 +739,7 @@ class SSHClient:
             {'label': 'pause', 'key': 'tree_menu_command_compose_pause', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} pause', 'icon':'PauseOutlined', },
             {'label': 'stop', 'key': 'tree_menu_command_compose_stop', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} stop', 'icon':'BorderOutlined', },
             {'type': 'divider' },
-            {'label': 'logs -f', 'key': 'tree_menu_command_compose_logs', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} logs -f', 'terminal': True, },
+            {'label': 'logs -f', 'key': 'tree_menu_command_compose_logs', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} logs -f', 'terminal': True, 'icon':'UnorderedListOutlined', },
             {'type': 'divider' },
             {'label': 'up -d', 'key': 'tree_menu_command_compose_up-d', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} up -d', 'icon':'VerticalAlignTopOutlined', },
             {'label': 'down && up -d', 'key': 'tree_menu_command_compose_down_up-d', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} down && '+self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} up -d', 'icon':'ColumnHeightOutlined', },
@@ -746,12 +760,12 @@ class SSHClient:
             # Insert a node to show the Docker version
             featureList.append({'key': self.serverKey+'_docker_version', 'title': output, 'isLeaf': True, 'menus':[
                 {'label': 'ps -a', 'key': 'tree_menu_command_ps_a', 'command': self.dockerCommandPrefix+'docker ps -a', 'icon':'ToolOutlined' },
-                {'label': 'images', 'key': 'tree_menu_command_images', 'command': self.dockerCommandPrefix+'docker images', },
-                {'label': 'stats', 'key': 'tree_menu_command_stats', 'command': self.dockerCommandPrefix+'docker stats --no-stream', },
+                {'label': 'images', 'key': 'tree_menu_command_images', 'command': self.dockerCommandPrefix+'docker images', 'icon':'FileImageOutlined'},
+                {'label': 'stats', 'key': 'tree_menu_command_stats', 'command': self.dockerCommandPrefix+'docker stats --no-stream', 'icon':'LineChartOutlined'},
             ]})
-        featureList.append(self.dockerGetContainers())
-        featureList.append(self.dockerGetImages())
-        featureList.append(self.dockerGetComposes())
+            featureList.append(self.dockerGetContainers())
+            featureList.append(self.dockerGetImages())
+            featureList.append(self.dockerGetComposes())
         return {'version': output, 'featureList': featureList}
 
 
@@ -831,7 +845,6 @@ class SchedulerClient(WebSocketSSHClient):
             #     self.input.insert(0, self.prompt_string)
             # for line in self.input:
             #     out2 = out2.replace(line, '')
-            print('Scheduled:', self.parentApi.log_id, result)
             dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
             logdb = tools.SQLiteDB(dbpath)
             # Get the obh, sch. Then get the schedule object
@@ -857,4 +870,5 @@ class SchedulerClient(WebSocketSSHClient):
                     out2 = re.search(scheduleObj.get('regex'), result) if scheduleObj.get('regex') else [result]
                     if out2:
                         self.parentApi.sendNotification({'recipients': scheduleObj.get('recipients'), 'message': out2[0], 'mid': self.parentApi.log_id, 'title': sch})
-            logdb.update("UPDATE schedule_logs SET out1 = COALESCE(out1, '') || ? WHERE id = ?", (result, self.parentApi.log_id))
+                if scheduleObj and (not scheduleObj.get('runMode') == 'command'):
+                    logdb.update("UPDATE schedule_logs SET out1 = COALESCE(out1, '') || ? WHERE id = ?", (result, self.parentApi.log_id))

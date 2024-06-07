@@ -1,8 +1,8 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import CodeMirror from '@uiw/react-codemirror'
 import { solarizedLight, solarizedDark } from '@uiw/codemirror-theme-solarized';
 import { loadLanguage } from '@uiw/codemirror-extensions-langs';
-import { App, Dropdown, Button, Typography, Steps, Tabs, Checkbox, Divider, Row, Col, List, Form, Input, Modal, Tooltip } from 'antd';
+import { App, Dropdown, Button, Typography, Steps, Tabs, Checkbox, Divider, Row, Col, List, Form, Input, Modal, Tooltip, Table } from 'antd';
 import { DeleteOutlined, QuestionCircleFilled, EditOutlined, PlusOutlined, ClockCircleOutlined, PlayCircleOutlined, CheckCircleOutlined, RedoOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { SolutionOutlined, CaretRightOutlined, PauseOutlined, DeleteFilled } from "@ant-design/icons";
 import { RiInstallLine, RiUninstallLine } from "react-icons/ri";
@@ -14,6 +14,7 @@ import { callApi } from '../Common/global';
 
 import ScheduleForm from './ScheduleForm';
 import ScheduleLogViewer from './ScheduleLogViewer';
+import WebsiteCredentials from './WebsiteCredentials';
 
 const CheckboxGroup = Checkbox.Group;
 const { Title, Paragraph } = Typography;
@@ -68,20 +69,19 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
   const [installing, setInstalling] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [codeValue, setCodeValue] = useState(websiteObject.initScript||'');
+  const [visibleWebsiteCredentials, setVisibleWebsiteCredentials] = useState(false);
+  const passForServer = useRef('');
 
   // codemirror
   const onCodeChange = React.useCallback((val, viewUpdate) => {
     setCodeValue(val||'');
   }, [])
 
-  React.useEffect(() => {
-    window.getHostObject = () => {
-      return webhostObject;
-    }
-  })
   const plainOptions = Object.values(userSession.teams).filter(item => item.is_creator).map(item => item.tname);
   const defaultCheckedList = Object.values(userSession.teams).filter(item => item.is_creator).map(item => item.allow_sites&&item.allow_sites.includes(websiteObject.obh) ? item.tname : null).filter(x => x);
   const [checkedList, setCheckedList] = useState(defaultCheckedList);
+  const [credentialMapping, setCredentialMapping] = useState({});
+  const [credentialListing, setCredentialListing] = useState([]);
   const checkAll = plainOptions.length === checkedList.length;
   const indeterminate = checkedList.length > 0 && checkedList.length < plainOptions.length;
 
@@ -90,7 +90,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
   const [formSaving, setFormSaving] = useState(false);
   const scheduleFormRef = useRef();
 
-  const onChange = (list) => {
+  const onSelectTeamChange = (list) => {
     setCheckedList(list);
   };
   const onCheckAllChange = (e) => {
@@ -156,7 +156,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
         }else if(data && data.sites){
           message.success('Started successfully');
           setUserSession({...userSession, sites: data.sites});
-          setWebHostObject( data.sites.filter((item) => item.key === obh)[0] );
+          setWebHostObject( data.sites.find((item) => item.key === obh) );
         }
       })
     } catch (errorInfo) {
@@ -179,7 +179,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
           }else if(data && data.sites){
             message.success('Verified successfully');
             setUserSession({...userSession, sites: data.sites, teams: data.teams});
-            setWebHostObject( data.sites.filter((item) => item.key === obh)[0] );
+            setWebHostObject( data.sites.find((item) => item.key === obh) );
           }
         })
       },
@@ -200,7 +200,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
           }else if(data && data.sites){
             message.success('Stopped successfully');
             setUserSession({...userSession, sites: data.sites, teams: data.teams});
-            setWebHostObject( data.sites.filter((item) => item.key === obh)[0] );
+            setWebHostObject( data.sites.find((item) => item.key === obh) );
           }
         })
       },
@@ -250,7 +250,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
     scheduleFormRef.current.submitForm((data) => {
       setFormSaving(false);
       if(data) {
-        const record = data.filter((item) => item.obh === webhostObject.obh)[0];
+        const record = data.find((item) => item.obh === webhostObject.obh);
         if(record) {
           setWebHostObject(record);
         }
@@ -259,6 +259,47 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
     });
   };
 
+  const handleCredentialsCancel = () => {
+    setVisibleWebsiteCredentials(false);
+  }
+
+  const handleCredentialsChoose = (data) => {
+    callApi('set_credentials', {obh: webhostObject.obh, credentialMapping: { [userSession.team0]: { [passForServer.current]: data['alias']}}}).then((res) => {
+      if(res&&res.credentialMapping) {
+        setCredentialMapping(res.credentialMapping);
+      }else if(res && res.errinfo) {
+        message.error(res.errinfo);
+      }
+    })
+  }
+
+  useEffect(() => {
+    window.getHostObject = () => {
+      return websiteObject;
+    }
+    if(websiteObject.target) {
+      const v1 = userSession.servers.find((item) => item.name === websiteObject.target);
+      if(v1 && typeof v1.credType === 'undefined') {
+        message.error('Server ' + websiteObject.target + ' has no credentials. Please set credentials first.');
+      } else {
+        callApi('get_credentials', {'obh': websiteObject.obh}).then((res) => {
+          if(res) {
+            setCredentialMapping(res.credentialMapping || {});
+            setCredentialListing(res.credentialListing || []);
+            if(res.errinfo) {
+              message.error(res.errinfo);
+            }
+          } else {
+            message.error('Failed to load webhost credentials');
+          }
+        })
+      }
+    }
+
+    return () => {
+      delete window.getHostObject;
+    }
+  }, [websiteObject, message, userSession.servers]);
 
   return (
     <div className={customTheme.className+' withScrollContent'} style={{ backgroundColor: customTheme.colors["editor.background"], color: customTheme.colors["editor.foreground"], height: '100%', padding: '24px', overflowY: 'auto', overflowX: 'hidden', }}>
@@ -387,9 +428,6 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
             { key: 'webhost_teams', label: 'Applied Teams', children: <>
               {webhostObject.target && webhostObject.verified ?
                 <div style={{ marginTop: '20px' }}>
-                  <p>Indicates that members of the selected teams will be able to sign into this webhost..</p>
-                  <CheckboxGroup options={plainOptions} value={checkedList} onChange={onChange} />
-                  <Divider />
                   <Row justify="space-between">
                     <Col span={12}>
                       <Checkbox indeterminate={indeterminate} onChange={onCheckAllChange} checked={checkAll}>Select all</Checkbox>
@@ -398,6 +436,28 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                       <Button type="primary" onClick={() => execApplyToTeams()}>Apply</Button>
                     </Col>
                   </Row>
+                  <p>The members of the selected teams will be able to sign into this webhost.</p>
+                  <CheckboxGroup options={plainOptions} value={checkedList} onChange={onSelectTeamChange} />
+                  <Divider />
+                  {
+                    checkedList.includes(userSession.teams[userSession.team0].tname) ?
+                    <>
+                      <p>Credentials are required for the servers used in web hosting. For other team's servers, please switch to the team to set up credentials.</p>
+                      <Table size="small" columns={[
+                        { title: 'Server', dataIndex: 'name', key: 'name', },
+                        { title: 'Credential', dataIndex: 'cred', key: 'cred', width: '120px', },
+                        { title: '', key: 'action', width: '40px', render: (text, record) => (
+                          <>
+                            <Button type="text" icon={<EditOutlined />} onClick={() => {
+                              passForServer.current = record.key;
+                              setVisibleWebsiteCredentials(true);
+                            }}></Button>
+                          </>
+                        ) },
+                        ]} dataSource={userSession.servers.map((item) => {return {...item, cred: credentialMapping[userSession.team0]&&credentialMapping[userSession.team0][item.key]}})} rowKey="key">
+                      </Table>
+                    </> : null
+                  }
                 </div>
               : unavailable}
             </> },
@@ -426,7 +486,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                                 } else if(data && data.sites){
                                   message.success('Deleted successfully');
                                   setUserSession({...userSession, sites: data.sites});
-                                  setWebHostObject( data.sites.filter((item) => item.key === webhostObject.key)[0] );
+                                  setWebHostObject( data.sites.find((item) => item.key === webhostObject.key) );
                                 }
                               })
                             },
@@ -447,7 +507,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                                   } else if(data && data.sites){
                                     message.success('Started successfully');
                                     setUserSession({...userSession, sites: data.sites});
-                                    setWebHostObject( data.sites.filter((item) => item.key === webhostObject.key)[0] );
+                                    setWebHostObject( data.sites.find((item) => item.key === webhostObject.key) );
                                   }
                                 })
                               },
@@ -470,7 +530,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                                   } else if(data && data.sites){
                                     message.success('Stoped successfully');
                                     setUserSession({...userSession, sites: data.sites});
-                                    setWebHostObject( data.sites.filter((item) => item.key === webhostObject.key)[0] );
+                                    setWebHostObject( data.sites.find((item) => item.key === webhostObject.key) );
                                   }
                                 })
                               },
@@ -524,7 +584,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                                   } else if(data && data.sites){
                                     message.success('Deleted successfully');
                                     setUserSession({...userSession, sites: data.sites});
-                                    setWebHostObject( data.sites.filter((item) => item.key === webhostObject.key)[0] );
+                                    setWebHostObject( data.sites.find((item) => item.key === webhostObject.key) );
                                   }
                                 })
                               },
@@ -544,7 +604,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                                   } else if(data && data.sites){
                                     message.success('' + (item.running ? 'Stopped' : 'Started') + ' successfully');
                                     setUserSession({...userSession, sites: data.sites});
-                                    setWebHostObject( data.sites.filter((item) => item.key === webhostObject.key)[0] );
+                                    setWebHostObject( data.sites.find((item) => item.key === webhostObject.key) );
                                   }
                                 })
                               },
@@ -600,6 +660,8 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
         {!webhostObject.target&&!webhostObject.verified ? <Button danger onClick={() => execDelete(webhostObject.obh)}>Delete</Button> : 'Please stop first.'}
       </div>
 
+      {/* Credentials for servers */}
+      <WebsiteCredentials obh={webhostObject.obh} visible={visibleWebsiteCredentials} onCancel={handleCredentialsCancel} onChoose={handleCredentialsChoose} initialMode="choose" credentialListing={credentialListing}  />
     </div>
   );
 }

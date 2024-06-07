@@ -1,5 +1,5 @@
 import React, { useImperativeHandle, forwardRef, useRef, useState } from 'react';
-import { App, Form, Input, DatePicker, Radio, Row, Col, AutoComplete, Tag, Select } from 'antd';
+import { App, Form, Input, DatePicker, Radio, Row, Col, AutoComplete, Tag } from 'antd';
 import dayjs from 'dayjs';
 
 import { useCustomContext } from '../Contexts/CustomContext'
@@ -176,6 +176,7 @@ const ScheduleForm = (props, ref) => {
       scheduleFormRef.setFieldsValue({
         title: values.title||'',
         type: values.type||'interval',
+        runMode: values.runMode||'terminal',
         interval: values.interval||60,
         start: values.start ? dayjs(values.start) : null,
         end: values.end ? dayjs(values.end) : null,
@@ -190,15 +191,15 @@ const ScheduleForm = (props, ref) => {
     console.log('Received values from form:', values);
   };
 
-  const handleMembersChange = (value) => {
+  // const handleMembersChange = (value) => {
     // console.log(`selected ${value}`);
-  };
+  // };
 
   return (
     <Form
       form={scheduleFormRef}
       onFinish={onFinish}
-      initialValues={{ type: 'interval' }}
+      initialValues={{ type: 'interval', runMode: 'terminal' }}
       layout="vertical"
     >
       <Form.Item name="title" label="Title" tooltip="Identical Name of the schedule" rules={[{ required: true, message: 'Please input the title!' }]}>
@@ -243,7 +244,7 @@ const ScheduleForm = (props, ref) => {
               ) : null
             }
           </Form.Item>
-          </Col>
+        </Col>
       </Row>
 
       <Form.Item label="Action" rules={[{ required: true, message: 'Please input the action!' }]} >
@@ -269,6 +270,12 @@ const ScheduleForm = (props, ref) => {
           />
         </AutoComplete>
       </Form.Item>
+      <Form.Item name="runMode" label="Run Mode" rules={[{ required: true, message: 'Please select the run mode!' }]} tooltip={<>Terminal: Run all tasks in a login shell, which means it will have the same environment and output as when you log in.<br/><br/>Command: Run commands with exec_command in a non-login shell, which means it won’t have the user environment as when you log in. The output will be cleaner, showing only the command’s results without any extra shell prompts.</>} >
+        <Radio.Group>
+          <Radio value="terminal">Terminal</Radio>
+          <Radio value="command">Command</Radio>
+        </Radio.Group>
+      </Form.Item>
 
       {/* TODO: enable notification when mobile apps are deployed */}
       {/* <Form.Item name="recipients" label="Notification" tooltip="Send a notification if the task output matches the Regex. No notification will be sent if the recipients are not specified">
@@ -280,7 +287,7 @@ const ScheduleForm = (props, ref) => {
           }}
           placeholder="Recipients"
           defaultValue={[]}
-          onChange={handleMembersChange}
+          // onChange={handleMembersChange}
           options={[{email:userSession.email, status:'Active'}].concat(userSession.teams[userSession.team0].members.filter(member => member.status==='Active')).map(member => {
             return { label: member.email, value: member.email };
           })}

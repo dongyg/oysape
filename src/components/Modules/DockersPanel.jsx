@@ -1,6 +1,6 @@
 import React, {useState} from 'react';
 
-import { App, Dropdown, Select, Tree, } from 'antd';
+import { App, Dropdown, Select, Tree, Button, Tooltip, Space } from 'antd';
 import * as AntIcons from '@ant-design/icons';
 
 import { useCustomContext } from '../Contexts/CustomContext'
@@ -27,13 +27,16 @@ export default function ProjectsPanel() {
   const [contextMenuItems, setContextMenuItems] = React.useState([]);
   const [dockerCommandInputVisible, setDockerCommandInputVisible] = React.useState(false);
   const [dockerComposeInputVisible, setDockerComposeInputVisible] = React.useState(false);
-  const headerHeight = '56px';
+  const headerHeight = 56;
   const filetree = React.useRef(null);
   const time1 = React.useRef(0);
   const path1 = React.useRef('');
   const node1 = React.useRef(null);
   const miReloadAll = {label: 'Refresh', key: 'tree_menu_reload_all', icon: <AntIcon name="ReloadOutlined" />, }
   const miReloadOne = {label: 'Refresh', key: 'tree_menu_reload_one', icon: <AntIcon name="ReloadOutlined" />, }
+  const miDivider = {'type': 'divider' };
+  const miSetDockerCommand = {key: 'tree_menu_set_docker_command', label: 'Set Docker Command', icon: <AntIcon name="SettingOutlined" />};
+  const miSetComposeCommand = {key: 'tree_menu_set_compose_command', label: 'Set Docker Compose Command', icon: <AntIcon name="SettingOutlined" />};
 
   const switchDockerTarget = (value) => {
     if(!value || !userSession.servers.map((item) => item.key).includes(value)) return;
@@ -63,6 +66,8 @@ export default function ProjectsPanel() {
       reloadDockerServer(dockerTarget);
     }else if(menuItem.key === 'tree_menu_set_docker_command') {
       setDockerCommandInputVisible(true);
+    }else if(menuItem.key === 'tree_menu_set_compose_command') {
+      setDockerComposeInputVisible(true);
     }else if(menuItem.key === 'tree_menu_reload_one') {
       reloadThisFolder(node1.current);
     }else if(menuItem.key.startsWith('tree_menu_command_')) {
@@ -74,7 +79,7 @@ export default function ProjectsPanel() {
         } else {
           setTabActiveKey('workspace');
           callApi('dockerExecCommand', {'target': dockerTarget, 'command': commandString}).then((resp) => {
-            reloadThisFolder(parentNode);
+            if(parentNode) reloadThisFolder(parentNode);
           });
         }
       }
@@ -143,20 +148,42 @@ export default function ProjectsPanel() {
   const handleDockerComposeOk = (value) => {
     setDockerComposeInputVisible(false);
     callApi('dockerSetComposeCommand', {'target': dockerTarget, 'command': value}).then((resp) => {
-
+      reloadDockerServer(dockerTarget);
     });
+  }
+
+  const setContextMenus = (anode) => {
+    if(anode.key === dockerTarget+'_docker_version') {
+      var items = [];
+      if (anode.title.includes('not found')||anode.title.includes('no such')||anode.title.includes('Cannot connect')){
+        items.push(miSetDockerCommand);
+        items.push(miSetComposeCommand);
+      }else if(anode.menus){
+        items = items.concat(anode.menus.map((item) => {return {...item, icon: <AntIcon name={item.icon} />}}));
+      }
+      if(items.length>0) items.push(miDivider);
+      items.push(miReloadAll);
+      setContextMenuItems(items);
+    }else if (anode.isLeaf){
+      const parentNode = dockerTree[dockerTarget].find(node => node.key === anode.parent);
+      setContextMenuItems(parentNode && parentNode.subMenus ? parentNode.subMenus.map((item) => {return {...item, icon: <AntIcon name={item.icon} />}}) : []);
+    }else{
+      setContextMenuItems([miReloadOne]);
+    }
   }
 
   return (
     <>
-      <div style={{ height: headerHeight, padding: '12px 16px', display: 'flex', flexWrap: 'nowrap', justifyContent: 'space-between' }}>
+      <div style={{ height: headerHeight+'px', padding: '12px 16px', display: 'flex', flexWrap: 'nowrap', justifyContent: 'space-between' }}>
         <span style={{ flex: 'auto', paddingTop: '4px', width: '100px', }}>Docker</span>
         <Select options={[{value:'', label: 'Choose a Server'}].concat(userSession.servers.map((item) => {return {value: item.key, label: item.name}}))} value={dockerTarget} onChange={(value) => switchDockerTarget(value)} style={{ width: '100%'}}></Select>
       </div>
-      <div style={{ height: 'calc(100% - ' + headerHeight+')', overflow: 'auto' }} className='withScrollContent'>
+      <div style={{ height: 'calc(100% - ' + (headerHeight+(node1.current?48:0))+'px)', overflow: 'auto' }} className='withScrollContent'>
         <Dropdown menu={{items: contextMenuItems, onClick: onClickMenu}} trigger={['contextMenu']}>
           <DirectoryTree ref={filetree} treeData={dockerTree[dockerTarget]||[]} switcherIcon={<AntIcon name="DownOutlined" />} className={customTheme.className}
             onSelect={(selectedKeys, info) => {
+              node1.current = info.node;
+              setContextMenus(node1.current);
               if(Date.now() - time1.current < 500 && path1.current === info.node.path) {
                 time1.current = Date.now();
                 if(info.node.children&&info.node.children.length>0) {
@@ -170,28 +197,18 @@ export default function ProjectsPanel() {
             }}
             onRightClick={(event) => {
               node1.current = event.node;
-              if(event.node.key === dockerTarget+'_docker_version') {
-                var items = [];
-                if (event.node.title.includes('not found')||event.node.title.includes('no such')){
-                  items.push({key: 'tree_menu_set_docker_command', label: 'Set Docker Command', icon: <AntIcon name="SettingOutlined" />});
-                }else if(event.node.menus){
-                  items = items.concat(event.node.menus.map((item) => {return {...item, icon: <AntIcon name={item.icon} />}}));
-                }
-                if(items.length>0) items.push({'type': 'divider' });
-                items.push(miReloadAll);
-                setContextMenuItems(items);
-              }else if (event.node.isLeaf){
-                const parentNode = dockerTree[dockerTarget].find(node => node.key === event.node.parent);
-                setContextMenuItems(parentNode.subMenus ? parentNode.subMenus.map((item) => {return {...item, icon: <AntIcon name={item.icon} />}}) : []);
-              }else{
-                setContextMenuItems([miReloadOne]);
-              }
+              setContextMenus(node1.current);
             }}
           />
         </Dropdown>
       </div>
-      <CommandInputModal visible={dockerCommandInputVisible} onCreate={handleDockerCommandOk} onCancel={()=>setDockerCommandInputVisible(false)} title={"Give the docker position"} placeholder={"Enter the docker command position, such as: /usr/local/bin/"} />
-      <CommandInputModal visible={dockerComposeInputVisible} onCreate={handleDockerComposeOk} onCancel={()=>setDockerComposeInputVisible(false)} title={"Give the docker compose position"} placeholder={"Enter the docker compose command position, such as: /usr/local/bin/"} />
+      <Space style={{ padding: '8px', width: '100%', display: 'flex', justifyContent: 'flex-start' }}>
+        {contextMenuItems.map((item) => {
+          return item.type!=='divider' ? <Tooltip title={item.label}><Button type="text" icon={item.icon} onClick={(e) => {onClickMenu({key:item.key});}} ></Button></Tooltip> : null
+        })}
+      </Space>
+      <CommandInputModal visible={dockerCommandInputVisible} onCreate={handleDockerCommandOk} onCancel={()=>setDockerCommandInputVisible(false)} title={"Give the docker command prefix"} placeholder={"Such as: /usr/local/bin/, sudo"} />
+      <CommandInputModal visible={dockerComposeInputVisible} onCreate={handleDockerComposeOk} onCancel={()=>setDockerComposeInputVisible(false)} title={"Give the docker compose command prefix"} placeholder={"Such as: /usr/local/bin/, sudo"} />
     </>
   );
 }

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sched
-import threading, os
+import threading, os, json
 import time
 
 from . import tools
@@ -109,9 +109,12 @@ def execScheduleFunction(functionObj, parameterObj):
         teamName = parameterObj.get('teamName')
         dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
         logdb = tools.SQLiteDB(dbpath)
+        logdb.delete("DELETE FROM schedule_logs WHERE obh = ? AND sch = ? AND ts < strftime('%s', 'now', '-30 days')", (obh, sch))
         apiSchedulers[teamName].log_id = logdb.insert('INSERT INTO schedule_logs (ts, obh, sch, out1, out2) VALUES (?, ?, ?, ?, ?)', (int(time.time()), obh, sch, '', ''))
         print('Scheduled:', apiSchedulers[teamName].log_id, tools.getDatetimeStrFromTimestamp(time.time()), obh, sch)
-        retval = functionObj(parameterObj)
+        result = functionObj(parameterObj)
+        if parameterObj.get('runMode') == 'command':
+            logdb.update("UPDATE schedule_logs SET out1 = COALESCE(out1, '') || ? WHERE id = ?", (result, apiSchedulers[teamName].log_id))
         # with open(os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.log')), 'a') as f:
         #     f.write('Scheduled execute: %s %s %s %s\n' % (obh, sch, time.time(), retval))
 
@@ -130,9 +133,17 @@ def initScheduler(obh, schedule_items):
     for item in schedule_items:
         teamName = item['team']
         if not teamName in apiSchedulers:
-            apiSchedulers[teamName] = apis.ApiScheduler(clientId='scheduler_for_'+teamName, clientUserAgent='OysapeScheduler/2.5.22')
+            apiSchedulers[teamName] = apis.ApiScheduler(clientId='scheduler_for_'+teamName, clientUserAgent='OysapeScheduler/2.5.28')
             apiSchedulers[teamName].teamName = teamName
-        apiSchedulers[teamName].reloadUserSession()
+        # Load credentials for this webhost
+        cerdPath = os.path.expanduser(os.path.join('~', '.oysape','credentials.json'))
+        if os.path.isfile(cerdPath):
+            try:
+                with open(cerdPath, 'r') as f:
+                    apiSchedulers[teamName].credentials = json.load(f)
+            except Exception as e:
+                apiSchedulers[teamName].credentials = {}
+        apiSchedulers[teamName].reloadUserSession(apiSchedulers[teamName].credentials if hasattr(apiSchedulers[teamName], 'credentials') else {})
         if item.get('running'):
             # print('Scheduled:', item.get('title'))
             functionObj = None
@@ -140,12 +151,12 @@ def initScheduler(obh, schedule_items):
             if item['action'].find(indexPipelineSign) == 0:
                 pipelineName = item['action'][1:]
                 functionObj = apiSchedulers[teamName].callPipeline
-                parameterObj = {'obh': obh, 'sch': item.get('title'), 'teamName':teamName, 'pipelineName': pipelineName}
+                parameterObj = {'obh': obh, 'sch': item.get('title'), 'runMode': item.get('runMode'), 'teamName':teamName, 'pipelineName': pipelineName}
             elif item['action'].find(indexServerSign) >= 0 or item['action'].find(indexTaskSign) >= 0:
                 taskInput = parse_task_string0(item['action'])
                 if taskInput.get('serverKey') and taskInput.get('taskKey'):
                     functionObj = apiSchedulers[teamName].callTask
-                    parameterObj = {'obh': obh, 'sch': item.get('title'), 'teamName':teamName, **taskInput}
+                    parameterObj = {'obh': obh, 'sch': item.get('title'), 'runMode': item.get('runMode'), 'teamName':teamName, **taskInput}
             if item['type'] == 'one_time':
                 delaySeconds = max(0, (item['start']/1000) - time.time())
                 runner.schedule_one_time_task(delaySeconds, item.get('priority', 1), execScheduleFunction, (functionObj, parameterObj,))

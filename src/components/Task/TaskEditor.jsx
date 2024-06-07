@@ -109,14 +109,14 @@ export default function TaskEditor(props) {
   }
   const onRunIt = () => {
     if(form.getFieldValue('name')) {
-      if(tabItems.filter((item) => item.key === uniqueKey && item.hasSomethingNew).length > 0) form.submit();
+      if(tabItems.find((item) => item.key === uniqueKey && item.hasSomethingNew)) form.submit();
       if(window.fillSearchTask) window.fillSearchTask(form.getFieldValue('name'));
     }
   }
 
   // init form
   useEffect(() => {
-    const taskObj = (userSession.tasks||[]).filter((item) => item.key === taskKey.current)[0]||{};
+    const taskObj = (userSession.tasks||[]).find((item) => item.key === taskKey.current)||{};
     taskObj.cmdText = (taskObj.cmds||[]).join('\n');
     setTags(taskObj.tags||[]);
     form.setFieldsValue(taskObj);

@@ -1,0 +1,18 @@
+.ant-table-wrapper .ant-table-tbody>tr.ant-table-placeholder {
+    background: initial;
+}
+.ant-table-wrapper .ant-table-tbody>tr.ant-table-placeholder:hover>td {
+    background: initial;
+}
+.ant-table-wrapper .ant-table-tbody >tr >td {
+    border-bottom: none;
+}
+/* ant-table 组件必须设置 rowSelection 才能选择行. 但每行行首就一定有radiobox或checkbox. 这个 display:none; 就是可以让它不显示 */
+.hide-selection-column .ant-table-selection-column {
+    width: 0 !important;
+    display: none;
+}
+
+.ant-table-expanded-row .ant-table-cell {
+    padding: 0px !important;
+}

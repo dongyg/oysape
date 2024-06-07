@@ -147,6 +147,20 @@ class ApiOysape(ApiOauth):
                 self.listFolder = ff
                 self.listExclude = ee
                 self.userSession['clientId'] = self.clientId
+                team_id = self.userSession["team0"]
+                credentialMapping = params.get('credentialMapping', {}) or {}
+                credentialListing = params.get('credentialListing', []) or []
+                if credentialMapping and credentialMapping:
+                    for server in self.userSession["servers"]:
+                        if team_id in credentialMapping and server["key"] in credentialMapping[team_id]:
+                            alias = credentialMapping[team_id][server["key"]]
+                            credential = next((cred for cred in credentialListing if cred["alias"] == alias), None)
+                            if credential:
+                                server["username"] = credential.get("username")
+                                server["password"] = credential.get("password")
+                                server["prikey"] = credential.get("prikey")
+                                server["passphrase"] = credential.get("passphrase")
+                                server["credType"] = credential.get("type")
                 return self.userSession
             else:
                 self.userToken = ''
@@ -303,17 +317,19 @@ class ApiOysape(ApiOauth):
         except Exception as e:
             return {"errinfo": str(e)}
 
-    def set_password_for_server(self, params):
+    def set_credential_for_server(self, params):
         serverKey = params.get('serverKey')
-        password = params.get('pass')
+        credential = params.get('credential')
         if serverKey and self.userSession.get('servers'):
             for item in self.userSession['servers']:
                 if item.get('key') == serverKey:
-                    item['password'] = password
-                    break
-            return self.userSession
-        else:
-            return {}
+                    if credential.get('username'): item['username'] = credential['username']
+                    if credential.get('password'): item['password'] = credential['password']
+                    if credential.get('prikey'): item['prikey'] = credential['prikey']
+                    if credential.get('passphrase'): item['passphrase'] = credential['passphrase']
+                    if credential.get('type'):item['credType'] = credential['type']
+                    return self.userSession
+        return {'errinfo': 'Server not found'}
 
 
 class ApiTerminal(ApiOysape):
@@ -333,9 +349,9 @@ class ApiTerminal(ApiOysape):
         if len(slist) == 0:
             return {"errinfo": "Server not found"}
         if not uniqueKey in self.terminalConnections:
-            logging.info(('createTermConnection', slist))
             try:
                 conn_str = sshutils.create_ssh_string(slist[0].get("address"), slist[0].get("username"), slist[0].get("port"))
+                logging.info(('createTermConnection', conn_str))
                 self.terminalConnections[uniqueKey] = sshutils.TerminalClient(conn_str, password=slist[0].get("password"), private_key=slist[0].get("prikey"), serverKey=serverKey, parentApi=self, uniqueKey=uniqueKey, startup=slist[0].get("tasks"))
                 if not self.terminalConnections[uniqueKey].client:
                     self.terminalConnections[uniqueKey].onChannelString(tools.colorizeText(self.terminalConnections[uniqueKey].message,'red'))
@@ -371,7 +387,7 @@ class ApiTerminal(ApiOysape):
         if uniqueKey in self.terminalConnections:
             self.terminalConnections[uniqueKey].send_to_channel(input)
 
-    def execTask(self, taskKey, taskObj, taskCmds, client, output=True, isSchedulerCall=False):
+    def execTask(self, taskKey, taskObj, taskCmds, client, output=True, isCommandMode=False):
         bgColor = 'gray' if self.themeType == 'dark' else 'white'
         retval = ''
         def callOutput(message):
@@ -409,7 +425,8 @@ class ApiTerminal(ApiOysape):
         else:
             # Execute the task's commands
             runmode = taskObj.get('runmode') or ''
-            if output and runmode!='script': callOutput(CRLF+CRLF+tools.colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF)
+            if output and runmode!='script' and not isCommandMode:
+                callOutput(CRLF+CRLF+tools.colorizeText('Task: %s @%s'%(taskKey, client.serverKey), 'cyan', bgColor)+CRLF)
             if runmode.startswith('batch'):
                 # Send commands to the channel once for all
                 str_join = '&' if platform.system() == 'Windows' else ' && '
@@ -417,7 +434,7 @@ class ApiTerminal(ApiOysape):
                 if len(taskCmds)>1 and runmode.endswith('escape'):
                     command = es_home + command + es_end
                 logging.info(('execTask', client.serverKey, json.dumps(command)))
-                if False: # isSchedulerCall:
+                if isCommandMode:
                     callOutput(client.execute_command(command))
                 else:
                     client.send_to_channel(command + LF, human=False)
@@ -435,7 +452,7 @@ class ApiTerminal(ApiOysape):
                     logging.info(('execTask', client.serverKey, taskKey))
                     client.client.exec_command(f'chmod +x ~/.oysape/cache/%s'%filename)
                     command = 'source ~/.oysape/cache/%s'%filename
-                    if False: # isSchedulerCall:
+                    if isCommandMode:
                         callOutput(client.execute_command(command))
                     else:
                         client.send_to_channel(command + LF, human=False)
@@ -446,7 +463,7 @@ class ApiTerminal(ApiOysape):
                     command = taskCmds.pop(0)
                     command = command.strip()+LF
                     if command.strip() and not command.startswith('#'):
-                        if False: # isSchedulerCall:
+                        if isCommandMode:
                             callOutput(client.execute_command(command))
                         else:
                             client.send_to_channel(command, human=False)
@@ -495,7 +512,7 @@ class ApiWorkspace(ApiTerminal):
             input = params.get('input')
             self.combinedConnections[serverKey].send_to_channel(input)
 
-    def taskOnServer(self, taskKey, serverKey, isSchedulerCall=False):
+    def taskOnServer(self, taskKey, serverKey, isCommandMode=False):
         needNewLine = True
         if not serverKey in self.combinedConnections:
             ret1 = self.createCombConnection(serverKey)
@@ -518,7 +535,7 @@ class ApiWorkspace(ApiTerminal):
             else:
                 self.workspaceWorkingChannel = ''
                 self.combinedConnections[serverKey].updateWorkspaceTabTitle(self.workspaceWorkingChannel)
-            return self.execTask(taskKey, taskObj, taskCmds, self.combinedConnections[serverKey], True, isSchedulerCall)
+            return self.execTask(taskKey, taskObj, taskCmds, self.combinedConnections[serverKey], True, isCommandMode)
         elif self.combinedConnections[serverKey].message:
             self.combinedConnections[serverKey].onChannelString(tools.colorizeText(serverKey,None,'gray') + ' ' + tools.colorizeText(self.combinedConnections[serverKey].message,'red'))
 
@@ -544,18 +561,18 @@ class ApiWorkspace(ApiTerminal):
 
     def callTask(self, params):
         taskKey, serverKey = params.get('taskKey'), params.get('serverKey')
-        isSchedulerCall = params.get('obh') and params.get('sch')
+        isCommandMode = params.get('runMode') == 'command'
         if not self.testIfTaskCanRunOnServer({'taskKey': taskKey, 'serverKey': serverKey}):
             if serverKey in self.combinedConnections:
                 self.combinedConnections[serverKey].onChannelString(tools.colorizeText(LF+'Other tasks are currently running.', 'red'))
             return {}
-        return self.taskOnServer(taskKey, serverKey, isSchedulerCall)
+        return self.taskOnServer(taskKey, serverKey, isCommandMode)
 
     def callPipeline(self, params):
         pipeName = params.get('pipelineName')
         steps = self.getPipelineSteps(pipeName)
         steps = merge_steps(steps)
-        isSchedulerCall = params.get('obh') and params.get('sch')
+        isCommandMode = params.get('runMode') == 'command'
         for step in steps:
             serverKey = step['target']
             tasks = step['tasks']
@@ -570,7 +587,7 @@ class ApiWorkspace(ApiTerminal):
             serverKey = step['target']
             tasks = step['tasks']
             for taskKey in tasks:
-                retval += self.taskOnServer(taskKey, serverKey, isSchedulerCall)
+                retval += self.taskOnServer(taskKey, serverKey, isCommandMode)
             while True: # Wait for all tasks on current server to finish
                 if serverKey in self.combinedConnections and self.combinedConnections[serverKey].areAllTasksDone():
                     break
@@ -756,6 +773,7 @@ class ApiScheduler(ApiDockerManager):
     def reloadUserSession(self, params={}):
         # Override the method reloadUserSession, load servers/tasks/pipelines from disk
         retval = {}
+        team_id = tools.get_key(self.teamName)
         filename = os.path.join(folder_base, 'teams', tools.get_key(self.teamName)+'.json')
         if os.path.isfile(filename):
             with open(filename, 'r') as f:
@@ -763,9 +781,23 @@ class ApiScheduler(ApiDockerManager):
         ff = retval.get('folders', []) or []
         ee = retval.get('excludes', []) or consts.DEFAULT_EXCLUDE
         self.userSession = retval
+        self.userSession["team0"] = team_id
         self.listFolder = ff
         self.listExclude = ee
         self.userSession['clientId'] = self.clientId
+        credentialMapping = params.get('credentialMapping', {}) or {}
+        credentialListing = params.get('credentialListing', []) or []
+        if credentialMapping and credentialMapping:
+            for server in self.userSession["servers"]:
+                if team_id in credentialMapping and server["key"] in credentialMapping[team_id]:
+                    alias = credentialMapping[team_id][server["key"]]
+                    credential = next((cred for cred in credentialListing if cred["alias"] == alias), None)
+                    if credential:
+                        server["username"] = credential.get("username")
+                        server["password"] = credential.get("password")
+                        server["prikey"] = credential.get("prikey")
+                        server["passphrase"] = credential.get("passphrase")
+                        server["credType"] = credential.get("type")
         return self.userSession
 
     def createCombConnection(self, serverKey):
@@ -861,17 +893,17 @@ class ApiDesktop(ApiOverHttp):
         if self.isDesktopVersion():
             import webview
             filename = webview.windows[0].create_file_dialog(webview.OPEN_DIALOG)
-            return filename[0] if filename else ''
+            return {"filename": filename[0] if filename else ''}
         else:
-            return ''
+            return {"filename": ""}
 
     def choose_file_write(self, params={}):
         if self.isDesktopVersion():
             import webview
             filename = webview.windows[0].create_file_dialog(webview.SAVE_DIALOG)
-            return filename
+            return {"filename": filename}
         else:
-            return ''
+            return {"filename": ""}
 
     def get_absolute_path(self, params):
         tpath = params.get('path', '')
@@ -1097,6 +1129,44 @@ class ApiDesktop(ApiOverHttp):
             return self.update_session(retval)
         else:
             return retval
+
+    def get_credentials(self, params={}):
+        obh = params.get('obh')
+        # Get webhost's credentials.json
+        for site in (self.userSession.get('sites') or []):
+            if obh == site.get('obh'):
+                serverKey = site.get('target')
+                if serverKey:
+                    retval = self.open_remote_file({'target': serverKey, 'path': os.path.join('.oysape','credentials.json')})
+                    if retval and retval.get('content'):
+                        return json.loads(base64.b64decode(retval.get('content').encode()).decode())
+                    elif retval and retval.get('errinfo'):
+                        return retval
+                else:
+                    return {}
+        return {'errinfo': 'Server not found'}
+
+    def set_credentials(self, params={}):
+        obh = params.get('obh')
+        team0 = self.userSession['team0']
+        # Set webhost's credentials.json
+        for site in (self.userSession.get('sites') or []):
+            if obh == site.get('obh'):
+                serverKey = site.get('target')
+                oldVal = self.get_credentials({'obh': obh})
+                if not oldVal.get('errinfo'):
+                    if params.get('credentialListing'):
+                        oldVal['credentialListing'] = params.get('credentialListing')
+                    if params.get('credentialMapping') and params['credentialMapping'].get(team0):
+                        if not oldVal.get('credentialMapping'):
+                            oldVal['credentialMapping'] = {}
+                        if not oldVal['credentialMapping'].get(team0):
+                            oldVal['credentialMapping'][team0] = {}
+                        oldVal['credentialMapping'][team0].update(params['credentialMapping'][team0])
+                retval = self.save_remote_file({'target': serverKey, 'path': os.path.join('.oysape','credentials.json'), 'content': json.dumps(oldVal)})
+                if retval and retval.get('errinfo'): return retval
+                return oldVal
+        return {'errinfo': 'Server not found'}
 
     def openWebHost(self, params={}):
         import webbrowser

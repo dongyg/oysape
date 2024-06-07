@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 import { Base64 } from 'js-base64';
 
-import { App, Tree, Select, Dropdown } from 'antd';
+import { App, Tree, Select, Dropdown, Button, Tooltip, Space } from 'antd';
 import { UploadOutlined, CloudUploadOutlined, DownloadOutlined, DownOutlined, LoadingOutlined, ExclamationOutlined, EditOutlined, CopyOutlined, FolderViewOutlined, ReloadOutlined } from '@ant-design/icons';
 
 import { useCustomContext } from '../Contexts/CustomContext'
@@ -16,7 +16,7 @@ export default function Sftp(props) {
   const [sftpTarget, setSftpTarget] = useState('');
   const [sftpFileTree, setSftpFileTree] = useState({});
   const [contextMenuItems, setContextMenuItems] = React.useState([]);
-  const headerHeight = '56px';
+  const headerHeight = 56;
   const filetree = React.useRef(null);
   const time1 = React.useRef(0);
   const path1 = React.useRef('');
@@ -113,7 +113,7 @@ export default function Sftp(props) {
         if(resp && resp.content) {
           const fileBody = Base64.decode(resp.content);
           const uniqueKey = calculateMD5(anode.path);
-          if (tabItems.filter((item) => item.key === uniqueKey)[0]) {
+          if (tabItems.find((item) => item.key === uniqueKey)) {
           } else {
             setTabItems([...tabItems || [], {
               key: uniqueKey,
@@ -198,17 +198,37 @@ export default function Sftp(props) {
     }
   };
 
+  const setContextMenus = (anode) => {
+    if(anode.isLeaf) {
+      if(anode.key.indexOf('_error')>=0) {
+        setContextMenuItems([miRefreshWholeTree]);
+      } else {
+        var items = [miOpenfile, miDivider, miCopyPath, miCopyAbsolutePath, miDivider, miDownload];
+        setContextMenuItems(items);
+      }
+    }else{
+      if(isDesktopVersion){
+        setContextMenuItems([miCopyPath, miCopyAbsolutePath, miDivider, miDownload, miDivider, miUploadFolder, miUploadFile, miDivider, miReload, ]);
+      } else {
+        setContextMenuItems([miCopyPath, miCopyAbsolutePath, miDivider, miUploadFile, miDivider, miReload, ]);
+      }
+    }
+  }
+
   return (
     <>
-      <div style={{ height: headerHeight, padding: '12px 16px', display: 'flex', flexWrap: 'nowrap', justifyContent: 'space-between' }}>
+      <div style={{ height: headerHeight+'px', padding: '12px 16px', display: 'flex', flexWrap: 'nowrap', justifyContent: 'space-between' }}>
         <span style={{ flex: 'auto', paddingTop: '4px', width: '100px', }}>SFTP</span>
         <Select options={[{value:'', label: 'Choose a Server'}].concat(userSession.servers.map((item) => {return {value: item.key, label: item.name}}))} value={sftpTarget} onChange={(value) => switchSftpTarget(value)} style={{ width: '100%'}}></Select>
       </div>
-      <div style={{ height: 'calc(100% - ' + headerHeight+')', overflow: 'auto' }} className='withScrollContent'>
+      <div style={{ height: 'calc(100% - ' + (headerHeight+(node1.current?56:0))+'px)', overflow: 'auto' }} className='withScrollContent'>
         <Dropdown menu={{items: contextMenuItems, onClick: onClickMenu}} trigger={['contextMenu']}>
-          <DirectoryTree ref={filetree} treeData={sftpFileTree[sftpTarget]||[]} switcherIcon={<DownOutlined />} className={customTheme.className} expandAction="doubleClick"
+          <DirectoryTree ref={filetree} treeData={sftpFileTree[sftpTarget]||[]} switcherIcon={<DownOutlined />} className={customTheme.className}
+            // expandAction="doubleClick"
             onExpand={handleExpand}
             onSelect={(selectedKeys, info) => {
+              node1.current = info.node;
+              setContextMenus(node1.current);
               if(Date.now() - time1.current < 500 && path1.current === info.node.path) {
                 time1.current = Date.now();
                 if(info.node.children&&info.node.children.length>0) {
@@ -222,24 +242,16 @@ export default function Sftp(props) {
             }}
             onRightClick={(event) => {
               node1.current = event.node;
-              if(event.node.isLeaf) {
-                if(event.node.key.indexOf('_error')>=0) {
-                  setContextMenuItems([miRefreshWholeTree]);
-                } else {
-                  var items = [miOpenfile, miDivider, miCopyPath, miCopyAbsolutePath, miDivider, miDownload];
-                  setContextMenuItems(items);
-                }
-              }else{
-                if(isDesktopVersion){
-                  setContextMenuItems([miCopyPath, miCopyAbsolutePath, miDivider, miDownload, miDivider, miUploadFolder, miUploadFile, miDivider, miReload, ]);
-                } else {
-                  setContextMenuItems([miCopyPath, miCopyAbsolutePath, miDivider, miUploadFile, miDivider, miReload, ]);
-                }
-              }
+              setContextMenus(node1.current);
             }}
           />
         </Dropdown>
       </div>
+      <Space style={{ padding: '8px', width: '100%', display: 'flex', justifyContent: 'flex-start' }}>
+        {contextMenuItems.map((item) => {
+          return item.type!=='divider' ? <Tooltip title={item.label}><Button type="text" size="large" icon={item.icon} onClick={(e) => {onClickMenu({key:item.key});}} ></Button></Tooltip> : null
+        })}
+      </Space>
       <input type="file" style={{ display: 'none' }} ref={fileInputRef} onChange={handleFileChange} />
     </>
   );

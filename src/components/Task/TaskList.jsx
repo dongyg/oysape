@@ -1,5 +1,5 @@
 import React,{ useState, useEffect, useCallback } from 'react';
-import { App, Table, Tag, Input, Dropdown } from "antd";
+import { App, Table, Tag, Input, Dropdown, Space, Button, Tooltip } from "antd";
 import { SearchOutlined, EditOutlined, DeleteOutlined, QuestionCircleFilled } from '@ant-design/icons';
 import { FiTerminal } from "react-icons/fi";
 import { useCustomContext } from '../Contexts/CustomContext'
@@ -10,10 +10,10 @@ import './TaskList.css';
 const TaskList = () => {
   const { message, modal } = App.useApp();
   const { hideSidebarIfNeed, tabItems, setTabItems, setTabActiveKey, userSession, setUserSession } = useCustomContext();
-  const [showTasks, setShowTasks] = useState(userSession.tasks);
+  const [showTasks, setShowTasks] = useState(userSession.tasks||[]);
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
-  const [multipleSelect, setMultipleSelect] = useState(false);
-  const [editable, setEditable] = useState(false);
+  const [multipleSelect] = useState(false);
+  const [editable] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState('');
 
   const onClickMenu = ({ key }) => {
@@ -38,7 +38,7 @@ const TaskList = () => {
         { type: 'divider', },
         { key: 'editTask', label: 'Edit', icon: <EditOutlined />, },
         { key: 'deleteTask', label: 'Delete', icon: <DeleteOutlined />, },
-      ])
+      ]);
     }
     return retval;
   };
@@ -46,7 +46,7 @@ const TaskList = () => {
     {
       title: "Name",
       dataIndex: "name",
-      ellipsis: true,
+      // ellipsis: true, // 设置为 true 会影响 expandable 有展开时 colspan 带来的显示问题
       render: (text, record, index) => {
         return (<Dropdown menu={{items: getContextItems(), onClick: onClickMenu}} trigger={['contextMenu']}>
           <div>
@@ -71,6 +71,7 @@ const TaskList = () => {
     setSearchKeyword(event.target.value);
     filterTasks(event.target.value);
   }
+
   const filterTasks = useCallback((keyword, viewUpdate) => {
     let query = keyword.toLowerCase();
     setShowTasks(
@@ -80,7 +81,7 @@ const TaskList = () => {
     )
   }, [userSession]);
 
-  const selectRow = (record) => {
+  const selectRow = (record, isContextMenu) => {
     if(editable&&multipleSelect) {
       if(selectedRowKeys.includes(record.key)) {
         setSelectedRowKeys(selectedRowKeys.filter((key) => key !== record.key));
@@ -88,24 +89,22 @@ const TaskList = () => {
         setSelectedRowKeys(selectedRowKeys.concat([record.key]));
       }
     } else {
-      setSelectedRowKeys([record.key]);
+      if(selectedRowKeys.includes(record.key) && !isContextMenu) {
+        setSelectedRowKeys([]);
+      }else{
+        setSelectedRowKeys([record.key]);
+      }
     }
   };
   const onSelectedRowKeysChange = (selectedRowKeys) => {
     setSelectedRowKeys(selectedRowKeys);
   };
-  const rowSelection = {
-    selectedRowKeys,
-    hideSelectAll: true,
-    type: multipleSelect&&editable?'checkbox':'radio',
-    onChange: onSelectedRowKeysChange
-  };
 
   const editTask = (taskKey) => {
     const tabKey = taskKey+'-task-editor';
-    const findItems = tabItems.filter((item) => item.taskKey === tabKey);
-    if(findItems.length > 0) {
-      setTabActiveKey(findItems[0].key);
+    const findItem = tabItems.find((item) => item.taskKey === tabKey);
+    if(findItem) {
+      setTabActiveKey(findItem.key);
     }else{
       const uniqueKey = getUniqueKey();
       setTabItems([...tabItems || [], {
@@ -119,7 +118,7 @@ const TaskList = () => {
     hideSidebarIfNeed();
   }
   const deleteTask = (taskKey) => {
-    const pipelines = userSession.pipelines.filter((pipeline) => pipeline.steps.filter((step) => step.tasks.includes(taskKey)).length > 0).map((pipeline) => {
+    const pipelines = userSession.pipelines.filter((pipeline) => !!pipeline.steps.find((step) => step.tasks.includes(taskKey))).map((pipeline) => {
       return pipeline.name;
     })
     modal.confirm({
@@ -142,7 +141,7 @@ const TaskList = () => {
     });
   }
   const callThisTask = (taskKey) => {
-    const taskObj = userSession.tasks.filter((task) => task.key === taskKey)[0]||{};
+    const taskObj = userSession.tasks.find((task) => task.key === taskKey)||{};
     if(taskObj&&taskObj.name){
       window.fillSearchTask(taskObj.name);
     }
@@ -156,9 +155,15 @@ const TaskList = () => {
   return (
     <>
     <Input prefix={<SearchOutlined />} onChange={onSearchKeywordChange} value={searchKeyword} allowClear={true} placeholder='Search' autoCapitalize='off' autoComplete='off' autoCorrect='off' />
-    <Table
+    <Table style={{ overflowX: 'hidden' }}
       className={editable?'':'hide-selection-column'}
-      rowSelection={rowSelection}
+      rowSelection={{
+        selectedRowKeys,
+        // hideSelectAll: true,
+        type: multipleSelect&&editable?'checkbox':'radio',
+        onChange: onSelectedRowKeysChange,
+        columnWidth: '0px',
+      }}
       showHeader={false}
       pagination={false}
       columns={columns}
@@ -168,12 +173,19 @@ const TaskList = () => {
           selectRow(record);
         },
         onContextMenu: () => {
-          selectRow(record);
+          selectRow(record, true);
         },
-        onDoubleClick: (event) => {
+        onDoubleClick: () => {
           callThisTask(record.key);
         },
       })}
+      expandable={{ showExpandColumn: false, expandRowByClick: true, expandedRowKeys: selectedRowKeys,
+        expandedRowRender: (record) => <Space style={{ padding: '8px', width: '100%', display: 'flex', justifyContent: 'flex-start' }}>
+          {getContextItems().map((item) => {
+            return item.type!=='divider' ? <Tooltip title={item.label}><Button type="text" size="large" icon={item.icon} onClick={(e) => {onClickMenu({key:item.key});}} ></Button></Tooltip> : null
+          })}
+        </Space>
+      }}
     />
     </>
   )

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { App, Button, Form, Input, InputNumber, AutoComplete, Tag } from 'antd';
-import { FolderOpenOutlined } from "@ant-design/icons";
+import { App, Button, Form, Input, InputNumber, AutoComplete, Tag, Typography } from 'antd';
 
 import { useCustomContext } from '../Contexts/CustomContext'
 import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
@@ -22,8 +21,6 @@ export default function ServerEditor(props) {
   const [tasks, setTasks] = useState([]);
   const [indexEditTaskIndex, setIndexEditTaskIndex] = useState(-1);
   // form validation
-  const [passStatus, setPassStatus] = useState('success');
-  const [passHint, setPassHint] = useState('');
   const [saving, setSaving] = useState(false);
 
   // tasks
@@ -43,20 +40,7 @@ export default function ServerEditor(props) {
   }, [tasks]);
 
   // form
-  const checkAuthFields = (values) => {
-    if(true || values.prikey || values.password) {
-      // No Private key and password is allowed. The application will try to use ~/.ssh/id_rsa, ~/.ssh/id_ecdsa, ~/.ssh/id_dsa, and ~/.ssh/id_ed25519
-      setPassStatus('success');
-      setPassHint('');
-      return true;
-    } else {
-      setPassStatus('error');
-      setPassHint('Please input private key or password!');
-      return false;
-    }
-  }
   const onFinish = (values) => {
-    if(!checkAuthFields(values)) return;
     const port = values.port||22;
     const newobj = {
       oldkey: serverKey.current, key: values.name, name: values.name, tags: tags||undefined,
@@ -66,19 +50,8 @@ export default function ServerEditor(props) {
     saveServer(newobj);
   }
   const onFinishFailed = (errorInfo) => {
-    checkAuthFields(errorInfo.values);
-  }
-  const openFile = (e) => {
-    callApi('choose_file_read').then((data) => {
-      if(data) {
-        form.setFieldsValue({prikey: data});
-      }
-    })
   }
   const onValuesChange = (changedFields, allFields) => {
-    if('prikey' in changedFields || 'password' in changedFields) {
-      checkAuthFields(allFields);
-    }
     var hasSomethingNew = false;
     const newItems = tabItems.map((item) => {
       if(item.key === uniqueKey && item.label.indexOf('* ') !== 0) {
@@ -114,7 +87,7 @@ export default function ServerEditor(props) {
   }
   const onRunIt = () => {
     if(form.getFieldValue('name')) {
-      if(tabItems.filter((item) => item.key === uniqueKey && item.hasSomethingNew).length > 0) form.submit();
+      if(tabItems.find((item) => item.key === uniqueKey && item.hasSomethingNew)) form.submit();
       if(window.fillSearchServer) window.fillSearchServer(form.getFieldValue('name'));
     }
   }
@@ -122,7 +95,7 @@ export default function ServerEditor(props) {
 
   // init form
   useEffect(() => {
-    const serverObj = (userSession.servers||[]).filter((item) => item.key === serverKey.current)[0]||{};
+    const serverObj = (userSession.servers||[]).find((item) => item.key === serverKey.current)||{};
     setTags(serverObj.tags||[]);
     setTasks(serverObj.tasks||[]);
     form.setFieldsValue(serverObj);
@@ -151,23 +124,11 @@ export default function ServerEditor(props) {
         <Form.Item label="Server Name" name="name" rules={[{required: true, message: 'Please input server name!',},]} tooltip="Give a unique name">
           <Input placeholder='Server Name' autoCapitalize='off' autoComplete='off' autoCorrect='off' autoFocus={true} />
         </Form.Item>
-        <Form.Item label="Username" name="username" tooltip="The OS username will be used if not specified">
-          <Input placeholder='Username' autoCapitalize='off' autoComplete='off' autoCorrect='off' />
-        </Form.Item>
         <Form.Item label="Hostname" name="address" rules={[{required: true, message: 'Please input hostname!',},]} tooltip="The hostname or IP address">
           <Input placeholder='Hostname (IP Address)' autoCapitalize='off' autoComplete='off' autoCorrect='off' />
         </Form.Item>
         <Form.Item label="Port" name="port" tooltip="The port number ( default: 22 )">
           <InputNumber min={1} max={65535} placeholder='22' autoCapitalize='off' autoComplete='off' autoCorrect='off' />
-        </Form.Item>
-        {/* <Form.Item label="Password" name="password" validateStatus={passStatus} help={passHint} tooltip="Use the password to log in. The password will not be uploaded and will only be stored locally in current session. Servers that rely on password authentication cannot be used for scheduled tasks.">
-          <Input.Password placeholder='Password' autoCapitalize='off' autoComplete='off' autoCorrect='off' />
-        </Form.Item> */}
-        <Form.Item label="Private Key" name="prikey" validateStatus={passStatus} help={passHint} tooltip={<>The private key file. <br/>• The file path can start with ~. <br/>• The private key will not be uploaded. <br/>• When this server is used on other devices, the corresponding device must have the same private key file. <br/>• If the private key file is not specified, you will be prompted to provide a password when you use this server. If you give a empty password, the default SSH private key on the device will be used.<br/>• A server without a valid private key will not be able to be connected on a self-hosted Webhost.</>}>
-          <Input placeholder='Private Key' autoCapitalize='off' autoComplete='off' autoCorrect='off' addonAfter={<Button type="text" onClick={openFile} icon={<FolderOpenOutlined />} style={{ height: "30px", borderTopLeftRadius: "0px", borderBottomLeftRadius: "0px" }}></Button>} />
-        </Form.Item>
-        <Form.Item label="Passphrase" name="passphrase" tooltip="The passphrase for the private key">
-          <Input placeholder='Passphrase' autoCapitalize='off' autoComplete='off' autoCorrect='off' />
         </Form.Item>
         <Form.Item label="Tags" name="tags">
           <TagsComponent tags={tags} onChange={setTags} backgroundColor={customTheme.colors["editor.background"]} />
@@ -188,6 +149,11 @@ export default function ServerEditor(props) {
               </Tag>
             )
           })}
+        </Form.Item>
+        <Form.Item label="Credential">
+          <Typography.Text className="ant-form-text" type="secondary" style={{ marginTop: '5px' }}>
+            Login credentials are independent of server configurations and are not stored within the server settings. Instead, they are user-specific and managed in [My Credentials]. You can specify a login credential to be used on a particular server. The credentials are only stored on the current device and are never uploaded or stored outside of your device at any time.
+          </Typography.Text>
         </Form.Item>
         <Form.Item label=" " colon={false}>
           <Button type="primary" htmlType="submit" loading={saving}>{saving ? 'Saving...' : 'Save'}</Button>

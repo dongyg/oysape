@@ -18,8 +18,8 @@ export default function WebsitesPanel() {
   const headerHeight = '56px';
   const [ showInput, setShowInput ] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
-  const [multipleSelect, setMultipleSelect] = useState(false);
-  const [editable, setEditable] = useState(false);
+  const [multipleSelect] = useState(false);
+  const [editable] = useState(false);
 
   const addWebsite = (value) => {
     setShowInput(false);
@@ -28,9 +28,11 @@ export default function WebsitesPanel() {
         message.error(data.errinfo);
       }else if(data && data.sites){
         setUserSession({...userSession, sites: data.sites});
-        const record = data.sites.filter((item) => item.obh === value)[0];
-        setSelectedRowKeys([record.obh]);
-        openWebsiteEditor(record);
+        const record = data.sites.find((item) => item.obh === value);
+        if(record) {
+          setSelectedRowKeys([record.obh]);
+          openWebsiteEditor(record);
+        }
       }
     })
   }
@@ -115,14 +117,14 @@ export default function WebsitesPanel() {
   //   }else if(key === 'menuVerifyOwner') {
   //     execVerify(selectedRowKeys[0]);
   //   }else if(key === 'menuUnsetup') {
-  //     const currentItem = userSession.sites.filter((item) => item.obh === selectedRowKeys[0])[0];
+  //     const currentItem = userSession.sites.find((item) => item.obh === selectedRowKeys[0]);
   //     execUninstall(selectedRowKeys[0], currentItem.target);
   //   }else if(key === 'menuDeleteWebhost') {
   //     execDelete(selectedRowKeys[0]);
   //   }
   // };
   // const getContextItems = () => {
-  //   const currentItem = userSession.sites.filter((item) => item.obh === selectedRowKeys[0])[0];
+  //   const currentItem = userSession.sites.find((item) => item.obh === selectedRowKeys[0]);
   //   var retval = [];
   //   if(isDesktopVersion){
   //     retval.push({ key: 'menuOpenWebhost', label: ('Open in Browser'), });
@@ -185,10 +187,10 @@ export default function WebsitesPanel() {
 
   const openWebsiteEditor = (record) => {
     const tabKey = record.obh+'-editor';
-    const findItems = tabItems.filter((item) => item.websiteKey === tabKey);
     record.initScript = record.initScript||'';
-    if(findItems.length > 0) {
-      setTabActiveKey(findItems[0].key);
+    const findItem = tabItems.find((item) => item.websiteKey === tabKey);
+    if(findItem) {
+      setTabActiveKey(findItem.key);
     }else{
       const uniqueKey = getUniqueKey();
       setTabItems([...tabItems || [], {

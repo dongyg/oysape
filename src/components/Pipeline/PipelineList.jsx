@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { App, Table, Tag, Input, Dropdown } from "antd";
+import { App, Table, Tag, Input, Dropdown, Space, Button, Tooltip } from "antd";
 import { SearchOutlined, EditOutlined, DeleteOutlined, QuestionCircleFilled } from '@ant-design/icons';
 import { FiTerminal } from "react-icons/fi";
 
@@ -13,8 +13,8 @@ const PipelineList = () => {
   const { hideSidebarIfNeed, tabItems, setTabItems, setTabActiveKey, userSession, setUserSession } = useCustomContext();
   const [showPipelines, setShowPipelines] = useState(userSession.pipelines);
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
-  const [multipleSelect, setMultipleSelect] = useState(false);
-  const [editable, setEditable] = useState(false);
+  const [multipleSelect] = useState(false);
+  const [editable] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState('');
 
   const onClickMenu = ({ key }) => {
@@ -47,7 +47,6 @@ const PipelineList = () => {
     {
       title: "Name",
       dataIndex: "name",
-      ellipsis: true,
       render: (text, record, index) => (<Dropdown menu={{items: getContextItems(), onClick: onClickMenu}} trigger={['contextMenu']}>
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', whiteSpace: 'break-spaces'}}>
@@ -79,7 +78,7 @@ const PipelineList = () => {
     )
   }, [userSession]);
 
-  const selectRow = (record) => {
+  const selectRow = (record, isContextMenu) => {
     if(editable&&multipleSelect) {
       if(selectedRowKeys.includes(record.key)) {
         setSelectedRowKeys(selectedRowKeys.filter((key) => key !== record.key));
@@ -87,7 +86,11 @@ const PipelineList = () => {
         setSelectedRowKeys(selectedRowKeys.concat([record.key]));
       }
     } else {
-      setSelectedRowKeys([record.key]);
+      if(selectedRowKeys.includes(record.key) && !isContextMenu) {
+        setSelectedRowKeys([]);
+      }else{
+        setSelectedRowKeys([record.key]);
+      }
     }
   };
   const onSelectedRowKeysChange = (selectedRowKeys) => {
@@ -102,9 +105,9 @@ const PipelineList = () => {
 
   const editPipeline = (pipelineKey) => {
     const tabKey = pipelineKey+'-pipeline-editor';
-    const findItems = tabItems.filter((item) => item.pipelineKey === tabKey);
-    if(findItems.length > 0) {
-      setTabActiveKey(findItems[0].key);
+    const findItem = tabItems.find((item) => item.pipelineKey === tabKey);
+    if(findItem) {
+      setTabActiveKey(findItem.key);
     }else{
       const uniqueKey = getUniqueKey();
       setTabItems([...tabItems || [], {
@@ -138,7 +141,7 @@ const PipelineList = () => {
     });
   }
   const callThisPipeline = (pipelineKey) => {
-    const pipelineObj = userSession.pipelines.filter((pipeline) => pipeline.key === pipelineKey)[0]||{};
+    const pipelineObj = userSession.pipelines.find((pipeline) => pipeline.key === pipelineKey)||{};
     if(pipelineObj&&pipelineObj.name){
       window.fillSearchPipeline(pipelineObj.name);
     }
@@ -164,12 +167,19 @@ const PipelineList = () => {
           selectRow(record);
         },
         onContextMenu: () => {
-          selectRow(record);
+          selectRow(record, true);
         },
-        onDoubleClick: (event) => {
+        onDoubleClick: () => {
           callThisPipeline(record.key);
         },
       })}
+      expandable={{ showExpandColumn: false, expandRowByClick: true, expandedRowKeys: selectedRowKeys,
+        expandedRowRender: (record) => <Space style={{ padding: '8px', width: '100%', display: 'flex', justifyContent: 'flex-start' }}>
+          {getContextItems().map((item) => {
+            return item.type!=='divider' ? <Tooltip title={item.label}><Button type="text" size="large" icon={item.icon} onClick={(e) => {onClickMenu({key:item.key});}} ></Button></Tooltip> : null
+          })}
+        </Space>
+      }}
     />
     </>
   )

@@ -22,7 +22,7 @@ API_ROOT = '/oyapi'
 
 # Variables for local app
 # HOME_ENTRY = 'http://localhost:3000'
-HOME_ENTRY = 'http://127.0.0.1:19790/index.html?v=2.5.22'
+HOME_ENTRY = 'http://127.0.0.1:19790/index.html?v=2.5.28'
 
 
 # Variables for server conmunication
@@ -45,6 +45,7 @@ def initVariants(is_debug, version):
     IS_DEBUG = is_debug
     if is_debug:
         # HOME_ENTRY  = 'http://127.0.0.1:19790/index.html?v=%s&r=%s' % (version, datetime.datetime.now().strftime('%Y.%m%d.%H%M%S'))
+        # OYSAPE_HOST = 'https://oysape.aifetel.cc'
         HOME_ENTRY  = 'http://localhost:3000'
         OYSAPE_HOST = 'http://localhost:8080'
     else:

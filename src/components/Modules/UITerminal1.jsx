@@ -63,7 +63,7 @@ export default function WebTerminal(props) {
         xtermRef.current.focus();
         xtermRef.current.loadAddon(xtermRef.current.fitAddon);
         xtermRef.current.onData(handlerData);
-        window.oypaseTabs = window.oypaseTabs || {}; window.oypaseTabs[uniqueKey] = xtermRef.current;
+        window.oypaseTabs = window.oypaseTabs || {}; window.oypaseTabs.tabActiveKey = uniqueKey; window.oypaseTabs[uniqueKey] = xtermRef.current;
         onResize();
         window.addEventListener('resize', onResize);
         if(!hasTerm) {
@@ -82,17 +82,21 @@ export default function WebTerminal(props) {
             callApi('closeTermConnection', {uniqueKey:uniqueKey, serverKey:serverKey});
             window.removeEventListener('resize', onResize);
             if(xtermRef.current) xtermRef.current.dispose();
+            delete window.oypaseTabs[uniqueKey];
         }
     }, [uniqueKey, serverKey, taskKey, withCommand, message, access_terminal]);
 
     React.useEffect(() => {
         const hasSocket = !!socketObject.current;
         if(!hasSocket) {
-            socketObject.current = process.env.NODE_ENV === 'development'
-                ? new WebSocket(`ws://${window.location.hostname}:19790/websocket`) // for local testing
-                : new WebSocket((window.OYSAPE_BACKEND_HOST||'').replace('http', 'ws')+'/websocket');
+            const url = process.env.NODE_ENV === 'development'
+                ? `ws://${window.location.hostname}:19790/websocket` // for local testing
+                : ((window.OYSAPE_BACKEND_HOST||'').replace('http', 'ws')+'/websocket');
+            console.log(url);
+            socketObject.current = new WebSocket(url);
+            xtermRef.current.socketObject = socketObject.current;
             socketObject.current.onopen = () => {
-                // console.log('WebSocket Connected');
+                console.log('WebSocket Connected');
                 socketObject.current.send(JSON.stringify({ action: 'init', uniqueKey:uniqueKey }));
             }
             socketObject.current.onmessage = function(event) {
@@ -100,10 +104,10 @@ export default function WebTerminal(props) {
                 if(xtermRef.current) xtermRef.current.write(Base64.decode(message));
             }
             socketObject.current.onclose = () => {
-                // console.log('WebSocket Disconnected');
+                console.log('WebSocket Disconnected');
             };
             socketObject.current.onerror = (error) => {
-                // console.error('WebSocket Error: ', error);
+                console.error('WebSocket Error: ', error);
             };
         }
         return () => {

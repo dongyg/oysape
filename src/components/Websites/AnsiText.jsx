@@ -4,9 +4,18 @@ import { AnsiUp } from 'ansi_up';
 const ansi_up = new AnsiUp();
 
 const cleanAnsiString = (text) => {
-  return text.replace(/\x1b\[\?2004[lh]/g, '')
-             .replace(/\x1b\]0;.*?\x07/g, '')
-             .replace(/\x1b\[[0-9;]*m/g, '');
+  const patterns = [
+    '\\u001b\\[\\?2004[lh]',  // Matches \x1b[?2004[lh]
+    '\\u001b\\]0;.*?\\u0007', // Matches \x1b]0;.*?\x07
+    '\\u001b\\[[0-9;]*m'      // Matches \x1b[[0-9;]*m
+  ];
+
+  patterns.forEach(pattern => {
+    const regex = new RegExp(pattern, 'g');
+    text = text.replace(regex, '');
+  });
+
+  return text;
 };
 
 const AnsiText = ({ text }) => {

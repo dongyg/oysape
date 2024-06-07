@@ -7,7 +7,7 @@ import { getUniqueKey, callApi } from '../Common/global';
 import ServerList from './ServerList';
 import ServerEditor from './ServerEditor';
 
-import './ServerPanel.css';
+import './ServersPanel.css';
 
 export default function ServersPanel() {
   const { message, modal } = App.useApp();

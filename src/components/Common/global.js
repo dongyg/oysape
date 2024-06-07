@@ -3,9 +3,9 @@ import CryptoJS from 'crypto-js';
 export function getDataFromCookie(key) {
   const cookies = document.cookie.split(';');
   for (let cookie of cookies) {
-    const [name, value] = cookie.trim().split('=');
+    const [name, ...rest] = cookie.trim().split('=');
     if (name === key) {
-      return value;
+      return rest.join('=');
     }
   }
   return '';
@@ -30,7 +30,74 @@ export const calculateMD5 = function(str) {
   return hash.toString();
 }
 
-export const isDesktopVersion = navigator.userAgent.indexOf('OysapeDesktop') !== -1;
+const OYSAPE_DESKTOP_NAME = 'OysapeDesktop';
+
+export const isDesktopVersion = navigator.userAgent.indexOf(OYSAPE_DESKTOP_NAME) !== -1;
+
+export const getCredentials = function() {
+  try {
+    let credentialListing = JSON.parse(getDataFromCookie('credential_listing') || '[]');
+    credentialListing = credentialListing.map(cred => {
+      if (cred.password) {
+        try {
+          cred.password = CryptoJS.AES.decrypt(cred.password, OYSAPE_DESKTOP_NAME).toString(CryptoJS.enc.Utf8);
+        } catch (e) {
+          console.error('Error decrypting password:', e);
+        }
+      }
+      if (cred.passphrase) {
+        try {
+          cred.passphrase = CryptoJS.AES.decrypt(cred.passphrase, OYSAPE_DESKTOP_NAME).toString(CryptoJS.enc.Utf8);
+        } catch (e) {
+          console.error('Error decrypting passphrase:', e);
+        }
+      }
+      return cred;
+    });
+    const credentialMapping = JSON.parse(getDataFromCookie('credential_mapping') || '{}');
+    return { credentialListing, credentialMapping };
+  } catch (e) {
+    console.error('Error parsing credentials:', e);
+    return { credentialListing: [], credentialMapping: {} };
+  }
+}
+
+export const saveCredentialListing = (newCredentials) => {
+  try {
+    const credentialListing = newCredentials.map(cred => {
+      const encryptedCred = { ...cred };
+      if (encryptedCred.password) {
+        try {
+          encryptedCred.password = CryptoJS.AES.encrypt(encryptedCred.password, OYSAPE_DESKTOP_NAME).toString();
+        } catch (e) {
+          console.error('Error encrypting password:', e);
+        }
+      }
+      if (encryptedCred.passphrase) {
+        try {
+          encryptedCred.passphrase = CryptoJS.AES.encrypt(encryptedCred.passphrase, OYSAPE_DESKTOP_NAME).toString();
+        } catch (e) {
+          console.error('Error encrypting passphrase:', e);
+        }
+      }
+      return encryptedCred;
+    });
+    setDataToCookie('credential_listing', JSON.stringify(credentialListing), 14610);
+  } catch (e) {
+    console.error('Error saving credential listing:', e);
+  }
+}
+
+export const saveCredentialMapping = (tkey, skey, alias) => {
+  try {
+    let credentialMapping = getCredentials().credentialMapping;
+    if (!credentialMapping[tkey]) credentialMapping[tkey] = {};
+    credentialMapping[tkey][skey] = alias;
+    setDataToCookie('credential_mapping', JSON.stringify(credentialMapping), 14610);
+  } catch (e) {
+    console.error('Error saving credential mapping:', e);
+  }
+};
 
 export const callApi = (functionName, params) => {
   if(window.pywebview && window.pywebview.api) {

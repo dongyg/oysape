@@ -94,7 +94,7 @@ const ScheduleLogViewer = ({ obh, sch, tname }) => {
     return (
         <Layout>
             <Sider width={440} height="100%" theme="light">
-                <Table style={{ height: "100%" }}
+                <Table size="small" style={{ height: "100%" }}
                     dataSource={logs}
                     columns={columns}
                     rowKey="id"

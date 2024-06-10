@@ -21,7 +21,7 @@ const AntIcon = ({ name, ...props }) => {
 
 export default function ProjectsPanel() {
   const { message, modal } = App.useApp();
-  const { customTheme, setTabActiveKey, tabItems, setTabItems, userSession } = useCustomContext();
+  const { hideSidebarIfNeed, customTheme, setTabActiveKey, tabItems, setTabItems, userSession } = useCustomContext();
   const [dockerTarget, setDockerTarget] = useState('');
   const [dockerTree, setDockerTree] = useState({});
   const [contextMenuItems, setContextMenuItems] = React.useState([]);
@@ -76,10 +76,12 @@ export default function ProjectsPanel() {
         const commandString = fullItem.command.replace(/{theName}/g, node1.current.theName);
         if(fullItem.terminal){
           openTerminalWithCommand(dockerTarget, commandString);
+          if(fullItem.hideSide) hideSidebarIfNeed();
         } else {
           setTabActiveKey('workspace');
           callApi('dockerExecCommand', {'target': dockerTarget, 'command': commandString}).then((resp) => {
-            if(parentNode) reloadThisFolder(parentNode);
+            if(parentNode&&fullItem.refresh) reloadThisFolder(parentNode);
+            if(fullItem.hideSide) hideSidebarIfNeed();
           });
         }
       }

@@ -12,7 +12,7 @@ const { DirectoryTree } = Tree; // 把 Tree 赋值给 DirectoryTree, 然后使�
 
 export default function Sftp(props) {
   const { message, modal } = App.useApp();
-  const { customTheme, tabItems, setTabItems, setTabActiveKey, userSession } = useCustomContext();
+  const { hideSidebarIfNeed, customTheme, tabItems, setTabItems, setTabActiveKey, userSession } = useCustomContext();
   const [sftpTarget, setSftpTarget] = useState('');
   const [sftpFileTree, setSftpFileTree] = useState({});
   const [contextMenuItems, setContextMenuItems] = React.useState([]);
@@ -123,6 +123,7 @@ export default function Sftp(props) {
             }]);
           }
           setTabActiveKey(uniqueKey);
+          hideSidebarIfNeed();
         }else if(resp && resp.errinfo) {
           message.error(resp.errinfo);
         }

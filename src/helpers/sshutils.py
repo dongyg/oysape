@@ -690,17 +690,17 @@ class SSHClient:
         else:
             containerList = [{'key': self.serverKey+'_docker_container_'+x['ID'], 'theName': x['Names'], 'title': x['Names']+' ('+x['State']+')', 'isLeaf': True, 'parent': containersParentKey, 'raw':x } for x in (retval.get('output') or [])]
         return {'key': containersParentKey, 'title': 'Containers', 'isLeaf': False, 'children': containerList, 'subMenus':[
-            {'label': 'restart', 'key': 'tree_menu_command_container_restart', 'command': self.dockerCommandPrefix+'docker container restart {theName}', 'icon':'ReloadOutlined' },
-            {'type': 'divider' },
-            {'label': 'start', 'key': 'tree_menu_command_container_start', 'command': self.dockerCommandPrefix+'docker container start {theName}', 'icon':'CaretRightOutlined' },
-            {'label': 'pause', 'key': 'tree_menu_command_container_pause', 'command': self.dockerCommandPrefix+'docker container pause {theName}', 'icon':'PauseOutlined' },
-            {'label': 'stop', 'key': 'tree_menu_command_container_stop', 'command': self.dockerCommandPrefix+'docker container stop {theName}', 'icon':'BorderOutlined' },
-            {'type': 'divider' },
-            {'label': 'logs -f', 'key': 'tree_menu_command_container_logs', 'command': self.dockerCommandPrefix+'docker container logs -f {theName}', 'terminal': True, 'icon':'UnorderedListOutlined'},
-            {'label': 'inspect', 'key': 'tree_menu_command_container_inspect', 'command': self.dockerCommandPrefix+'docker container inspect {theName}', 'icon':'EyeOutlined'},
-            {'label': 'stats --no-stream', 'key': 'tree_menu_command_container_stats', 'command': self.dockerCommandPrefix+'docker container stats --no-stream {theName}', 'icon':'LineChartOutlined'},
-            {'type': 'divider' },
-            {'label': 'rm', 'key': 'tree_menu_command_container_rm', 'command': self.dockerCommandPrefix+'docker container rm {theName}', 'icon':'DeleteOutlined', 'confirm': 'Are you sure you want to delete this container' },
+            {'label': 'restart', 'key': 'tree_menu_command_container_restart', 'command': self.dockerCommandPrefix+'docker container restart {theName}', 'icon':'ReloadOutlined', 'refresh': True },
+            {'type': 'divider', 'key': tools.getRandomString() },
+            {'label': 'start', 'key': 'tree_menu_command_container_start', 'command': self.dockerCommandPrefix+'docker container start {theName}', 'icon':'CaretRightOutlined', 'refresh': True },
+            {'label': 'pause', 'key': 'tree_menu_command_container_pause', 'command': self.dockerCommandPrefix+'docker container pause {theName}', 'icon':'PauseOutlined', 'refresh': True },
+            {'label': 'stop', 'key': 'tree_menu_command_container_stop', 'command': self.dockerCommandPrefix+'docker container stop {theName}', 'icon':'BorderOutlined', 'refresh': True },
+            {'type': 'divider', 'key': tools.getRandomString() },
+            {'label': 'logs -f', 'key': 'tree_menu_command_container_logs', 'command': self.dockerCommandPrefix+'docker container logs -f {theName}', 'terminal': True, 'icon':'UnorderedListOutlined', 'hideSide': True },
+            {'label': 'inspect', 'key': 'tree_menu_command_container_inspect', 'command': self.dockerCommandPrefix+'docker container inspect {theName}', 'icon':'EyeOutlined', 'hideSide': True },
+            {'label': 'stats --no-stream', 'key': 'tree_menu_command_container_stats', 'command': self.dockerCommandPrefix+'docker container stats --no-stream {theName}', 'icon':'LineChartOutlined', 'hideSide': True },
+            {'type': 'divider', 'key': tools.getRandomString() },
+            {'label': 'rm', 'key': 'tree_menu_command_container_rm', 'command': self.dockerCommandPrefix+'docker container rm {theName}', 'icon':'DeleteOutlined', 'refresh': True, 'confirm': 'Are you sure you want to delete this container' },
         ]}
 
     def dockerGetImages(self):
@@ -712,10 +712,10 @@ class SSHClient:
         else:
             imageList = [{'key': self.serverKey+'_docker_image_'+x['ID'], 'theName': x['Repository'], 'title': x['Repository']+':'+x['Tag']+' ('+x['Size']+')', 'isLeaf': True, 'parent': imagesParentKey, 'raw':x } for x in (retval.get('output') or [])]
         return {'key': imagesParentKey, 'title': 'Images', 'isLeaf': False, 'children': imageList, 'subMenus':[
-            {'label': 'inspect', 'key': 'tree_menu_command_image_inspect', 'command': self.dockerCommandPrefix+'docker image inspect {theName}', 'icon':'EyeOutlined'},
-            {'label': 'history', 'key': 'tree_menu_command_image_history', 'command': self.dockerCommandPrefix+'docker image history {theName}', 'icon':'HistoryOutlined'},
-            {'type': 'divider' },
-            {'label': 'rm', 'key': 'tree_menu_command_image_rm', 'command': self.dockerCommandPrefix+'docker image rm {theName}', 'icon':'DeleteOutlined', 'confirm': 'Are you sure you want to delete this image' },
+            {'label': 'inspect', 'key': 'tree_menu_command_image_inspect', 'command': self.dockerCommandPrefix+'docker image inspect {theName}', 'icon':'EyeOutlined', 'hideSide': True },
+            {'label': 'history', 'key': 'tree_menu_command_image_history', 'command': self.dockerCommandPrefix+'docker image history {theName}', 'icon':'HistoryOutlined', 'hideSide': True },
+            {'type': 'divider', 'key': tools.getRandomString() },
+            {'label': 'rm', 'key': 'tree_menu_command_image_rm', 'command': self.dockerCommandPrefix+'docker image rm {theName}', 'icon':'DeleteOutlined', 'refresh': True, 'confirm': 'Are you sure you want to delete this image' },
         ]}
 
     def dockerGetComposes(self):
@@ -733,17 +733,17 @@ class SSHClient:
         else:
             composeList = [{'key': self.serverKey+'_docker_compose_'+x['Name'], 'theName':x['ConfigFiles'], 'title': x['Name']+' - '+x['Status'], 'isLeaf': True, 'parent': composeParentKey, 'raw':x } for x in (retval.get('output') or [])]
         return {'key': composeParentKey, 'title': 'Composes', 'isLeaf': False, 'children': composeList, 'subMenus':[
-            {'label': 'restart', 'key': 'tree_menu_command_compose_restart', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} restart', 'icon':'ReloadOutlined', },
-            {'type': 'divider' },
-            {'label': 'start', 'key': 'tree_menu_command_compose_start', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} start', 'icon':'CaretRightOutlined', },
-            {'label': 'pause', 'key': 'tree_menu_command_compose_pause', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} pause', 'icon':'PauseOutlined', },
-            {'label': 'stop', 'key': 'tree_menu_command_compose_stop', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} stop', 'icon':'BorderOutlined', },
-            {'type': 'divider' },
-            {'label': 'logs -f', 'key': 'tree_menu_command_compose_logs', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} logs -f', 'terminal': True, 'icon':'UnorderedListOutlined', },
-            {'type': 'divider' },
-            {'label': 'up -d', 'key': 'tree_menu_command_compose_up-d', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} up -d', 'icon':'VerticalAlignTopOutlined', },
-            {'label': 'down && up -d', 'key': 'tree_menu_command_compose_down_up-d', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} down && '+self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} up -d', 'icon':'ColumnHeightOutlined', },
-            {'label': 'down', 'key': 'tree_menu_command_compose_down', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} down', 'icon':'DeleteOutlined', 'confirm': 'Are you sure you want to delete this', },
+            {'label': 'restart', 'key': 'tree_menu_command_compose_restart', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} restart', 'icon':'ReloadOutlined', 'refresh': True },
+            {'type': 'divider', 'key': tools.getRandomString() },
+            {'label': 'start', 'key': 'tree_menu_command_compose_start', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} start', 'icon':'CaretRightOutlined', 'refresh': True },
+            {'label': 'pause', 'key': 'tree_menu_command_compose_pause', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} pause', 'icon':'PauseOutlined', 'refresh': True },
+            {'label': 'stop', 'key': 'tree_menu_command_compose_stop', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} stop', 'icon':'BorderOutlined', 'refresh': True },
+            {'type': 'divider', 'key': tools.getRandomString() },
+            {'label': 'logs -f', 'key': 'tree_menu_command_compose_logs', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} logs -f', 'terminal': True, 'icon':'UnorderedListOutlined', 'hideSide': True },
+            {'type': 'divider', 'key': tools.getRandomString() },
+            {'label': 'up -d', 'key': 'tree_menu_command_compose_up-d', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} up -d', 'icon':'VerticalAlignTopOutlined', 'refresh': True },
+            {'label': 'down && up -d', 'key': 'tree_menu_command_compose_down_up-d', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} down && '+self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} up -d', 'icon':'ColumnHeightOutlined', 'refresh': True },
+            {'label': 'down', 'key': 'tree_menu_command_compose_down', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} down', 'icon':'DeleteOutlined', 'confirm': 'Are you sure you want to delete this', 'refresh': True },
         ]}
 
     def dockerGetWholeTree(self):

@@ -150,7 +150,7 @@ class ApiOysape(ApiOauth):
                 team_id = self.userSession["team0"]
                 credentialMapping = params.get('credentialMapping', {}) or {}
                 credentialListing = params.get('credentialListing', []) or []
-                if credentialMapping and credentialMapping:
+                if credentialMapping and credentialListing:
                     for server in self.userSession["servers"]:
                         if team_id in credentialMapping and server["key"] in credentialMapping[team_id]:
                             alias = credentialMapping[team_id][server["key"]]

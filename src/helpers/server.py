@@ -71,7 +71,7 @@ def handle_websocket():
                 else:
                     apiObject.sendCombinedInput(recvData) if uniqueKey == 'workspace' else apiObject.sendTerminalInput(recvData)
             else:
-                logging.info(('Socket Error:', clientIpAddress, clientId, uniqueKey, apiObject, clientToken, clientToken == apiObject.userToken))
+                logging.info(('Socket Error:', clientIpAddress, clientId, uniqueKey, apiObject, clientToken))
                 break
     except WebSocketError:
         traceback.print_exc()

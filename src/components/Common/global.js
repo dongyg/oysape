@@ -25,6 +25,14 @@ export function delDataFromCookie(key) {
   document.cookie = `${key}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
 }
 
+export function getDataFromLocalStorage(key) {
+  return localStorage.getItem(key) || '';
+}
+
+export function setDataToLocalStorage(key, value) {
+  localStorage.setItem(key, value);
+}
+
 export const calculateMD5 = function(str) {
   const hash = CryptoJS.MD5(str);
   return hash.toString();
@@ -36,7 +44,7 @@ export const isDesktopVersion = navigator.userAgent.indexOf(OYSAPE_DESKTOP_NAME)
 
 export const getCredentials = function() {
   try {
-    let credentialListing = JSON.parse(getDataFromCookie('credential_listing') || '[]');
+    let credentialListing = JSON.parse(getDataFromLocalStorage('credential_listing') || '[]');
     credentialListing = credentialListing.map(cred => {
       if (cred.password) {
         try {
@@ -54,7 +62,7 @@ export const getCredentials = function() {
       }
       return cred;
     });
-    const credentialMapping = JSON.parse(getDataFromCookie('credential_mapping') || '{}');
+    const credentialMapping = JSON.parse(getDataFromLocalStorage('credential_mapping') || '{}');
     return { credentialListing, credentialMapping };
   } catch (e) {
     console.error('Error parsing credentials:', e);
@@ -82,7 +90,7 @@ export const saveCredentialListing = (newCredentials) => {
       }
       return encryptedCred;
     });
-    setDataToCookie('credential_listing', JSON.stringify(credentialListing), 14610);
+    setDataToLocalStorage('credential_listing', JSON.stringify(credentialListing));
   } catch (e) {
     console.error('Error saving credential listing:', e);
   }
@@ -93,7 +101,7 @@ export const saveCredentialMapping = (tkey, skey, alias) => {
     let credentialMapping = getCredentials().credentialMapping;
     if (!credentialMapping[tkey]) credentialMapping[tkey] = {};
     credentialMapping[tkey][skey] = alias;
-    setDataToCookie('credential_mapping', JSON.stringify(credentialMapping), 14610);
+    setDataToLocalStorage('credential_mapping', JSON.stringify(credentialMapping));
   } catch (e) {
     console.error('Error saving credential mapping:', e);
   }

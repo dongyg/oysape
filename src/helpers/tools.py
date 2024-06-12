@@ -129,7 +129,7 @@ def getDatetimeStrFromTimestamp(t=None):
 
 ################################################################################
 def send_get_request(url, data, headers=None):
-    # print('GET', url)
+    if consts.IS_DEBUG: print('GET', url)
     try:
         data_encoded = urllib.parse.urlencode(data)
         headers = headers if headers else {}
@@ -139,7 +139,7 @@ def send_get_request(url, data, headers=None):
         with urllib.request.urlopen(request, context=context, timeout=10) as response:
             response_data = response.read()
             response_text = response_data.decode('utf-8')
-            # print(response_text, type(response_text))
+            if consts.IS_DEBUG: print(response_text, type(response_text))
             json_data = json.loads(response_text)
             return json_data
     except:
@@ -147,7 +147,7 @@ def send_get_request(url, data, headers=None):
         return None
 
 def send_post_request(url, data, headers=None):
-    # print('POST',url)
+    if consts.IS_DEBUG: print('POST',url)
     try:
         json_data = json.dumps(data).encode('utf-8')
         headers = headers if headers else {}
@@ -164,7 +164,7 @@ def send_post_request(url, data, headers=None):
         return None
 
 def send_delete_request(url, data, headers=None):
-    # print('DELETE', url)
+    if consts.IS_DEBUG: print('DELETE', url)
     try:
         data_encoded = urllib.parse.urlencode(data)
         headers = headers if headers else {}
@@ -174,7 +174,7 @@ def send_delete_request(url, data, headers=None):
         with urllib.request.urlopen(request, context=context, timeout=10) as response:
             response_data = response.read()
             response_text = response_data.decode('utf-8')
-            # print(response_text, type(response_text))
+            if consts.IS_DEBUG: print(response_text, type(response_text))
             json_data = json.loads(response_text)
             return json_data
     except:

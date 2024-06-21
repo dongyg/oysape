@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os, traceback, json, json, time, base64, fnmatch, platform, hmac, hashlib, logging
-from . import auth, tools, consts, obhs
+from . import auth, tools, consts, obhs, apis, scheduler
 
 BUF_SIZE = 1024
 CR = '\r'
@@ -14,6 +14,7 @@ es_home = '\u001b[200~'
 es_end = '\u001b[201~'
 folder_base = os.path.expanduser(os.path.join('~', '.oysape'))
 folder_cache = os.path.join(folder_base, 'localcache')
+noti_cache = {}
 
 def get_files(apath, recurse=True, exclude=[], ignore=None):
     if os.path.isdir(apath):
@@ -86,6 +87,9 @@ class ApiBase:
     def isDesktopVersion(self):
         return self.clientUserAgent.find('OysapeDesktop') >= 0
 
+    def isMobileVersion(self):
+        return self.clientUserAgent.find('OysapeMobile') >= 0
+
 
 class ApiOauth(ApiBase):
     def __init__(self, clientId='', clientUserAgent='', _logging=consts.IS_LOGGING):
@@ -106,11 +110,15 @@ class ApiOauth(ApiBase):
         return auth.openOAuthWindow('google', self.clientId, self.clientUserAgent, self.backendHost)
 
     def signout(self, params={}):
-        retval = tools.callServerApiPost('/signout', {}, self)
-        if not retval.get('errinfo'):
-            self.userToken = ''
-            self.userSession = {}
-        return retval
+        if self.isMobileVersion():
+            return {"url": "%s/mob/signout"%consts.OYSAPE_HOST}
+        else:
+            retval = tools.callServerApiPost('/signout', {}, self)
+            if not retval.get('errinfo'):
+                self.userToken = ''
+                self.userSession = {}
+            return retval
+
 
 
 class ApiOysape(ApiOauth):
@@ -129,17 +137,27 @@ class ApiOysape(ApiOauth):
         return (self.userSession.get('accesses',{}) or {}).get(perm, False)
 
     def gotoAccountDashboard(self, params):
-        retval = tools.callServerApiPost('/user/landing', {}, self)
-        if retval and retval.get('otp'):
-            return auth.openAccountDashboard(retval.get('otp'), self.clientUserAgent, self.backendHost)
-        elif retval and retval.get('errinfo'):
-            return retval
+        if self.isMobileVersion():
+            return {"url": "%s/mob/home"%consts.OYSAPE_HOST}
+        else:
+            retval = tools.callServerApiPost('/user/landing', {}, self)
+            if retval and retval.get('otp'):
+                return auth.openAccountDashboard(retval.get('otp'), self.clientUserAgent, self.backendHost)
+            elif retval and retval.get('errinfo'):
+                return retval
 
     def reloadUserSession(self, params={}):
-        if not self.userToken and params.get('token'):
-            self.userToken = params.get('token')
+        if not self.userToken and (params.get('token') or params.get('client_token')):
+            self.userToken = params.get('token') or params.get('client_token')
+        if not self.clientId and params.get('client_id'):
+            self.clientId = params.get('client_id')
+        pdata = {}
+        if params.get('deviceType'):
+            pdata['deviceType'] = params.get('deviceType')
+        if params.get('deviceToken'):
+            pdata['deviceToken'] = params.get('deviceToken')
         if self.userToken:
-            retval = tools.callServerApiPost('/user/test', {}, self)
+            retval = tools.callServerApiPost('/user/test', pdata, self)
             if retval and not retval.get('errinfo'):
                 ff = retval.get('folders', []) or []
                 ee = retval.get('excludes', []) or consts.DEFAULT_EXCLUDE
@@ -163,7 +181,7 @@ class ApiOysape(ApiOauth):
                                 server["credType"] = credential.get("type")
                 return self.userSession
             else:
-                self.userToken = ''
+                # self.userToken = ''
                 return retval
         else:
             # No token. Return empty session. The frontend will show the sign in buttons and stop the loading.
@@ -763,7 +781,6 @@ class ApiDockerManager(ApiSftp):
         self.combinedConnections[serverKey].dockerComposePrefix = command
         #TODO: save the docker command path on the server
 
-
 class ApiScheduler(ApiDockerManager):
     # This is for the web version scheduler
     def __init__(self, clientId='', clientUserAgent='', _logging=consts.IS_LOGGING):
@@ -817,35 +834,6 @@ class ApiScheduler(ApiDockerManager):
                 logging.info(('createCombConnection', serverKey, e))
                 return {'errinfo': str(e)}
 
-    def execQueryScheduleLogs(self, params={}):
-        # params: obh, sch, page, pageSize
-        # Execute query schedule logs
-        obh = params.get('obh')
-        sch = params.get('sch')
-        page = tools.intget(params.get('page') or 1, 1)
-        pageSize = tools.intget(params.get('pageSize') or 10, 10)
-        # logging.info(('execQueryScheduleLogs', obh, sch, page, pageSize))
-        dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
-        logdb = tools.SQLiteDB(dbpath)
-        # count
-        sql_str = "SELECT COUNT(id) AS total FROM schedule_logs WHERE obh = ?"
-        arg_arr = [obh]
-        if sch:
-            sql_str += " AND sch = ?"
-            arg_arr.append(sch)
-        total = logdb.query(sql_str, arg_arr)
-        total = total[0].get('total')
-        # query
-        sql_str = "SELECT * FROM schedule_logs WHERE obh = ?"
-        arg_arr = [obh]
-        if sch:
-            sql_str += " AND sch = ?"
-            arg_arr.append(sch)
-        sql_str += " ORDER BY id DESC LIMIT ? OFFSET ?"
-        arg_arr.extend([pageSize, (page-1)*pageSize])
-        retdat = logdb.query(sql_str, arg_arr)
-        retdat = [{'key': x.get('id'), **x} for x in retdat]
-        return {'list': retdat, 'total': total}
 
     def sendNotification(self, params={}):
         recipients = params.get('recipients')
@@ -861,14 +849,67 @@ class ApiScheduler(ApiDockerManager):
             hmac_result = hmac.new(secret_key.encode('utf-8'), (nonce+ts).encode('utf-8'), hashlib.sha256)
             signature = hmac_result.hexdigest()
             custom_headers = {'nonce': nonce, 'timestamp': ts, 'signature': signature, 'obh': v2}
-            params = {'recipients': recipients, 'title': params.get('title', ''), 'message': message, 'mid': params.get('mid', '')}
-            return tools.send_post_request(consts.OYSAPE_HOST + consts.API_ROOT + '/notification', params, custom_headers)
+            noti_cache[signature] = params.get('mid', '0')
+            pbody = {'sig':signature, **params}
+            return tools.send_post_request(consts.OYSAPE_HOST + consts.API_ROOT + '/notification', pbody, custom_headers)
 
 
 class ApiOverHttp(ApiDockerManager):
     def __init__(self, clientId='', clientUserAgent='', _logging=consts.IS_LOGGING):
         super().__init__(clientId, clientUserAgent, _logging)
         self.socketConnections = {}
+
+    def execQueryScheduleLogs(self, params={}):
+        # params: obh, sch, page, pageSize
+        # Execute query schedule logs
+        if not scheduler.OBH:
+            scheduler.loadScheduleConfigAndInit(False)
+        obh = scheduler.OBH or ''
+        sch = params.get('sch')
+        qrytxt = params.get('qrytxt')
+        page = tools.intget(params.get('page') or 1, 1)
+        pageSize = tools.intget(params.get('pageSize') or 10, 10)
+        # logging.info(('execQueryScheduleLogs', obh, sch, page, pageSize))
+        dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
+        logdb = tools.SQLiteDB(dbpath)
+        where_clause = ' WHERE obh = ?'
+        arg_arr = [obh]
+        if sch:
+            where_clause += ' AND sch = ?'
+            arg_arr.append(sch)
+        if qrytxt:
+            where_clause += ' AND (sch LIKE ? OR out1 LIKE ?)'
+            arg_arr.extend(['%'+qrytxt+'%', '%'+qrytxt+'%'])
+        # count
+        sql_str = "SELECT COUNT(id) AS total FROM schedule_logs" + where_clause
+        total = logdb.query(sql_str, arg_arr)
+        total = total[0].get('total')
+        # query
+        sql_str = "SELECT * FROM schedule_logs" + where_clause + " ORDER BY id DESC LIMIT ? OFFSET ?"
+        arg_arr.extend([pageSize, (page-1)*pageSize])
+        retdat = logdb.query(sql_str, arg_arr)
+        retdat = [{'key': x.get('id'), **x} for x in retdat]
+        return {'list': retdat, 'total': total, 'schs': scheduler.SCH_ITEMS}
+
+    def deleteScheduleLogOne(self, params={}):
+        dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
+        logdb = tools.SQLiteDB(dbpath)
+        logdb.delete("DELETE FROM schedule_logs WHERE id = ?", (params.get('key'),))
+        return {}
+
+    def deleteScheduleLogs(self, params={}):
+        keys = params.get('keys')
+        dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
+        logdb = tools.SQLiteDB(dbpath)
+        if isinstance(keys, list):
+            for key in keys:
+                logdb.delete("DELETE FROM schedule_logs WHERE id = ?", (key,))
+            retval = len(keys)
+            return {"number": retval}
+        elif scheduler.OBH and isinstance(keys, str) and keys == '__ALL__':
+            retval = logdb.delete("DELETE FROM schedule_logs", ())
+            return {"number": retval}
+        return {"number": 0}
 
 
 class ApiDesktop(ApiOverHttp):

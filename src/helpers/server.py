@@ -22,9 +22,9 @@ def not_found(error):
 def not_allowed(error):
     return 'not found'
 
-def getClientIdAndToken(req):
+def getClientIdAndToken(req, params={}):
     clientIpAddress = req.headers.get('X-Forwarded-For') or req.remote_addr
-    if req.headers.get('User-Agent').find('OysapeDesktop') >=0:
+    if req.headers.get('User-Agent').find('OysapeDesktop') >= 0:
         # Use the pywebview token as the clientId for desktop version. It should have a apiObject in apis.apiInstances
         import webview
         clientId = webview.token
@@ -32,7 +32,7 @@ def getClientIdAndToken(req):
         clientToken = apiObject.userToken if apiObject else None
     else:
         clientId = req.cookies.get('client_id')
-        clientToken = req.cookies.get('client_token')
+        clientToken = req.cookies.get('client_token') or req.cookies.get('mobile_token')
     # logging.info(('getClientIdAndToken', req.path, clientIpAddress, clientId, clientToken))
     return clientIpAddress, clientId, clientToken
 
@@ -99,7 +99,9 @@ def oauthCallback():
     code = request.query.get('code')
     state = request.query.get('state')
     clientId = request.query.get('cid')
-    if not clientId in apis.apiInstances: return 'Client not found while callback'
+    # if not clientId in apis.apiInstances: return 'Client not found while callback'
+    if not clientId in apis.apiInstances:
+        apis.apiInstances[clientId] = apis.ApiOverHttp(clientId=clientId, clientUserAgent=request.headers.get('User-Agent'))
     # Send the code to backend to finish the OAuth process and finish the sign in process. Get the token.
     retval = tools.callServerApiPost('/signin/finish', {'code': code, 'state': state, 'cid': clientId}, apis.apiInstances[clientId])
     if not retval: return 'Something wrong'
@@ -119,6 +121,12 @@ def oauthCallback():
     if apis.apiInstances[clientId].isDesktopVersion():
         # PS: Cannot save the token into the cookie here. Because the browser is the system default browser, not the webview inside the Oysape.
         rendered_template = template_signin_success_close
+    elif apis.apiInstances[clientId].isMobileVersion():
+        # What the hell, client_token cannot be save into the cookie in iOS WebView, sometimes, really sometime.
+        response.set_cookie("client_id", clientId, path="/", httponly=True)
+        response.set_cookie("client_token", retval.get('data').get('token'), path="/", httponly=True)
+        response.set_cookie("mobile_token", retval.get('data').get('token'), path="/", httponly=True)
+        return redirect('/index.html')
     else:
         # In the web version, can set the cookie here. The cookies are only available for this session.
         # cookies 的有效期可以让用户在设置 web host 的时候自行设置. 仅会话有效的话会更安全(token泄露被盗用的可能性更小). 另外用户也可以选择在 web version 使用后自行 sign out. sign out 后 token 已经删除并失效了, 就不存在泄露和被盗用风险了.
@@ -133,6 +141,7 @@ def oauthCallback():
 def signout():
     clientIpAddress, clientId, clientToken = getClientIdAndToken(request)
     if clientToken and clientId and clientId in apis.apiInstances and clientToken == apis.apiInstances[clientId].userToken:
+        isInApp = apis.apiInstances[clientId].isMobileVersion()
         functionName = 'signout'
         if hasattr(apis.apiInstances[clientId], functionName):
             method = getattr(apis.apiInstances[clientId], functionName)
@@ -141,6 +150,8 @@ def signout():
                 logging.info(('Client signout', clientIpAddress, clientId))
             response.set_cookie("client_token", '', path="/", httponly=True)
             response.set_cookie("client_id", '', path="/", httponly=True)
+            if isInApp:
+                return retval
     return redirect('/index.html')
 
 
@@ -183,16 +194,7 @@ def checkWebhost():
     if retval.get('errinfo'):
         return retval
     # Because validation is a necessary step after the webhost container is running. Once validation is passed, the webhost's schedules can be run.
-    webhostFile = os.path.join(apis.folder_base, 'webhost.json')
-    if os.path.isfile(webhostFile):
-        try:
-            with open(webhostFile, 'r') as f:
-                webhostObject = json.load(f)
-            if webhostObject.get('schedules'):
-                scheduler.initScheduler(webhostObject.get('obh'), webhostObject.get('schedules'))
-        except Exception as e:
-            traceback.print_exc()
-            logging.info(('Error', e))
+    scheduler.loadScheduleConfigAndInit(True)
     return {'data': 'ok'}
 
 @app.route('/schedule/logs')
@@ -280,13 +282,24 @@ def add_cors_headers():
         response.headers['Access-Control-Allow-Headers'] = 'Origin, Accept, Content-Type, X-Requested-With, X-CSRF-Token'
         response.headers['Access-Control-Allow-Credentials'] = 'true'
 
+@app.route('/log/<msg>', method='GET')
+def getLogObject(msg):
+    if apis.noti_cache.get(msg):
+        dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
+        logdb = tools.SQLiteDB(dbpath)
+        retdat = logdb.query("SELECT * FROM schedule_logs WHERE id = ?", (apis.noti_cache.get(msg),))
+        if retdat and retdat[0]:
+            retdat[0]['tsText'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(retdat[0]['ts']))
+            return json.dumps(retdat[0])
+    return json.dumps({'errinfo': 'Not found'})
+
 @app.route('/api/<functionName>', method='POST')
 def api(functionName):
     # The http apis are for the web version only
     add_cors_headers()
     data = request.json
-    clientIpAddress, clientId, clientToken = getClientIdAndToken(request)
-    logging.info(('OverHttp', clientIpAddress, clientId, functionName))
+    clientIpAddress, clientId, clientToken = getClientIdAndToken(request, data)
+    logging.info(('OverHttp', clientIpAddress, clientId, clientToken, functionName))
     if functionName in ['signInWithEmail','signInWithGithub','signInWithGoogle']:
         # Request to sign in is limited. These 3 requests have no clientId in the headers
         if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
@@ -305,7 +318,7 @@ def api(functionName):
     elif functionName == 'reloadUserSession' and clientId and not clientId in apis.apiInstances and clientToken:
         # When a user open a web version page, with a clientId and a clientToken
         apis.apiInstances[clientId] = apis.ApiOverHttp(clientId=clientId, clientUserAgent=request.headers.get('User-Agent'))
-        apis.apiInstances[clientId].userToken = clientToken
+        apis.apiInstances[clientId].userToken = clientToken or data.get('token') or data.get('client_token')
     if not clientId in apis.apiInstances:
         if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
             return json.dumps({"errinfo": "Too many requests."})
@@ -328,7 +341,7 @@ def api(functionName):
             response.delete_cookie('client_token')
         return json.dumps(retval)
     else:
-        return json.dumps({"errinfo": "Function not found."})
+        return json.dumps({"errinfo": "Function [" + functionName + "] not found."})
 
 
 ################################################################################

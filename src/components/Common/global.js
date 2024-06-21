@@ -1,5 +1,16 @@
 import CryptoJS from 'crypto-js';
 
+export function listDataFromCookie() {
+  var retval = [];
+  const cookies = document.cookie.split(';');
+  for (let cookie of cookies) {
+    const [name, ...rest] = cookie.trim().split('=');
+    retval.push({ name, value: rest.join('=') });
+  }
+  return '';
+}
+window.getDataFromCookie = getDataFromCookie;
+
 export function getDataFromCookie(key) {
   const cookies = document.cookie.split(';');
   for (let cookie of cookies) {
@@ -10,20 +21,28 @@ export function getDataFromCookie(key) {
   }
   return '';
 }
+window.getDataFromCookie = getDataFromCookie;
 
-export function setDataToCookie(key, value, days) {
-  let cookieValue = `${key}=${value}; path=/;`;
-  if (days !== undefined) {
-    const now = new Date();
-    now.setDate(now.getDate() + days);
-    cookieValue += `expires=${now.toUTCString()};`;
-  }
-  document.cookie = cookieValue;
+export function setDataToCookie(cookieArray) {
+  let cookieString = '';
+  (cookieArray || []).forEach(cookieData => {
+    let { name, value, days } = cookieData;
+    let cookieValue = `${name}=${value}; path=/;`;
+    if (days !== undefined) {
+      const now = new Date();
+      now.setDate(now.getDate() + days);
+      cookieValue += `expires=${now.toUTCString()};`;
+    }
+    cookieString += cookieValue + ' ';
+  });
+  document.cookie = cookieString.trim();
 }
+window.setDataToCookie = setDataToCookie;
 
 export function delDataFromCookie(key) {
   document.cookie = `${key}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
 }
+window.delDataFromCookie = delDataFromCookie;
 
 export function getDataFromLocalStorage(key) {
   return localStorage.getItem(key) || '';
@@ -39,8 +58,44 @@ export const calculateMD5 = function(str) {
 }
 
 const OYSAPE_DESKTOP_NAME = 'OysapeDesktop';
+const OYSAPE_MOBILE_NAME = 'OysapeMobile';
 
 export const isDesktopVersion = navigator.userAgent.indexOf(OYSAPE_DESKTOP_NAME) !== -1;
+export const isMobileVersion = navigator.userAgent.indexOf(OYSAPE_MOBILE_NAME) !== -1;
+
+// 调用原生API
+export function callNativeApi(functionName, params) {
+  const sendMessageToNative = (data) => {
+    if(isMobileVersion && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.jsHandler) {
+      return new Promise((resolve, reject) => {
+        // 创建一个唯一的回调函数名
+        const callbackName = `callback_${Date.now()}`;
+        // 在 window 对象上创建回调函数
+        window[callbackName] = function(response) {
+            resolve(response);
+            // 删除回调函数以释放内存
+            delete window[callbackName];
+        };
+        // 发送消息到原生代码，并传递回调函数名
+        window.webkit.messageHandlers.jsHandler.postMessage({ ...data, callback: callbackName });
+      });
+    } else {
+      return Promise.reject('Please use Oysape Mobile app.');
+    }
+  }
+  return sendMessageToNative({ functionName, params });
+}
+
+// 处理原生代码返回的结果
+window.handleNativeResponse = function (response) {
+  // 解析 JSON 字符串
+  const responseObject = response;
+  // 找到并调用对应的回调函数
+  const callbackName = responseObject.callback;
+  if (window[callbackName]) {
+      window[callbackName](responseObject.responseKey);
+  }
+}
 
 export const getCredentials = function() {
   try {
@@ -63,12 +118,15 @@ export const getCredentials = function() {
       return cred;
     });
     const credentialMapping = JSON.parse(getDataFromLocalStorage('credential_mapping') || '{}');
-    return { credentialListing, credentialMapping };
+    // return { credentialListing, credentialMapping, };
+    return { credentialListing, credentialMapping, deviceType: window.cooData&&window.cooData.deviceType, deviceToken: window.cooData&&window.cooData.deviceToken };
   } catch (e) {
     console.error('Error parsing credentials:', e);
-    return { credentialListing: [], credentialMapping: {} };
+    // return { credentialListing: [], credentialMapping: {}, };
+    return { credentialListing: [], credentialMapping: {}, deviceType: window.cooData&&window.cooData.deviceType, deviceToken: window.cooData&&window.cooData.deviceToken };
   }
 }
+window.getCredentials = getCredentials;
 
 export const saveCredentialListing = (newCredentials) => {
   try {
@@ -145,7 +203,7 @@ export const callApi = (functionName, params) => {
 
 export function setTokenToCookie(token) {
   // The token will be set through this function only in the desktop version
-  setDataToCookie('client_token', token, 30);
+  setDataToCookie([{name:'client_token', value:token, days:30}]);
 }
 
 export function delTokenFromCookie() {
@@ -358,13 +416,15 @@ export const writeWelcome = function(xterm) {
     // xterm.write('\x1b[36m'+text+'\x1b[0m '); // cyan text
     // xterm.write('\x1b[37m'+text+'\x1b[0m \r\n'); // white text
     xterm.write(colorizeText('Welcome! \r\n\r\n', 'green'));
-    xterm.write(colorizeText(ctrlOrMeta+'+K','cyan') + ' - Clear the workspace/terminal\r\n\r\n');
-    xterm.write(colorizeText(ctrlOrMeta+'+P','cyan') + ' - Search for Servers/Tasks/Pipelines/Files\r\n\r\n');
-    xterm.write(colorizeText(ctrlOrMeta+'+Shift+@','cyan') + ' - Search for Servers\r\n\r\n');
-    xterm.write(colorizeText(ctrlOrMeta+'+Shift+:','cyan') + ' - Search for Tasks\r\n\r\n');
-    xterm.write(colorizeText(ctrlOrMeta+'+Shift+!','cyan') + ' - Search for Pipelines\r\n\r\n');
-    xterm.write(colorizeText(ctrlOrMeta+'+Enter','cyan') + ' - Run the selected Task/Pipeline, or open a Terminal for the selected Server, or open the selected File\r\n\r\n');
-    xterm.write(colorizeText(ctrlOrMeta+'+[1,2-0]','cyan') + ' - Activate the specified tab\r\n');
+    if(!isMobileVersion){
+      xterm.write(colorizeText(ctrlOrMeta+'+K','cyan') + ' - Clear the workspace/terminal\r\n\r\n');
+      xterm.write(colorizeText(ctrlOrMeta+'+P','cyan') + ' - Search for Servers/Tasks/Pipelines/Files\r\n\r\n');
+      xterm.write(colorizeText(ctrlOrMeta+'+Shift+@','cyan') + ' - Search for Servers\r\n\r\n');
+      xterm.write(colorizeText(ctrlOrMeta+'+Shift+:','cyan') + ' - Search for Tasks\r\n\r\n');
+      xterm.write(colorizeText(ctrlOrMeta+'+Shift+!','cyan') + ' - Search for Pipelines\r\n\r\n');
+      xterm.write(colorizeText(ctrlOrMeta+'+Enter','cyan') + ' - Run the selected Task/Pipeline, or open a Terminal for the selected Server, or open the selected File\r\n\r\n');
+      xterm.write(colorizeText(ctrlOrMeta+'+[1,2-0]','cyan') + ' - Activate the specified tab\r\n');
+    }
 }
 
 const languageDict = {
@@ -514,4 +574,12 @@ export const getLanguages = function(fileName) {
     } else {
         return Object.keys(languageDict);
     }
+}
+
+export const decolorizeText = function(text) {
+  // const ansiEscape = /[\u001b\u009b][[\]()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*[0-9A-ORZcf-nqry=><]?|[^\x1b\x9b]*[\x1b\x9b]?[0-9A-ORZcf-nqry=><])/g;
+  // const ansiEscape = /[\u001b\u009b][[\]()#;?]*(?:\d{1,4}(?:;\d{0,4})*\d?[A-ORZcf-nqry=><]?|[^\u001b\u009b]*[\u001b\u009b]?\d[A-ORZcf-nqry=><])/g;
+  const ansiEscapeStr = '[\\u001b\\u009b][[\\]()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*[0-9A-ORZcf-nqry=><]?|[^\\u001b\\u009b]*[\\u001b\\u009b]?[0-9A-ORZcf-nqry=><])';
+  const ansiEscape = new RegExp(ansiEscapeStr, 'g');
+  return text.replace(ansiEscape, '');
 }

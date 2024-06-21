@@ -3,7 +3,7 @@ import { App, Dropdown, Space, Switch, Avatar, theme } from 'antd';
 import { CheckOutlined, ReloadOutlined, SettingOutlined, LogoutOutlined, QuestionCircleFilled, UserOutlined, KeyOutlined } from "@ant-design/icons";
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { callApi, getCredentials, delTokenFromCookie, isDesktopVersion } from './global';
+import { callApi, getCredentials, delTokenFromCookie, isDesktopVersion, isMobileVersion } from './global';
 import CredentialsModal from '../Server/CredentialsModal';
 
 const { useToken } = theme;
@@ -71,8 +71,9 @@ export default function ProfileButton() {
       label: getSignInTitle(),
       children: userSession ? [
         { key: 'menuReloadTeams', label: 'Reload everything', icon: <ReloadOutlined />, },
-        { key: 'menuAccount', label: ('Manage Account'), icon: <SettingOutlined />, },
+        { key: 'menuAccount', label: ('My Account'), icon: <SettingOutlined />, },
         { key: 'menuCredentials', label: ('My Credentials'), icon: <KeyOutlined />, },
+        { type: 'divider', },
         { key: 'menuSignOut', label: ('Sign Out'), icon: <LogoutOutlined />, },
       ] : undefined,
     },
@@ -94,13 +95,21 @@ export default function ProfileButton() {
         window.location.href = '/signin';
       }
     } else if(key === 'menuAccount') {
-      callApi('gotoAccountDashboard', {}).then((res) => {
-        if(res?.errinfo) {
-          message.error(res.errinfo);
-        } else if(res?.url) {
-          window.open(res.url);
-        }
-      });
+      if(isMobileVersion && window.cooData && window.cooData.oywebHost) {
+        window.location.href = window.cooData.oywebHost+'/mob/home';
+      } else {
+        callApi('gotoAccountDashboard', {}).then((res) => {
+          if(res?.errinfo) {
+            message.error(res.errinfo);
+          } else if(res?.url) {
+            if(isMobileVersion) {
+              window.location.href = res.url;
+            } else {
+              window.open(res.url);
+            }
+          }
+        })
+      };
     } else if(key === 'menuCredentials') {
       setVisibleCredentialsModal(true);
     } else if(key === 'menuSignOut') {
@@ -116,6 +125,14 @@ export default function ProfileButton() {
               } else {
                 delTokenFromCookie();
                 setUserSession({});
+              }
+            });
+          } else if (isMobileVersion) {
+            callApi('signout', {}).then((res) => {
+              if(res?.errinfo) {
+                message.error(res.errinfo);
+              } else if (res?.url) {
+                window.location.href = res.url;
               }
             });
           } else {

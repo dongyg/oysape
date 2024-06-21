@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import sched
-import threading, os, json
+import threading, os, json, traceback, logging, re
 import time
 
-from . import tools
+from . import tools, apis
 
 schedule_demo = [
     {"title":"Demo schedule task", "type": "interval", "team":"7g8RSa3WaJD0wZNgcGUYPE", "interval": 5, "start": 10, "end": 20, "priority": 1, "action": ":Git pull Oysape @myocipro"},
@@ -17,6 +17,8 @@ indexTaskSign = ':'
 indexPipelineSign = '!'
 runner = None
 apiSchedulers = {}
+OBH = ''
+SCH_ITEMS = []
 
 def parse_task_string0(s):
     v1 = s.find(':')
@@ -115,12 +117,19 @@ def execScheduleFunction(functionObj, parameterObj):
         result = functionObj(parameterObj)
         if parameterObj.get('runMode') == 'command':
             logdb.update("UPDATE schedule_logs SET out1 = COALESCE(out1, '') || ? WHERE id = ?", (result, apiSchedulers[teamName].log_id))
+            scheduleObj = getScheduleObject(sch)
+            if scheduleObj.get('recipients'):
+                out2 = re.search(scheduleObj.get('regex'), result) if scheduleObj.get('regex') else [result]
+                if out2:
+                    apiSchedulers[teamName].sendNotification({'recipients': scheduleObj.get('recipients'), 'message': out2[0], 'mid': apiSchedulers[teamName].log_id, 'title': sch, 'obh': obh})
         # with open(os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.log')), 'a') as f:
         #     f.write('Scheduled execute: %s %s %s %s\n' % (obh, sch, time.time(), retval))
 
 def initScheduler(obh, schedule_items):
     from . import apis
-    global runner, apiSchedulers
+    global runner, apiSchedulers, OBH, SCH_ITEMS
+    OBH = obh
+    SCH_ITEMS = schedule_items
     dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
     logdb = tools.SQLiteDB(dbpath)
     logdb.query('CREATE TABLE IF NOT EXISTS schedule_logs (id INTEGER PRIMARY KEY,ts TIMESTAMP,obh TEXT,sch TEXT,out1 TEXT, out2 TEXT, ext1 TEXT, ext2 TEXT)')
@@ -167,6 +176,31 @@ def initScheduler(obh, schedule_items):
     for event in runner.scheduler.queue:
         print(tools.getDatetimeStrFromTimestamp(event.time), event.argument[1].get('sch'))
     return runner
+
+def loadScheduleConfigAndInit(init=False):
+    global OBH, SCH_ITEMS
+    # Load schedule config
+    webhostFile = os.path.join(apis.folder_base, 'webhost.json')
+    if os.path.isfile(webhostFile):
+        try:
+            with open(webhostFile, 'r') as f:
+                webhostObject = json.load(f)
+            if webhostObject.get('schedules'):
+                if init:
+                    initScheduler(webhostObject.get('obh'), webhostObject.get('schedules'))
+                else:
+                    OBH = webhostObject.get('obh')
+                    SCH_ITEMS = webhostObject.get('schedules')
+        except Exception as e:
+            traceback.print_exc()
+            logging.info(('Error', e))
+
+def getScheduleObject(sch):
+    for item in SCH_ITEMS:
+        if item.get('title') == sch:
+            return item
+    return None
+
 
 # Sample usage
 if __name__ == "__main__":

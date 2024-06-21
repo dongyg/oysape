@@ -1,5 +1,5 @@
 import React, { useImperativeHandle, forwardRef, useRef, useState } from 'react';
-import { App, Form, Input, DatePicker, Radio, Row, Col, AutoComplete, Tag } from 'antd';
+import { App, Form, Input, DatePicker, Radio, Row, Col, AutoComplete, Tag, Select } from 'antd';
 import dayjs from 'dayjs';
 
 import { useCustomContext } from '../Contexts/CustomContext'
@@ -277,8 +277,7 @@ const ScheduleForm = (props, ref) => {
         </Radio.Group>
       </Form.Item>
 
-      {/* TODO: enable notification when mobile apps are deployed */}
-      {/* <Form.Item name="recipients" label="Notification" tooltip="Send a notification if the task output matches the Regex. No notification will be sent if the recipients are not specified">
+      <Form.Item name="recipients" label="Notification" tooltip="Send a notification if the task output matches the Regex. No notification will be sent if the recipients are not specified.">
         <Select
           mode="multiple"
           allowClear
@@ -295,7 +294,7 @@ const ScheduleForm = (props, ref) => {
       </Form.Item>
       <Form.Item name='regex'>
         <Input.TextArea autoComplete="off" autoCapitalize="off" autoCorrect="off" rows={2} autoSize={{ minRows: 1, maxRows: 4 }} placeholder='Regex' />
-      </Form.Item> */}
+      </Form.Item>
 
     </Form>
   );

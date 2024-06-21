@@ -3,7 +3,7 @@
 
 import os, base64, traceback, json, re, json, _thread, time, getpass, stat
 import paramiko
-from . import tools
+from . import tools, scheduler
 
 BUF_SIZE = 1024
 CR = '\r'
@@ -853,22 +853,11 @@ class SchedulerClient(WebSocketSSHClient):
             retdat = logdb.query(sql_str, arg_arr)
             if retdat and retdat[0]:
                 sch = retdat[0]['sch']
-                scheduleObj = None
-                webhostFile = os.path.expanduser(os.path.join('~', '.oysape', 'webhost.json'))
-                if os.path.isfile(webhostFile):
-                    try:
-                        with open(webhostFile, 'r') as f:
-                            webhostObject = json.load(f)
-                        if webhostObject.get('schedules'):
-                            for y in webhostObject.get('schedules',[]):
-                                if y['title'] == sch:
-                                    scheduleObj = y
-                                    break
-                    except Exception as e:
-                        pass
-                if scheduleObj and scheduleObj.get('recipients'):
-                    out2 = re.search(scheduleObj.get('regex'), result) if scheduleObj.get('regex') else [result]
-                    if out2:
-                        self.parentApi.sendNotification({'recipients': scheduleObj.get('recipients'), 'message': out2[0], 'mid': self.parentApi.log_id, 'title': sch})
+                scheduleObj = scheduler.getScheduleObject(sch)
                 if scheduleObj and (not scheduleObj.get('runMode') == 'command'):
                     logdb.update("UPDATE schedule_logs SET out1 = COALESCE(out1, '') || ? WHERE id = ?", (result, self.parentApi.log_id))
+                    if scheduleObj.get('recipients'):
+                        out2 = re.search(scheduleObj.get('regex'), result) if scheduleObj.get('regex') else [result]
+                        amsg = (result[:512]+'...') if len(result)>512 else result
+                        if out2:
+                            self.parentApi.sendNotification({'recipients': scheduleObj.get('recipients'), 'message': amsg, 'mid': self.parentApi.log_id, 'title': sch, 'obh': retdat[0]['obh']})

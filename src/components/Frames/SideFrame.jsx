@@ -6,9 +6,10 @@ import { BsFiles } from "react-icons/bs";
 import { FaDocker } from "react-icons/fa";
 import { AiOutlineCloudServer } from "react-icons/ai";
 import { UnorderedListOutlined, DoubleLeftOutlined, DoubleRightOutlined, MenuFoldOutlined, GlobalOutlined } from "@ant-design/icons";
+import { RxActivityLog } from "react-icons/rx";
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { callApi, isDesktopVersion } from '../Common/global';
+import { callApi, isDesktopVersion, isMobileVersion } from '../Common/global';
 // import ProfileButton from '../Common/ProfileButton'
 import ServersPanel from '../Server/ServersPanel';
 import ProjectsPanel from '../Project/ProjectsPanel';
@@ -17,6 +18,7 @@ import TasksPanel from '../Task/TasksPanel';
 import Sftp from '../Modules/Sftp';
 import DockersPanel from '../Modules/DockersPanel';
 import WebsitesPanel from '../Websites/WebsitesPanel';
+import ScheduleLogsPanel from '../Websites/ScheduleLogsPanel';
 
 import './SideFrame.css';
 
@@ -66,6 +68,9 @@ export default function SideFrame() {
     }
     if(isDesktopVersion && userSession.teams[userSession.team0].is_creator) {
       buttons.push({ key: 'sideWebsites', label: <GlobalOutlined style={{fontSize:'2em', marginRight: '0px'}} />, children: <WebsitesPanel /> })
+    }
+    if(!isDesktopVersion) {
+      buttons.push({ key: 'sideLogs', label: <RxActivityLog style={{fontSize:'2em', marginRight: '0px'}} />, children: <ScheduleLogsPanel /> })
     }
     return buttons;
   }

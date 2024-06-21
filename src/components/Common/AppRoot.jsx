@@ -5,7 +5,13 @@ import BodyContainer from './BodyContainer';
 import SignIn from './SignIn';
 
 const AppRoot = () => {
+  const { message } = App.useApp();
   const { customTheme, userSession } = useCustomContext();
+
+  const showMessageInWebpage = (content, level) => {
+    if(content) message[level||level||'info'](content);
+  };
+  window.showMessageInWebpage = showMessageInWebpage;
 
   return (
     <ConfigProvider

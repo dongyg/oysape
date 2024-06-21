@@ -4,17 +4,9 @@ import dayjs from 'dayjs';
 
 import AnsiText from './AnsiText';
 import { useCustomContext } from '../Contexts/CustomContext';
-import { callApi } from '../Common/global';
+import { callApi, decolorizeText } from '../Common/global';
 
 const { Content, Sider } = Layout;
-
-function decolorizeText(text) {
-    // const ansiEscape = /[\u001b\u009b][[\]()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*[0-9A-ORZcf-nqry=><]?|[^\x1b\x9b]*[\x1b\x9b]?[0-9A-ORZcf-nqry=><])/g;
-    // const ansiEscape = /[\u001b\u009b][[\]()#;?]*(?:\d{1,4}(?:;\d{0,4})*\d?[A-ORZcf-nqry=><]?|[^\u001b\u009b]*[\u001b\u009b]?\d[A-ORZcf-nqry=><])/g;
-    const ansiEscapeStr = '[\\u001b\\u009b][[\\]()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*[0-9A-ORZcf-nqry=><]?|[^\\u001b\\u009b]*[\\u001b\\u009b]?[0-9A-ORZcf-nqry=><])';
-    const ansiEscape = new RegExp(ansiEscapeStr, 'g');
-    return text.replace(ansiEscape, '');
-}
 
 const ScheduleLogViewer = ({ obh, sch, tname }) => {
     const { message } = App.useApp();

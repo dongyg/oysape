@@ -53,6 +53,9 @@ def n62to10(value):
 def n16to62(value):
     return n10to62(int(value, 16))
 
+def get_sha256(string1):
+    return hashlib.sha256((string1 or "").encode('utf8')).hexdigest()
+
 def convert_bytes(size):
     # 1 KB = 1024 B
     # 1 MB = 1024 KB

@@ -20,7 +20,7 @@ def getSignInState(clientId, userAgent, serverHome):
     # Get the secret key for this OYSAPE_BACKEND_HOST from configuration. For desktop version, the secret key is presaved.
     # Then calulate HMAC signature with this secret key
     clientInfo = {'cid': clientId, 'ua': userAgent, 'obh': (serverHome or ''), 'nonce': tools.getRandomString()}
-    clientInfo['sig'] = signForWebhost(serverHome, json.dumps(clientInfo, sort_keys=True))
+    clientInfo['sig'] = signForWebhost(serverHome, json.dumps(clientInfo, sort_keys=True, separators=((',', ':'))))
     retval = tools.callServerApiPost('/signin/getready', clientInfo)
     if retval and retval.get('state'):
         return {'state': retval.get('state')}
@@ -40,6 +40,7 @@ def openOAuthWindow(oauthAgent, clientId, userAgent, serverHome):
     # oauthAgent: 'github' or 'email' or 'google'
     retval = {'clientId': clientId}
     isDesktopVersion = (userAgent.find('OysapeDesktop') >= 0)
+    isMobileVersion = (userAgent.find('OysapeMobile') >= 0)
     sdata = getSignInState(clientId, ((socket.gethostname()+' '+userAgent) if isDesktopVersion else userAgent), serverHome)
     if sdata and sdata.get('errinfo'):
         retval['errinfo'] = sdata.get('errinfo')

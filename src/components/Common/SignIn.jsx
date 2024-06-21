@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 
-import { Layout, Button, Image, Alert, } from 'antd';
+import { App, Layout, Button, Image, Alert, } from 'antd';
 import { GithubOutlined, GoogleOutlined, GlobalOutlined, LoadingOutlined } from "@ant-design/icons";
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { isDesktopVersion, callApi, getCredentials, setTokenToCookie, delTokenFromCookie } from '../Common/global';
+import { isDesktopVersion, callApi, getCredentials, setTokenToCookie, delTokenFromCookie, isMobileVersion } from '../Common/global';
 
 export default function BodyContainer() {
+  const { message } = App.useApp();
   const { setUserSession } = useCustomContext();
   const queryParams = new URLSearchParams(window.location.search);
   const [ messageType, setMessageType ] = useState('error');
@@ -15,21 +16,21 @@ export default function BodyContainer() {
 
   const handleSigninWithEmail = () => {
     setLoading(true);
-    showMessageOnSigninPage(''); // Don't show loading after clicking sign in. Because the user might want to don't sign in and choose another way immediately
+    showMessageInWebpage(''); // Don't show loading after clicking sign in. Because the user might want to don't sign in and choose another way immediately
     callApi('signInWithEmail', {obh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
       callWaitForSigninResult(data);
     });
   }
   const handleSigninWithGithub = () => {
     setLoading(true);
-    showMessageOnSigninPage(''); // Don't show loading after clicking sign in. Because the user might want to don't sign in and choose another way immediately
+    showMessageInWebpage(''); // Don't show loading after clicking sign in. Because the user might want to don't sign in and choose another way immediately
     callApi('signInWithGithub', {obh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
       callWaitForSigninResult(data);
     });
   }
   const handleSigninWithGoogle = () => {
     setLoading(true);
-    showMessageOnSigninPage(''); // Don't show loading after clicking sign in. Because the user might want to don't sign in and choose another way immediately
+    showMessageInWebpage(''); // Don't show loading after clicking sign in. Because the user might want to don't sign in and choose another way immediately
     callApi('signInWithGoogle', {obh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
       callWaitForSigninResult(data);
     });
@@ -37,7 +38,7 @@ export default function BodyContainer() {
   const callWaitForSigninResult = (waitData) => {
     let secondPassed = 0;
     if(waitData?.errinfo) {
-      showMessageOnSigninPage(waitData.errinfo, 'error');
+      showMessageInWebpage(waitData.errinfo, 'error');
     } else {
       if(isDesktopVersion) {
         // Won't be here in web version
@@ -49,13 +50,13 @@ export default function BodyContainer() {
               window.reloadUserSession(loginData.token);
             }else if(loginData && loginData.errinfo) {
               clearInterval(waitForSigninResultTimer);
-              showMessageOnSigninPage(loginData.errinfo, 'error');
+              showMessageInWebpage(loginData.errinfo, 'error');
             }
           });
           secondPassed += 1;
           if (secondPassed >= 60) {
             clearInterval(waitForSigninResultTimer);
-            showMessageOnSigninPage('Timeout', 'error');
+            showMessageInWebpage('Timeout', 'error');
             setLoading(false);
           }
         }, 1000);
@@ -70,25 +71,32 @@ export default function BodyContainer() {
     }
   }
 
-  const showMessageOnSigninPage = (message, type) => {
-    setMessageContent(message);
-    if(type) setMessageType(type);
+  const showMessageInWebpage = (content, level) => {
+    setMessageContent(content);
+    if(content) message[level||messageType||'info'](content);
+    if(level) setMessageType(level);
     setLoading(false);
   };
-  window.showMessageOnSigninPage = showMessageOnSigninPage;
+  window.showMessageInWebpage = showMessageInWebpage;
 
   const reloadUserSession = () => {
     callApi('reloadUserSession', getCredentials()).then((data) => {
+      setLoading(false);
       // console.log('reloadUserSession', data);
       if(data?.uid) {
         setUserSession(data);
       }else if(data?.errinfo) {
-        window.showMessageOnSigninPage && window.showMessageOnSigninPage(data.errinfo);
+        window.showMessageInWebpage && window.showMessageInWebpage(data.errinfo);
         delTokenFromCookie();
       }else{
-        window.showMessageOnSigninPage && window.showMessageOnSigninPage('');
+        window.showMessageInWebpage && window.showMessageInWebpage('');
+        if(isMobileVersion && window.cooData && window.cooData.oywebHost) {
+          window.location.href = window.cooData.oywebHost;
+        }
         // delTokenFromCookie();
       }
+    }).catch((err) => {
+      setLoading(false);
     });
   };
   window.reloadUserSession = reloadUserSession;
@@ -107,6 +115,26 @@ export default function BodyContainer() {
           });
         }
       })
+    } else if (isMobileVersion) {
+      setLoading(true);
+      var runTimes = 0;
+      const waitForTokenTimer = setInterval(() => {
+        if (window.cooData && window.cooData.client_id) {
+          clearInterval(waitForTokenTimer);
+          window.showMessageInWebpage && window.showMessageInWebpage('Session loaded', 'success');
+          runMeFirst();
+        }
+        runTimes += 1;
+        if(runTimes >= 10) {
+          clearInterval(waitForTokenTimer);
+          window.showMessageInWebpage && window.showMessageInWebpage('Load session timeout', 'warning');
+          setTimeout(() => {
+            if(isMobileVersion && window.cooData && window.cooData.oywebHost) {
+              window.location.href = window.cooData.oywebHost;
+            }
+          }, 2000)
+        }
+      }, 1000);
     } else {
       runMeFirst();
     }

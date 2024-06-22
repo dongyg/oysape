@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 import { App, Layout, Button, Image, Alert, } from 'antd';
-import { GithubOutlined, GoogleOutlined, GlobalOutlined, LoadingOutlined } from "@ant-design/icons";
+import { GithubOutlined, GoogleOutlined, GlobalOutlined, LoadingOutlined, AppleFilled } from "@ant-design/icons";
 
 import { useCustomContext } from '../Contexts/CustomContext'
 import { isDesktopVersion, callApi, getCredentials, setTokenToCookie, delTokenFromCookie, isMobileVersion } from '../Common/global';
@@ -32,6 +32,13 @@ export default function BodyContainer() {
     setLoading(true);
     showMessageInWebpage(''); // Don't show loading after clicking sign in. Because the user might want to don't sign in and choose another way immediately
     callApi('signInWithGoogle', {obh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
+      callWaitForSigninResult(data);
+    });
+  }
+  const handleSigninWithApple = () => {
+    setLoading(true);
+    showMessageInWebpage(''); // Don't show loading after clicking sign in. Because the user might want to don't sign in and choose another way immediately
+    callApi('signInWithApple', {obh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
       callWaitForSigninResult(data);
     });
   }
@@ -146,9 +153,10 @@ export default function BodyContainer() {
         <div style={{ height: '100%', display: 'flex', justifyContent: 'center', paddingTop: 'calc(50vh - 200px)' }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '24px', marginBottom: '8px' }}><Image src="/logo192.png" width={128} height={128} preview={false} /><br />Oysape</div>
-            <div style={{ marginBottom: '8px' }} hidden={loading}><Button type="default" size='large' onClick={handleSigninWithEmail} icon={<GlobalOutlined />} style={{ width: '200px' }}>Sign in with Email&nbsp;&nbsp;</Button></div>
-            <div style={{ marginBottom: '8px' }} hidden={loading}><Button type="default" size='large' onClick={handleSigninWithGithub} icon={<GithubOutlined />} style={{ width: '200px' }}>Sign in with Github</Button></div>
+            <div style={{ marginBottom: '8px' }} hidden={loading}><Button type="default" size='large' onClick={handleSigninWithEmail} icon={<GlobalOutlined />} style={{ width: '200px' }}>Sign in with Email&nbsp;&nbsp;&nbsp;</Button></div>
+            <div style={{ marginBottom: '8px' }} hidden={loading}><Button type="default" size='large' onClick={handleSigninWithGithub} icon={<GithubOutlined />} style={{ width: '200px' }}>Sign in with Github&nbsp;</Button></div>
             <div style={{ marginBottom: '8px' }} hidden={loading}><Button type="default" size='large' onClick={handleSigninWithGoogle} icon={<GoogleOutlined />} style={{ width: '200px' }}>Sign in with Google</Button></div>
+            <div style={{ marginBottom: '8px' }} hidden={loading}><Button type="default" size='large' onClick={handleSigninWithApple} icon={<AppleFilled />} style={{ width: '200px' }}>Sign in with Apple&nbsp;&nbsp;&nbsp;</Button></div>
             <div style={{ fontSize: '92px' }} hidden={!loading}><LoadingOutlined /></div>
             <div style={{ marginBottom: '8px' }} hidden={!messageContent}><Alert type={messageType||'info'} message={messageContent}></Alert></div>
           </div>

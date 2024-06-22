@@ -109,6 +109,10 @@ class ApiOauth(ApiBase):
         self.backendHost = params.get('obh', self.backendHost)
         return auth.openOAuthWindow('google', self.clientId, self.clientUserAgent, self.backendHost)
 
+    def signInWithApple(self, params):
+        self.backendHost = params.get('obh', self.backendHost)
+        return auth.openOAuthWindow('apple', self.clientId, self.clientUserAgent, self.backendHost)
+
     def signout(self, params={}):
         if self.isMobileVersion():
             return {"url": "%s/mob/signout"%consts.OYSAPE_HOST}

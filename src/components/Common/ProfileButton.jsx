@@ -1,6 +1,6 @@
 import React, {useEffect, useRef, useState} from 'react';
 import { App, Dropdown, Space, Switch, Avatar, theme } from 'antd';
-import { CheckOutlined, ReloadOutlined, SettingOutlined, LogoutOutlined, QuestionCircleFilled, UserOutlined, KeyOutlined } from "@ant-design/icons";
+import { CheckOutlined, ReloadOutlined, SettingOutlined, LogoutOutlined, QuestionCircleFilled, UserOutlined, KeyOutlined, AppleFilled } from "@ant-design/icons";
 
 import { useCustomContext } from '../Contexts/CustomContext'
 import { callApi, getCredentials, delTokenFromCookie, isDesktopVersion, isMobileVersion } from './global';
@@ -29,6 +29,8 @@ export default function ProfileButton() {
       return <Avatar src={userSession.github_user.avatar_url} size={size} />;
     } else if (userSession.last_login_agent === 'Google') {
       return <Avatar src={userSession.google_user.picture} size={size} />;
+    } else if (userSession.last_login_agent === 'Apple') {
+      return <Avatar icon={<AppleFilled />} size={size} />;
     } else {
       return <Avatar icon={<UserOutlined />} size={size} />;
     }

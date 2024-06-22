@@ -142,7 +142,7 @@ def initScheduler(obh, schedule_items):
     for item in schedule_items:
         teamName = item['team']
         if not teamName in apiSchedulers:
-            apiSchedulers[teamName] = apis.ApiScheduler(clientId='scheduler_for_'+teamName, clientUserAgent='OysapeScheduler/2.5.28')
+            apiSchedulers[teamName] = apis.ApiScheduler(clientId='scheduler_for_'+teamName, clientUserAgent='OysapeScheduler/2.6.21')
             apiSchedulers[teamName].teamName = teamName
         # Load credentials for this webhost
         cerdPath = os.path.expanduser(os.path.join('~', '.oysape','credentials.json'))

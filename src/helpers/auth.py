@@ -35,6 +35,8 @@ def getOAuthUrl(oauthAgent):
         return 'https://github.com/login/oauth/authorize?scope=user:email&client_id=6d627d92ce5a51cda1b1&state=%s'
     elif oauthAgent == 'google':
         return 'https://accounts.google.com/o/oauth2/v2/auth?scope=https://www.googleapis.com/auth/userinfo.email&response_type=code&client_id=752692102612-2ii66sjn45ndd7tmou1i9cosjlupqa99.apps.googleusercontent.com&redirect_uri=https://oysape.aifetel.cc/oyapi/callback/google&state=%s'
+    elif oauthAgent == 'apple':
+        return consts.OYSAPE_HOST + '/signin-apple?state=%s'
 
 def openOAuthWindow(oauthAgent, clientId, userAgent, serverHome):
     # oauthAgent: 'github' or 'email' or 'google'

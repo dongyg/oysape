@@ -20,7 +20,7 @@ const termOptions = {
 
 function decolorizeText(text) {
     const ansiEscape = /[\u001b\u009b][[\]()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*[0-9A-ORZcf-nqry=><]?|[^\x1b\x9b]*[\x1b\x9b]?[0-9A-ORZcf-nqry=><])/g;
-    return text.replace(ansiEscape, '');
+    return (text || '').replace(ansiEscape, '');
 }
 
 const ScheduleLogViewer = ({ obh, sch, tname }) => {

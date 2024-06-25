@@ -122,11 +122,12 @@ def oauthCallback():
         # PS: Cannot save the token into the cookie here. Because the browser is the system default browser, not the webview inside the Oysape.
         rendered_template = template_signin_success_close
     elif apis.apiInstances[clientId].isMobileVersion():
+        # After sign in successfully in Mobile Apps, will reach here.
         # What the hell, client_token cannot be save into the cookie in iOS WebView, sometimes, really sometime.
         response.set_cookie("client_id", clientId, path="/", httponly=True)
         response.set_cookie("client_token", retval.get('data').get('token'), path="/", httponly=True)
         response.set_cookie("mobile_token", retval.get('data').get('token'), path="/", httponly=True)
-        return redirect('/index.html')
+        return redirect((retval.get('obh') or '')+'/index.html')
     else:
         # In the web version, can set the cookie here. The cookies are only available for this session.
         # cookies 的有效期可以让用户在设置 web host 的时候自行设置. 仅会话有效的话会更安全(token泄露被盗用的可能性更小). 另外用户也可以选择在 web version 使用后自行 sign out. sign out 后 token 已经删除并失效了, 就不存在泄露和被盗用风险了.

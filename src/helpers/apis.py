@@ -785,6 +785,40 @@ class ApiDockerManager(ApiSftp):
         self.combinedConnections[serverKey].dockerComposePrefix = command
         #TODO: save the docker command path on the server
 
+    def execQueryScheduleLogs(self, params={}):
+        # params: obh, sch, page, pageSize
+        # Execute query schedule logs
+        if not scheduler.OBH:
+            scheduler.loadScheduleConfigAndInit(False)
+        obh = scheduler.OBH or ''
+        sch = params.get('sch')
+        qrytxt = params.get('qrytxt')
+        page = tools.intget(params.get('page') or 1, 1)
+        pageSize = tools.intget(params.get('pageSize') or 10, 10)
+        # logging.info(('execQueryScheduleLogs', obh, sch, page, pageSize))
+        dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
+        logdb = tools.SQLiteDB(dbpath)
+        where_clause = ' WHERE obh = ?'
+        arg_arr = [obh]
+        if sch:
+            where_clause += ' AND sch = ?'
+            arg_arr.append(sch)
+        if qrytxt:
+            where_clause += ' AND (sch LIKE ? OR out1 LIKE ?)'
+            arg_arr.extend(['%'+qrytxt+'%', '%'+qrytxt+'%'])
+        # count
+        sql_str = "SELECT COUNT(id) AS total FROM schedule_logs" + where_clause
+        total = logdb.query(sql_str, arg_arr)
+        total = total[0].get('total')
+        # query
+        sql_str = "SELECT * FROM schedule_logs" + where_clause + " ORDER BY id DESC LIMIT ? OFFSET ?"
+        arg_arr.extend([pageSize, (page-1)*pageSize])
+        retdat = logdb.query(sql_str, arg_arr)
+        retdat = [{'key': x.get('id'), **x} for x in retdat]
+        return {'list': retdat, 'total': total, 'schs': scheduler.SCH_ITEMS}
+
+
+
 class ApiScheduler(ApiDockerManager):
     # This is for the web version scheduler
     def __init__(self, clientId='', clientUserAgent='', _logging=consts.IS_LOGGING):
@@ -862,38 +896,6 @@ class ApiOverHttp(ApiDockerManager):
     def __init__(self, clientId='', clientUserAgent='', _logging=consts.IS_LOGGING):
         super().__init__(clientId, clientUserAgent, _logging)
         self.socketConnections = {}
-
-    def execQueryScheduleLogs(self, params={}):
-        # params: obh, sch, page, pageSize
-        # Execute query schedule logs
-        if not scheduler.OBH:
-            scheduler.loadScheduleConfigAndInit(False)
-        obh = scheduler.OBH or ''
-        sch = params.get('sch')
-        qrytxt = params.get('qrytxt')
-        page = tools.intget(params.get('page') or 1, 1)
-        pageSize = tools.intget(params.get('pageSize') or 10, 10)
-        # logging.info(('execQueryScheduleLogs', obh, sch, page, pageSize))
-        dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
-        logdb = tools.SQLiteDB(dbpath)
-        where_clause = ' WHERE obh = ?'
-        arg_arr = [obh]
-        if sch:
-            where_clause += ' AND sch = ?'
-            arg_arr.append(sch)
-        if qrytxt:
-            where_clause += ' AND (sch LIKE ? OR out1 LIKE ?)'
-            arg_arr.extend(['%'+qrytxt+'%', '%'+qrytxt+'%'])
-        # count
-        sql_str = "SELECT COUNT(id) AS total FROM schedule_logs" + where_clause
-        total = logdb.query(sql_str, arg_arr)
-        total = total[0].get('total')
-        # query
-        sql_str = "SELECT * FROM schedule_logs" + where_clause + " ORDER BY id DESC LIMIT ? OFFSET ?"
-        arg_arr.extend([pageSize, (page-1)*pageSize])
-        retdat = logdb.query(sql_str, arg_arr)
-        retdat = [{'key': x.get('id'), **x} for x in retdat]
-        return {'list': retdat, 'total': total, 'schs': scheduler.SCH_ITEMS}
 
     def deleteScheduleLogOne(self, params={}):
         dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
@@ -1186,7 +1188,7 @@ class ApiDesktop(ApiOverHttp):
                     if retval and retval.get('content'):
                         return json.loads(base64.b64decode(retval.get('content').encode()).decode())
                     elif retval and retval.get('errinfo'):
-                        return retval
+                        return {}
                 else:
                     return {}
         return {'errinfo': 'Server not found'}

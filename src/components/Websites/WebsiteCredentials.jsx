@@ -4,10 +4,9 @@ import { EditOutlined, DeleteOutlined, QuestionCircleFilled, FolderOpenOutlined,
 
 import { callApi } from '../Common/global';
 
-const WebsiteCredentials = ({ obh, visible, onCancel, onChoose, initialMode = 'list', credentialListing = [] }) => {
+const WebsiteCredentials = ({ obh, visible, onCancel, onChoose, initialMode, credentialListing, setCredentialListing }) => {
   const { message } = App.useApp();
   const [mode, setMode] = useState(initialMode);
-  const [credentials, setCredentials] = useState(credentialListing||[]);
   const [editingCredential, setEditingCredential] = useState(null);
   const [form] = Form.useForm();
 
@@ -16,7 +15,7 @@ const WebsiteCredentials = ({ obh, visible, onCancel, onChoose, initialMode = 'l
       if(data && data.errinfo) {
         message.error(data.errinfo);
       } else {
-        setCredentials(newCredentials);
+        setCredentialListing(newCredentials);
       }
     })
   };
@@ -34,19 +33,19 @@ const WebsiteCredentials = ({ obh, visible, onCancel, onChoose, initialMode = 'l
   };
 
   const handleDelete = (key) => {
-    const newCredentials = credentials.filter(cred => cred.key !== key);
+    const newCredentials = credentialListing.filter(cred => cred.key !== key);
     saveCredentialsToWebhost(newCredentials);
   };
 
   const handleSave = () => {
     form.validateFields().then(values => {
-      const aliasExists = (mode === 'new') ? credentials.some(cred => cred.key === values.alias) : credentials.some(cred => cred.key === values.alias && cred.key !== editingCredential.key);
+      const aliasExists = (mode === 'new') ? credentialListing.some(cred => cred.key === values.alias) : credentialListing.some(cred => cred.key === values.alias && cred.key !== editingCredential.key);
       if (aliasExists) {
         form.setFields([{ name: 'alias', errors: ['Alias already exists'], }]);
         return;
       }
       values.key = values.alias;
-      const newCredentials = [...credentials];
+      const newCredentials = [...credentialListing];
       if (mode === 'new') {
         newCredentials.push(values);
       } else if (mode === 'edit') {
@@ -117,7 +116,7 @@ const WebsiteCredentials = ({ obh, visible, onCancel, onChoose, initialMode = 'l
         return (
           <>
             <Button type="primary" onClick={handleAdd} style={{ marginBottom: 16 }} icon={<PlusOutlined/>}>Add</Button>
-            <Table size='small' columns={columns} dataSource={credentials} rowKey="key" />
+            <Table size='small' columns={columns} dataSource={credentialListing} rowKey="key" />
           </>
         );
       case 'new':

@@ -33,12 +33,16 @@ const nginxConfigDemo = `server {
   listen 80;
   listen [::]:80;
   server_name your_domain;
+
+  # WebSocket configuration
   location /websocket {
       proxy_pass          http://192.168.0.1:19790;
       proxy_http_version  1.1;
       proxy_read_timeout  600s;
+      # WebSocket specific headers
       proxy_set_header    Upgrade $http_upgrade;
       proxy_set_header    Connection "upgrade";
+      # Common proxy headers
       proxy_set_header    Host $host;
       proxy_set_header    X-Real-IP $remote_addr;
       proxy_set_header    X-Forwarded-For   $proxy_add_x_forwarded_for;
@@ -47,9 +51,11 @@ const nginxConfigDemo = `server {
       proxy_set_header    X-Forwarded-Port  $server_port;
   }
 
+  # Default location for all other requests
   location / {
       proxy_pass          http://192.168.0.1:19790;
       proxy_redirect      off;
+      # Common proxy headers
       proxy_set_header    Host $host;
       proxy_set_header    X-Real-IP $remote_addr;
       proxy_set_header    X-Forwarded-For   $proxy_add_x_forwarded_for;
@@ -283,6 +289,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
         message.error('Server ' + websiteObject.target + ' has no credentials. Please set credentials first.');
       } else {
         callApi('get_credentials', {'obh': websiteObject.obh}).then((res) => {
+          console.log('res', res);
           if(res) {
             setCredentialMapping(res.credentialMapping || {});
             setCredentialListing(res.credentialListing || []);
@@ -661,7 +668,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
       </div>
 
       {/* Credentials for servers */}
-      <WebsiteCredentials obh={webhostObject.obh} visible={visibleWebsiteCredentials} onCancel={handleCredentialsCancel} onChoose={handleCredentialsChoose} initialMode="choose" credentialListing={credentialListing}  />
+      <WebsiteCredentials obh={webhostObject.obh} visible={visibleWebsiteCredentials} onCancel={handleCredentialsCancel} onChoose={handleCredentialsChoose} initialMode="choose" credentialListing={credentialListing} setCredentialListing={setCredentialListing} />
     </div>
   );
 }

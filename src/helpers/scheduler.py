@@ -118,7 +118,7 @@ def execScheduleFunction(functionObj, parameterObj):
         if parameterObj.get('runMode') == 'command':
             logdb.update("UPDATE schedule_logs SET out1 = COALESCE(out1, '') || ? WHERE id = ?", (result, apiSchedulers[teamName].log_id))
             scheduleObj = getScheduleObject(sch)
-            if scheduleObj.get('recipients'):
+            if scheduleObj.get('recipients') and result:
                 out2 = re.search(scheduleObj.get('regex'), result) if scheduleObj.get('regex') else [result]
                 if out2:
                     apiSchedulers[teamName].sendNotification({'recipients': scheduleObj.get('recipients'), 'message': out2[0], 'mid': apiSchedulers[teamName].log_id, 'title': sch, 'obh': obh})
@@ -142,7 +142,7 @@ def initScheduler(obh, schedule_items):
     for item in schedule_items:
         teamName = item['team']
         if not teamName in apiSchedulers:
-            apiSchedulers[teamName] = apis.ApiScheduler(clientId='scheduler_for_'+teamName, clientUserAgent='OysapeScheduler/2.6.21')
+            apiSchedulers[teamName] = apis.ApiScheduler(clientId='scheduler_for_'+teamName, clientUserAgent='OysapeScheduler/2.6.24')
             apiSchedulers[teamName].teamName = teamName
         # Load credentials for this webhost
         cerdPath = os.path.expanduser(os.path.join('~', '.oysape','credentials.json'))

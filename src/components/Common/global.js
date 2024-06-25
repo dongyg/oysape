@@ -581,5 +581,5 @@ export const decolorizeText = function(text) {
   // const ansiEscape = /[\u001b\u009b][[\]()#;?]*(?:\d{1,4}(?:;\d{0,4})*\d?[A-ORZcf-nqry=><]?|[^\u001b\u009b]*[\u001b\u009b]?\d[A-ORZcf-nqry=><])/g;
   const ansiEscapeStr = '[\\u001b\\u009b][[\\]()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*[0-9A-ORZcf-nqry=><]?|[^\\u001b\\u009b]*[\\u001b\\u009b]?[0-9A-ORZcf-nqry=><])';
   const ansiEscape = new RegExp(ansiEscapeStr, 'g');
-  return text.replace(ansiEscape, '');
+  return (text || '').replace(ansiEscape, '');
 }

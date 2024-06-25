@@ -12,7 +12,7 @@ const cleanAnsiString = (text) => {
 
   patterns.forEach(pattern => {
     const regex = new RegExp(pattern, 'g');
-    text = text.replace(regex, '');
+    text = (text || '').replace(regex, '');
   });
 
   return text;

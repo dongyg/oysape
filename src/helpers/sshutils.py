@@ -856,7 +856,7 @@ class SchedulerClient(WebSocketSSHClient):
                 scheduleObj = scheduler.getScheduleObject(sch)
                 if scheduleObj and (not scheduleObj.get('runMode') == 'command'):
                     logdb.update("UPDATE schedule_logs SET out1 = COALESCE(out1, '') || ? WHERE id = ?", (result, self.parentApi.log_id))
-                    if scheduleObj.get('recipients'):
+                    if scheduleObj.get('recipients') and result:
                         out2 = re.search(scheduleObj.get('regex'), result) if scheduleObj.get('regex') else [result]
                         amsg = (result[:512]+'...') if len(result)>512 else result
                         if out2:

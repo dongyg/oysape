@@ -1113,7 +1113,7 @@ class ApiDesktop(ApiOverHttp):
             # Run the container
             self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker ps --filter "name=^/'+containerName+'$" --format \'{{.Names}}\' | grep -qw '+containerName+' && ' + self.combinedConnections[serverKey].dockerCommandPrefix + 'docker stop '+containerName)
             self.combinedConnections[serverKey].onChannelString((CRLF+'Running webhost container...'))
-            oneTimeSecret = tools.getRandomString(60)
+            oneTimeSecret = obhs.keys.get(obh) or tools.getRandomString(60)
             # cmd1 = self.combinedConnections[serverKey].dockerCommandPrefix + f'docker run --rm --name {containerName} -p {portMapping} -e WEBHOST_CONFIG=' + oneTimeSecret+'@'+obh + f' {volumes} -itd oysape/webhost'
             cmd1 = self.combinedConnections[serverKey].dockerCommandPrefix + f'docker run --name {containerName} -p {portMapping} -e WEBHOST_CONFIG=' + oneTimeSecret+'@'+obh + f' {volumes} -itd oysape/webhost'
             # self.dockerExecCommand({'command': cmd1, 'target': serverKey, 'output': True})

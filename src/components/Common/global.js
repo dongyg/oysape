@@ -62,11 +62,12 @@ const OYSAPE_MOBILE_NAME = 'OysapeMobile';
 
 export const isDesktopVersion = navigator.userAgent.indexOf(OYSAPE_DESKTOP_NAME) !== -1;
 export const isMobileVersion = navigator.userAgent.indexOf(OYSAPE_MOBILE_NAME) !== -1;
+export const isIos = navigator.userAgent.indexOf('iPhone') !== -1 || navigator.userAgent.indexOf('iPad') !== -1;
 
 // 调用原生API
 export function callNativeApi(functionName, params) {
-  const sendMessageToNative = (data) => {
-    if(isMobileVersion && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.jsHandler) {
+  if(isMobileVersion) {
+    const sendMessageToNative = (data) => {
       return new Promise((resolve, reject) => {
         // 创建一个唯一的回调函数名
         const callbackName = `callback_${Date.now()}`;
@@ -77,13 +78,17 @@ export function callNativeApi(functionName, params) {
             delete window[callbackName];
         };
         // 发送消息到原生代码，并传递回调函数名
-        window.webkit.messageHandlers.jsHandler.postMessage({ ...data, callback: callbackName });
+        if(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.jsHandler && window.webkit.messageHandlers.jsHandler.postMessage){
+          window.webkit.messageHandlers.jsHandler.postMessage({ ...data, callback: callbackName });
+        } else if (window.Android && window.Android.postMessage) {
+          window.Android.postMessage(JSON.stringify({ ...data, callback: callbackName }));
+        }
       });
-    } else {
-      return Promise.reject('Please use Oysape Mobile app.');
     }
+    return sendMessageToNative({ functionName, params });
+  } else {
+    return Promise.reject('Please use Oysape Mobile app.');
   }
-  return sendMessageToNative({ functionName, params });
 }
 
 // 处理原生代码返回的结果
@@ -93,7 +98,7 @@ window.handleNativeResponse = function (response) {
   // 找到并调用对应的回调函数
   const callbackName = responseObject.callback;
   if (window[callbackName]) {
-      window[callbackName](responseObject.responseKey);
+      window[callbackName](responseObject.backData);
   }
 }
 

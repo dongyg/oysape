@@ -9,7 +9,7 @@ import { UnorderedListOutlined, DoubleLeftOutlined, DoubleRightOutlined, MenuFol
 import { RxActivityLog } from "react-icons/rx";
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { callApi, isDesktopVersion, isMobileVersion } from '../Common/global';
+import { callApi, isDesktopVersion } from '../Common/global';
 // import ProfileButton from '../Common/ProfileButton'
 import ServersPanel from '../Server/ServersPanel';
 import ProjectsPanel from '../Project/ProjectsPanel';

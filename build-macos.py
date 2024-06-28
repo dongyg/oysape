@@ -28,8 +28,8 @@ OPTIONS = {
     'resources': ['gui'],
     'plist': {
         'CFBundleName': 'Oysape',
-        'CFBundleShortVersionString':'2.6.24',
-        'CFBundleVersion': '2.6.24',
+        'CFBundleShortVersionString':'2.6.28',
+        'CFBundleVersion': '2.6.28',
         'CFBundleIdentifier':'cc.aifetel.oysape',
         'NSHumanReadableCopyright': '@ Aifetel 2024'
     }

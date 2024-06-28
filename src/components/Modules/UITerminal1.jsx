@@ -7,7 +7,7 @@ import "xterm/css/xterm.css";
 
 import { useCustomContext } from '../Contexts/CustomContext'
 import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
-import { callApi, isMobileVersion } from '../Common/global';
+import { callApi } from '../Common/global';
 import "./Terminal.css";
 
 const termOptions = {
@@ -64,7 +64,6 @@ export default function WebTerminal(props) {
         xtermRef.current.loadAddon(xtermRef.current.fitAddon);
         xtermRef.current.onData(handlerData);
         xtermRef.current.onMobileData = (data) => {
-            console.log(data);
             handlerData(data['input']);
         }
         window.oypaseTabs = window.oypaseTabs || {}; window.oypaseTabs.tabActiveKey = uniqueKey; window.oypaseTabs[uniqueKey] = xtermRef.current;

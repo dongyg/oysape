@@ -280,8 +280,8 @@ class ApiOysape(ApiOauth):
             if import_list is None:
                 if self.isDesktopVersion():
                     fname = self.choose_file_read()
-                    if fname:
-                        with open(fname, 'r') as f1:
+                    if fname and fname.get('filename'):
+                        with open(fname.get('filename'), 'r') as f1:
                             import_list = json.load(f1)
                 elif params.get('filename'):
                     fname = params.get('filename')
@@ -326,14 +326,13 @@ class ApiOysape(ApiOauth):
         try:
             if self.isDesktopVersion():
                 fname = self.choose_file_write()
-                if fname:
-                    with open(fname, 'w') as f1:
+                if fname and fname.get('filename'):
+                    with open(fname.get('filename'), 'w') as f1:
                         json.dump(objs[what], f1, indent=4)
             elif params.get('filename'):
                 fname = params.get('filename')
-                if os.path.isfile(fname):
-                    with open(fname, 'w') as f1:
-                        json.dump(objs[what], f1, indent=4)
+                with open(fname, 'w') as f1:
+                    json.dump(objs[what], f1, indent=4)
             else:
                 return {"errinfo": "Please give a file to export"}
         except Exception as e:

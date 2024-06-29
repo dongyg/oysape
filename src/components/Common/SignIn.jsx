@@ -86,10 +86,9 @@ export default function BodyContainer() {
   };
   window.showMessageInWebpage = showMessageInWebpage;
 
-  const reloadUserSession = () => {
-    callApi('reloadUserSession', getCredentials()).then((data) => {
+  const reloadUserSession = (token) => {
+    callApi('reloadUserSession', {...getCredentials(), token}).then((data) => {
       setLoading(false);
-      // console.log('reloadUserSession', data);
       if(data?.uid) {
         setUserSession(data);
       }else if(data?.errinfo) {

@@ -74,7 +74,7 @@ export default function ProfileButton() {
       children: userSession ? [
         { key: 'menuReloadTeams', label: 'Reload everything', icon: <ReloadOutlined />, },
         { key: 'menuAccount', label: ('My Account'), icon: <SettingOutlined />, },
-        { key: 'menuCredentials', label: ('My Credentials'), icon: <KeyOutlined />, },
+        isDesktopVersion ? { key: 'menuCredentials', label: ('My Credentials'), icon: <KeyOutlined />, } : undefined,
         { type: 'divider', },
         { key: 'menuSignOut', label: ('Sign Out'), icon: <LogoutOutlined />, },
       ] : undefined,

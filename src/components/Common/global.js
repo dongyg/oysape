@@ -57,8 +57,8 @@ export const calculateMD5 = function(str) {
   return hash.toString();
 }
 
-const OYSAPE_DESKTOP_NAME = 'OysapeDesktop';
-const OYSAPE_MOBILE_NAME = 'OysapeMobile';
+export const OYSAPE_DESKTOP_NAME = 'OysapeDesktop';
+export const OYSAPE_MOBILE_NAME = 'OysapeMobile';
 
 export const isDesktopVersion = navigator.userAgent.indexOf(OYSAPE_DESKTOP_NAME) !== -1;
 export const isMobileVersion = navigator.userAgent.indexOf(OYSAPE_MOBILE_NAME) !== -1;

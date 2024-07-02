@@ -160,6 +160,17 @@ class ApiOysape(ApiOauth):
             pdata['deviceType'] = params.get('deviceType')
         if params.get('deviceToken'):
             pdata['deviceToken'] = params.get('deviceToken')
+        if not self.isDesktopVersion():
+            credentials = {}
+            cerdPath = os.path.expanduser(os.path.join('~', '.oysape','credentials.json'))
+            if os.path.isfile(cerdPath):
+                try:
+                    with open(cerdPath, 'r') as f:
+                        credentials = json.load(f)
+                except Exception as e:
+                    pass
+            if credentials.get('credentialMapping'): params['credentialMapping'] = credentials.get('credentialMapping')
+            if credentials.get('credentialListing'): params['credentialListing'] = credentials.get('credentialListing')
         if self.userToken:
             retval = tools.callServerApiPost('/user/test', pdata, self)
             if retval and not retval.get('errinfo'):

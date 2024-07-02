@@ -4,7 +4,7 @@ import { App, Layout, Button, Image, Alert, } from 'antd';
 import { GithubOutlined, GoogleOutlined, GlobalOutlined, LoadingOutlined, AppleFilled } from "@ant-design/icons";
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { isDesktopVersion, callApi, getCredentials, setTokenToCookie, delTokenFromCookie, isMobileVersion, isIos } from '../Common/global';
+import { isDesktopVersion, callApi, getCredentials, setTokenToCookie, delTokenFromCookie, isMobileVersion } from '../Common/global';
 
 export default function BodyContainer() {
   const { message } = App.useApp();
@@ -155,7 +155,7 @@ export default function BodyContainer() {
             <div style={{ marginBottom: '8px' }} hidden={loading}><Button type="default" size='large' onClick={handleSigninWithEmail} icon={<GlobalOutlined />} style={{ width: '200px' }}>Sign in with Email&nbsp;&nbsp;&nbsp;</Button></div>
             <div style={{ marginBottom: '8px' }} hidden={loading}><Button type="default" size='large' onClick={handleSigninWithGithub} icon={<GithubOutlined />} style={{ width: '200px' }}>Sign in with Github&nbsp;</Button></div>
             <div style={{ marginBottom: '8px' }} hidden={loading}><Button type="default" size='large' onClick={handleSigninWithGoogle} icon={<GoogleOutlined />} style={{ width: '200px' }}>Sign in with Google</Button></div>
-            <div style={{ marginBottom: '8px' }} hidden={loading || !isIos}><Button type="default" size='large' onClick={handleSigninWithApple} icon={<AppleFilled />} style={{ width: '200px' }}>Sign in with Apple&nbsp;&nbsp;&nbsp;</Button></div>
+            <div style={{ marginBottom: '8px' }} hidden={loading}><Button type="default" size='large' onClick={handleSigninWithApple} icon={<AppleFilled />} style={{ width: '200px' }}>Sign in with Apple&nbsp;&nbsp;&nbsp;</Button></div>
             <div style={{ fontSize: '92px' }} hidden={!loading}><LoadingOutlined /></div>
             <div style={{ marginBottom: '8px' }} hidden={!messageContent}><Alert type={messageType||'info'} message={messageContent}></Alert></div>
           </div>

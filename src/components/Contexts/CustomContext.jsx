@@ -1,6 +1,6 @@
 import React, { useState, useContext, useEffect } from "react";
 
-import { callApi } from '../Common/global';
+import { callApi, isDesktopVersion, OYSAPE_DESKTOP_NAME } from '../Common/global';
 import { StyleDark } from "./StyleDark";
 import { StyleLight } from "./StyleLight";
 
@@ -13,7 +13,7 @@ const ThemeContext = React.createContext({
   toggleCustomTheme: () => {},
 });
 
-const statusDefaultText = 'Oysape 2.6.28';
+const statusDefaultText = (isDesktopVersion ? OYSAPE_DESKTOP_NAME : 'OysapeWebhost') + ' 2.6.28';
 
 export const ThemeProvider = ({ children }) => {
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);

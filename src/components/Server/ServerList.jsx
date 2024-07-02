@@ -5,7 +5,7 @@ import { FiTerminal } from "react-icons/fi";
 import { BsTerminal } from "react-icons/bs";
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { getUniqueKey, callApi, saveCredentialMapping, isDesktopVersion } from '../Common/global';
+import { getUniqueKey, callApi, saveCredentialMapping, isDesktopVersion, getCredentials } from '../Common/global';
 import CredentialsModal from '../Server/CredentialsModal';
 import ServerEditor from './ServerEditor';
 
@@ -19,23 +19,24 @@ const ServerList = () => {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [visibleCredentialsModal, setVisibleCredentialsModal] = useState(false);
 
-  const onClickMenu = ({ key }) => {
+  const onClickMenu = (e) => {
+    if(e.domEvent) e.domEvent.stopPropagation();
     if(!selectedRowKeys[0]) {
       // message.info(`Click on item ${key} ${selectedRowKeys[0]}`);
       return;
     }
-    if(key === 'editServer') {
+    if(e.key === 'editServer') {
       editServer(selectedRowKeys[0]);
-    }else if(key === 'deleteServer') {
+    }else if(e.key === 'deleteServer') {
       deleteServer(selectedRowKeys[0]);
-    }else if(key === 'runOnServer') {
+    }else if(e.key === 'runOnServer') {
       runOnServer(selectedRowKeys[0]);
-    }else if(key === 'terminalServer') {
+    }else if(e.key === 'terminalServer') {
       if(window.openServerTerminal) {
         window.openServerTerminal(selectedRowKeys[0]);
         hideSidebarIfNeed();
       }
-    }else if(key === 'credential') {
+    }else if(e.key === 'credential') {
       setVisibleCredentialsModal(true);
     }
   };
@@ -75,7 +76,7 @@ const ServerList = () => {
                 { record.tags ? record.tags.map((tag) => (<Tag key={getUniqueKey()} onClick={onClickTag}>{tag}</Tag>)) : null }
               </div>
             </div>
-            <div>{record.username}{record.username?'@':''}{record.address}{record.port?':':''}{record.port}</div>
+            <div>{record.credAlias}{record.credAlias?'@':''}{record.address}{record.port?':':''}{record.port}</div>
           </div>
         </Dropdown>)
       }
@@ -141,7 +142,7 @@ const ServerList = () => {
       icon: <QuestionCircleFilled />,
       content: 'Server '+serverKey+' will be deleted.',
       onOk() {
-        callApi('deleteServer', {key: serverKey}).then((data) => {
+        callApi('deleteServer', {key: serverKey, credentials: getCredentials()}).then((data) => {
           if(data && data.errinfo) {
             message.error(data.errinfo);
           }else if(data && data.servers) {

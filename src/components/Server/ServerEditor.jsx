@@ -3,7 +3,7 @@ import { App, Button, Form, Input, InputNumber, AutoComplete, Tag, Typography } 
 
 import { useCustomContext } from '../Contexts/CustomContext'
 import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
-import { callApi, getUniqueKey } from '../Common/global';
+import { callApi, getUniqueKey, getCredentials } from '../Common/global';
 import TagsComponent from '../Modules/TagsComponent';
 
 import './ServerEditor.css';
@@ -65,7 +65,7 @@ export default function ServerEditor(props) {
   }
   const saveServer = (newobj) => {
     setSaving(true);
-    callApi('addServer', newobj).then((data) => {
+    callApi('addServer', {serverObject: newobj, credentials: getCredentials()}).then((data) => {
       setSaving(false);
       if(data && data.errinfo) {
         message.error(data.errinfo);

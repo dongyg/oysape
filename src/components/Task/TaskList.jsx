@@ -16,16 +16,17 @@ const TaskList = () => {
   const [editable] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState('');
 
-  const onClickMenu = ({ key }) => {
+  const onClickMenu = (e) => {
+    if(e.domEvent) e.domEvent.stopPropagation();
     if(!selectedRowKeys[0]) {
       // message.info(`Click on item ${key} ${selectedRowKeys[0]}`);
       return;
     }
-    if(key === 'editTask') {
+    if(e.key === 'editTask') {
       editTask(selectedRowKeys[0]);
-    }else if(key === 'deleteTask') {
+    }else if(e.key === 'deleteTask') {
       deleteTask(selectedRowKeys[0]);
-    }else if(key === 'runTask') {
+    }else if(e.key === 'runTask') {
       callThisTask(selectedRowKeys[0]);
     }
   };

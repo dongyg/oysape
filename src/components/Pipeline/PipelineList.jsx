@@ -17,16 +17,17 @@ const PipelineList = () => {
   const [editable] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState('');
 
-  const onClickMenu = ({ key }) => {
+  const onClickMenu = (e) => {
+    if(e.domEvent) e.domEvent.stopPropagation();
     if(!selectedRowKeys[0]) {
       // message.info(`Click on item ${key} ${selectedRowKeys[0]}`);
       return;
     }
-    if(key === 'editPipeline') {
+    if(e.key === 'editPipeline') {
       editPipeline(selectedRowKeys[0]);
-    }else if(key === 'deletePipeline') {
+    }else if(e.key === 'deletePipeline') {
       deletePipeline(selectedRowKeys[0]);
-    }else if(key === 'runPipeline') {
+    }else if(e.key === 'runPipeline') {
       callThisPipeline(selectedRowKeys[0])
     }
   };

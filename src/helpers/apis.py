@@ -180,20 +180,7 @@ class ApiOysape(ApiOauth):
                 self.listFolder = ff
                 self.listExclude = ee
                 self.userSession['clientId'] = self.clientId
-                team_id = self.userSession["team0"]
-                credentialMapping = params.get('credentialMapping', {}) or {}
-                credentialListing = params.get('credentialListing', []) or []
-                if credentialMapping and credentialListing:
-                    for server in self.userSession["servers"]:
-                        if team_id in credentialMapping and server["key"] in credentialMapping[team_id]:
-                            alias = credentialMapping[team_id][server["key"]]
-                            credential = next((cred for cred in credentialListing if cred["alias"] == alias), None)
-                            if credential:
-                                server["username"] = credential.get("username")
-                                server["password"] = credential.get("password")
-                                server["prikey"] = credential.get("prikey")
-                                server["passphrase"] = credential.get("passphrase")
-                                server["credType"] = credential.get("type")
+                self.attach_credential_for_server(params, self.userSession["team0"])
                 return self.userSession
             else:
                 # self.userToken = ''
@@ -217,16 +204,20 @@ class ApiOysape(ApiOauth):
 
     def addServer(self, params):
         # Return server list in {'servers': []}
-        if params.get('prikey') and not os.path.isfile(os.path.expanduser(params.get('prikey'))):
-            return {"errinfo": "Private key file not found: %s" % params.get('prikey')}
-        return self.importTo({'what': 'servers', 'items': [params]})
+        serverObject = params.get('serverObject') or {}
+        credentials = params.get('credentials') or {}
+        if params.get('prikey') and not os.path.isfile(os.path.expanduser(serverObject.get('prikey'))):
+            return {"errinfo": "Private key file not found: %s" % serverObject.get('prikey')}
+        self.importTo({'what': 'servers', 'items': [serverObject]})
+        return self.attach_credential_for_server(credentials, self.userSession["team0"])
 
     def deleteServer(self, params):
         # Return server list in {'servers': []}
         if not self.hasPermission('writable'): return {"errinfo": "Writable access denied"}
+        credentials = params.get('credentials') or {}
         retval = tools.callServerApiDelete('/user/servers', {'key': params.get('key')}, self)
         self.userSession['servers'] = retval.get('servers') or []
-        return retval
+        return self.attach_credential_for_server(credentials, self.userSession["team0"])
 
     def getTaskObject(self, taskKey):
         taskObj = [x for x in self.userSession['tasks'] if x.get('name') == taskKey]
@@ -359,9 +350,27 @@ class ApiOysape(ApiOauth):
                     if credential.get('password'): item['password'] = credential['password']
                     if credential.get('prikey'): item['prikey'] = credential['prikey']
                     if credential.get('passphrase'): item['passphrase'] = credential['passphrase']
-                    if credential.get('type'):item['credType'] = credential['type']
+                    if credential.get('type'): item['credType'] = credential['type']
+                    if credential.get('alias'): item['credAlias'] = credential['alias']
                     return self.userSession
         return {'errinfo': 'Server not found'}
+
+    def attach_credential_for_server(self, params, team_id):
+        credentialMapping = params.get('credentialMapping', {}) or {}
+        credentialListing = params.get('credentialListing', []) or []
+        if credentialMapping and credentialListing:
+            for server in self.userSession["servers"]:
+                if team_id in credentialMapping and server["key"] in credentialMapping[team_id]:
+                    alias = credentialMapping[team_id][server["key"]]
+                    credential = next((cred for cred in credentialListing if cred["alias"] == alias), None)
+                    if credential:
+                        server["username"] = credential.get("username")
+                        server["password"] = credential.get("password")
+                        server["prikey"] = credential.get("prikey")
+                        server["passphrase"] = credential.get("passphrase")
+                        server["credType"] = credential.get("type")
+                        server["credAlias"] = credential.get("alias")
+        return self.userSession
 
 
 class ApiTerminal(ApiOysape):
@@ -850,19 +859,7 @@ class ApiScheduler(ApiDockerManager):
         self.listFolder = ff
         self.listExclude = ee
         self.userSession['clientId'] = self.clientId
-        credentialMapping = params.get('credentialMapping', {}) or {}
-        credentialListing = params.get('credentialListing', []) or []
-        if credentialMapping and credentialMapping:
-            for server in self.userSession["servers"]:
-                if team_id in credentialMapping and server["key"] in credentialMapping[team_id]:
-                    alias = credentialMapping[team_id][server["key"]]
-                    credential = next((cred for cred in credentialListing if cred["alias"] == alias), None)
-                    if credential:
-                        server["username"] = credential.get("username")
-                        server["password"] = credential.get("password")
-                        server["prikey"] = credential.get("prikey")
-                        server["passphrase"] = credential.get("passphrase")
-                        server["credType"] = credential.get("type")
+        self.attach_credential_for_server(params, team_id)
         return self.userSession
 
     def createCombConnection(self, serverKey):

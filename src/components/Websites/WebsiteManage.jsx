@@ -76,15 +76,16 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
   const [verifying, setVerifying] = useState(false);
   const [codeValue, setCodeValue] = useState(websiteObject.initScript||'');
   const [visibleWebsiteCredentials, setVisibleWebsiteCredentials] = useState(false);
-  const passForServer = useRef('');
+  const credForServer = useRef('');
+  const credForTeam = useRef('');
 
   // codemirror
   const onCodeChange = React.useCallback((val, viewUpdate) => {
     setCodeValue(val||'');
   }, [])
 
-  const plainOptions = Object.values(userSession.teams).filter(item => item.is_creator).map(item => item.tname);
-  const defaultCheckedList = Object.values(userSession.teams).filter(item => item.is_creator).map(item => item.allow_sites&&item.allow_sites.includes(websiteObject.obh) ? item.tname : null).filter(x => x);
+  const plainOptions = Object.entries(userSession.teams).filter(([_, team]) => team.is_creator === true).map(([id, team]) => ({label: team.tname, value: id}));
+  const defaultCheckedList = Object.entries(userSession.teams).filter(([_, team]) => team.allow_sites && team.allow_sites.includes(websiteObject.obh)).map(([id, _]) => id);
   const [checkedList, setCheckedList] = useState(defaultCheckedList);
   const [credentialMapping, setCredentialMapping] = useState({});
   const [credentialListing, setCredentialListing] = useState([]);
@@ -237,7 +238,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
   }
 
   const execApplyToTeams = () => {
-    callApi('applyToTeams', {obh: webhostObject.obh, teams: checkedList}).then((data) => {
+    callApi('applyToTeams', {obh: webhostObject.obh, target: webhostObject.target, teams: checkedList}).then((data) => {
       if(data && data.errinfo) {
         message.error(data.errinfo);
       }else{
@@ -270,7 +271,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
   }
 
   const handleCredentialsChoose = (data) => {
-    callApi('set_credentials', {obh: webhostObject.obh, credentialMapping: { [userSession.team0]: { [passForServer.current]: data['alias']}}}).then((res) => {
+    callApi('set_credentials', {obh: webhostObject.obh, team_id: credForTeam.current, credentialMapping: { [credForTeam.current]: { [credForServer.current]: data['alias']}}}).then((res) => {
       if(res&&res.credentialMapping) {
         setCredentialMapping(res.credentialMapping);
       }else if(res && res.errinfo) {
@@ -447,21 +448,33 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                   <CheckboxGroup options={plainOptions} value={checkedList} onChange={onSelectTeamChange} />
                   <Divider />
                   {
-                    checkedList.includes(userSession.teams[userSession.team0].tname) ?
+                    checkedList.length > 0 ?
                     <>
                       <p>Credentials are required for the servers used in web hosting. For other team's servers, please switch to the team to set up credentials.</p>
                       <Table size="small" columns={[
-                        { title: 'Server', dataIndex: 'name', key: 'name', },
+                        { title: 'Team', dataIndex: 'tname', key: 'tname', },
+                        { title: 'Server', dataIndex: 'serverKey', key: 'serverKey', },
                         { title: 'Credential', dataIndex: 'cred', key: 'cred', width: '120px', },
                         { title: '', key: 'action', width: '40px', render: (text, record) => (
                           <>
                             <Button type="text" icon={<EditOutlined />} onClick={() => {
-                              passForServer.current = record.key;
+                              credForServer.current = record.serverKey;
+                              credForTeam.current = record.tid;
                               setVisibleWebsiteCredentials(true);
                             }}></Button>
                           </>
                         ) },
-                        ]} dataSource={userSession.servers.map((item) => {return {...item, cred: credentialMapping[userSession.team0]&&credentialMapping[userSession.team0][item.key]}})} rowKey="key">
+                        ]} dataSource={
+                          Object.entries(userSession.teams).flatMap(([tid, team]) =>
+                            (team.server_items || []).map(server => (checkedList.includes(tid) && {
+                                tid: tid,
+                                tname: team.tname,
+                                serverKey: server.key,
+                                serverName: server.name,
+                                cred: credentialMapping[tid]&&credentialMapping[tid][server.key],
+                            })).filter(x => x)
+                          )
+                        } rowKey="key">
                       </Table>
                     </> : null
                   }
@@ -552,7 +565,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                           if(webhostObject.schedules&&webhostObject.schedules.length) {
                             modal.info({
                               title: 'Schedules Log',
-                              content: <ScheduleLogViewer obh={webhostObject.obh} sch={''} tname={webhostObject.schedules[0].team} />,
+                              content: <ScheduleLogViewer obh={webhostObject.obh} sch={''} tid={webhostObject.schedules[0].tid} tname={webhostObject.schedules[0].tname} />,
                               width: '80%',
                               okText: 'Close',
                               icon: null,
@@ -621,7 +634,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                           <Tooltip placement="bottom" title="View log"><Button icon={<RxActivityLog />} onClick={() => {
                             modal.info({
                               title: 'Schedule Log - ' + item.title,
-                              content: <ScheduleLogViewer obh={webhostObject.obh} sch={item.title} tname={item.team} />,
+                              content: <ScheduleLogViewer obh={webhostObject.obh} sch={item.title} tid={item.tid} tname={item.tname} />,
                               width: '80%',
                               okText: 'Close',
                               icon: null,

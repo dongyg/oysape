@@ -39,11 +39,11 @@ export default function ProfileButton() {
     const menus = [];
     if(userSession && userSession.teams) {
       for (const teamId in userSession.teams) {
-        const team = userSession.teams[teamId];
+        const teamObj = userSession.teams[teamId];
         const teamMenu = {
           key: teamId,
           // type: "group",
-          label: team.tname,
+          label: teamObj.tname,
           icon: userSession.team0 === teamId ? <CheckOutlined /> : undefined,
         };
         menus.push(teamMenu);
@@ -74,7 +74,7 @@ export default function ProfileButton() {
       children: userSession ? [
         { key: 'menuReloadTeams', label: 'Reload everything', icon: <ReloadOutlined />, },
         { key: 'menuAccount', label: ('My Account'), icon: <SettingOutlined />, },
-        isDesktopVersion ? { key: 'menuCredentials', label: ('My Credentials'), icon: <KeyOutlined />, } : undefined,
+        { key: 'menuCredentials', label: ('My Credentials'), icon: <KeyOutlined />, },
         { type: 'divider', },
         { key: 'menuSignOut', label: ('Sign Out'), icon: <LogoutOutlined />, },
       ] : undefined,
@@ -152,7 +152,7 @@ export default function ProfileButton() {
       // callApi('testApi', {}).then((res) => {
       //   message.info(JSON.stringify(res));
       // })
-      console.log(userSession)
+      console.log(JSON.stringify(userSession))
     }else{
       // If key is teamId, switch team
       if(userSession && userSession.teams){

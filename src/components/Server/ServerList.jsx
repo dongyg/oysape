@@ -58,9 +58,7 @@ const ServerList = () => {
       ]);
     }
     retval.push({ type: 'divider', });
-    if(isDesktopVersion) {
-      retval.push({ key: 'credential', label: 'Credential', icon: <KeyOutlined />, });
-    }
+    retval.push({ key: 'credential', label: 'Credential', icon: <KeyOutlined />, });
     return retval;
   };
   const columns = [
@@ -179,6 +177,18 @@ const ServerList = () => {
     })
   }
 
+  const handleCredentialsRemove = () => {
+    callApi('set_credential_for_server', {credential: null, serverKey: selectedRowKeys[0]}).then((res) => {
+      if(res&&res.email) {
+        saveCredentialMapping(userSession.team0, selectedRowKeys[0], null);
+        setUserSession(res);
+      }else if (res && res.errinfo) {
+        message.error(res.errinfo);
+      }
+    })
+
+  }
+
   useEffect(() => {
     filterServers(searchKeyword);
   }, [searchKeyword, filterServers]);
@@ -218,7 +228,7 @@ const ServerList = () => {
           </Space>
         }}
       />
-      <CredentialsModal visible={visibleCredentialsModal} onCancel={handleCredentialsCancel} onChoose={handleCredentialsChoose} initialMode="choose" initTitle={'Choose Credential for '+selectedRowKeys[0]} />
+      <CredentialsModal visible={visibleCredentialsModal} onCancel={handleCredentialsCancel} onChoose={handleCredentialsChoose} onRemove={handleCredentialsRemove} initialMode="choose" initTitle={'Choose Credential for '+selectedRowKeys[0]} />
     </>
   )
 }

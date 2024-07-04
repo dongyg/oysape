@@ -23,7 +23,7 @@ function decolorizeText(text) {
     return (text || '').replace(ansiEscape, '');
 }
 
-const ScheduleLogViewer = ({ obh, sch, tname }) => {
+const ScheduleLogViewer = ({ obh, sch, tid, tname }) => {
     const { message } = App.useApp();
     const { customTheme } = useCustomContext();
     const [logs, setLogs] = useState([]);
@@ -54,7 +54,7 @@ const ScheduleLogViewer = ({ obh, sch, tname }) => {
     }, [customTheme])
 
     const fetchLogs = useCallback((page = pagination.current, pageSize = pagination.pageSize) => {
-        callApi('callFetchScheduleLogs', { obh, sch, page, pageSize, tname }).then((data) => {
+        callApi('callFetchScheduleLogs', { obh, sch, page, pageSize, tid, tname }).then((data) => {
             console.log(data);
             if(data && data.errinfo) {
                 message.error(data.errinfo);

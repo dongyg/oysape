@@ -163,7 +163,11 @@ export const saveCredentialMapping = (tkey, skey, alias) => {
   try {
     let credentialMapping = getCredentials().credentialMapping;
     if (!credentialMapping[tkey]) credentialMapping[tkey] = {};
-    credentialMapping[tkey][skey] = alias;
+    if(alias) {
+      credentialMapping[tkey][skey] = alias;
+    } else {
+      delete credentialMapping[tkey][skey];
+    }
     setDataToLocalStorage('credential_mapping', JSON.stringify(credentialMapping));
   } catch (e) {
     console.error('Error saving credential mapping:', e);
@@ -364,8 +368,8 @@ export const decimalToBase62 = function(decimal) {
   return base62;
 }
 
-export const getUniqueKey = function() {
-    const uuid = generateUUID();
+export const getUniqueKey = function(uuid) {
+    uuid = uuid || generateUUID();
     const base62 = decimalToBase62(parseInt(calculateMD5(uuid), 16));
     return base62;
 }

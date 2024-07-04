@@ -150,6 +150,20 @@ class ApiOysape(ApiOauth):
             elif retval and retval.get('errinfo'):
                 return retval
 
+    def loadCredentials(self, params={}):
+        credentials = {}
+        if not self.isDesktopVersion():
+            cerdPath = os.path.join(folder_base,'credentials.json')
+            if os.path.isfile(cerdPath):
+                try:
+                    with open(cerdPath, 'r') as f:
+                        credentials = json.load(f)
+                except Exception as e:
+                    pass
+            if credentials.get('credentialMapping'): params['credentialMapping'] = credentials.get('credentialMapping')
+            if credentials.get('credentialListing'): params['credentialListing'] = credentials.get('credentialListing')
+        return credentials
+
     def reloadUserSession(self, params={}):
         if not self.userToken and (params.get('token') or params.get('client_token')):
             self.userToken = params.get('token') or params.get('client_token')
@@ -160,17 +174,9 @@ class ApiOysape(ApiOauth):
             pdata['deviceType'] = params.get('deviceType')
         if params.get('deviceToken'):
             pdata['deviceToken'] = params.get('deviceToken')
-        if not self.isDesktopVersion():
-            credentials = {}
-            cerdPath = os.path.expanduser(os.path.join('~', '.oysape','credentials.json'))
-            if os.path.isfile(cerdPath):
-                try:
-                    with open(cerdPath, 'r') as f:
-                        credentials = json.load(f)
-                except Exception as e:
-                    pass
-            if credentials.get('credentialMapping'): params['credentialMapping'] = credentials.get('credentialMapping')
-            if credentials.get('credentialListing'): params['credentialListing'] = credentials.get('credentialListing')
+        credentials = self.loadCredentials()
+        if credentials.get('credentialMapping'): params['credentialMapping'] = credentials.get('credentialMapping')
+        if credentials.get('credentialListing'): params['credentialListing'] = credentials.get('credentialListing')
         if self.userToken:
             retval = tools.callServerApiPost('/user/test', pdata, self)
             if retval and not retval.get('errinfo'):
@@ -303,7 +309,7 @@ class ApiOysape(ApiOauth):
                 for site in (self.userSession.get('sites') or []):
                     serverKey = site.get('target')
                     if serverKey and site.get('verified') and site.get('target') in [x.get('key') for x in objs['servers']]:
-                        filename = tools.get_key(self.userSession.get('tname'))+'.json'
+                        filename = self.userSession.get('team0')+'.json'
                         self.save_remote_file({'target': serverKey, 'path': os.path.join('.oysape','teams',filename), 'content': json.dumps(objs)})
                         tools.callServerApiPost('/user/webhost/verify', {'obh': site.get('obh')}, self)
                 return retval
@@ -346,12 +352,23 @@ class ApiOysape(ApiOauth):
         if serverKey and self.userSession.get('servers'):
             for item in self.userSession['servers']:
                 if item.get('key') == serverKey:
-                    if credential.get('username'): item['username'] = credential['username']
-                    if credential.get('password'): item['password'] = credential['password']
-                    if credential.get('prikey'): item['prikey'] = credential['prikey']
-                    if credential.get('passphrase'): item['passphrase'] = credential['passphrase']
-                    if credential.get('type'): item['credType'] = credential['type']
-                    if credential.get('alias'): item['credAlias'] = credential['alias']
+                    if credential:
+                        if credential.get('username'): item['username'] = credential['username']
+                        if credential.get('password'): item['password'] = credential['password']
+                        if credential.get('prikey'): item['prikey'] = credential['prikey']
+                        if credential.get('passphrase'): item['passphrase'] = credential['passphrase']
+                        if credential.get('type'): item['credType'] = credential['type']
+                        if credential.get('alias'): item['credAlias'] = credential['alias']
+                    else:
+                        item.pop('username', None)
+                        item.pop('password', None)
+                        item.pop('prikey', None)
+                        item.pop('passphrase', None)
+                        item.pop('credType', None)
+                        item.pop('credAlias', None)
+                    if not self.isDesktopVersion():
+                        credentials = self.loadCredentials()
+                        self.attach_credential_for_server(credentials, self.userSession["team0"])
                     return self.userSession
         return {'errinfo': 'Server not found'}
 
@@ -815,7 +832,7 @@ class ApiDockerManager(ApiSftp):
         page = tools.intget(params.get('page') or 1, 1)
         pageSize = tools.intget(params.get('pageSize') or 10, 10)
         # logging.info(('execQueryScheduleLogs', obh, sch, page, pageSize))
-        dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
+        dbpath = os.path.join(folder_base, 'scheduler.db')
         logdb = tools.SQLiteDB(dbpath)
         where_clause = ' WHERE obh = ?'
         arg_arr = [obh]
@@ -843,23 +860,23 @@ class ApiScheduler(ApiDockerManager):
     def __init__(self, clientId='', clientUserAgent='', _logging=consts.IS_LOGGING):
         super().__init__(clientId, clientUserAgent, _logging)
         self.teamName = ''
+        self.teamId = ''
 
     def reloadUserSession(self, params={}):
         # Override the method reloadUserSession, load servers/tasks/pipelines from disk
         retval = {}
-        team_id = tools.get_key(self.teamName)
-        filename = os.path.join(folder_base, 'teams', tools.get_key(self.teamName)+'.json')
+        filename = os.path.join(folder_base, 'teams', self.teamId+'.json')
         if os.path.isfile(filename):
             with open(filename, 'r') as f:
                 retval = json.load(f)
         ff = retval.get('folders', []) or []
         ee = retval.get('excludes', []) or consts.DEFAULT_EXCLUDE
         self.userSession = retval
-        self.userSession["team0"] = team_id
+        self.userSession["team0"] = self.teamId
         self.listFolder = ff
         self.listExclude = ee
         self.userSession['clientId'] = self.clientId
-        self.attach_credential_for_server(params, team_id)
+        self.attach_credential_for_server(params, self.teamId) #TODO: 这里需要真的 tid, 但 scheduler 中没有保存 tid
         return self.userSession
 
     def createCombConnection(self, serverKey):
@@ -905,14 +922,14 @@ class ApiOverHttp(ApiDockerManager):
         self.socketConnections = {}
 
     def deleteScheduleLogOne(self, params={}):
-        dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
+        dbpath = os.path.join(folder_base, 'scheduler.db')
         logdb = tools.SQLiteDB(dbpath)
         logdb.delete("DELETE FROM schedule_logs WHERE id = ?", (params.get('key'),))
         return {}
 
     def deleteScheduleLogs(self, params={}):
         keys = params.get('keys')
-        dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
+        dbpath = os.path.join(folder_base, 'scheduler.db')
         logdb = tools.SQLiteDB(dbpath)
         if isinstance(keys, list):
             for key in keys:
@@ -1165,7 +1182,7 @@ class ApiDesktop(ApiOverHttp):
         for site in (self.userSession.get('sites') or []):
             serverKey = site.get('target')
             if serverKey and site.get('verified') and site.get('target') in [x.get('key') for x in objs['servers']]:
-                filename = tools.get_key(self.userSession.get('tname'))+'.json'
+                filename = self.userSession.get('team0')+'.json'
                 self.save_remote_file({'target': serverKey, 'path': os.path.join('.oysape','teams',filename), 'content': json.dumps(objs)})
         # Verify webhost
         obh = params.get('obh')
@@ -1178,6 +1195,7 @@ class ApiDesktop(ApiOverHttp):
     def applyToTeams(self, params={}):
         obh = params.get('obh')
         teams = params.get('teams')
+        target = params.get('target')
         retval = tools.callServerApiPost('/user/webhost/apply', {'obh': obh, 'teams': teams}, self)
         if retval and not retval.get('errinfo'):
             return self.update_session(retval)
@@ -1202,7 +1220,7 @@ class ApiDesktop(ApiOverHttp):
 
     def set_credentials(self, params={}):
         obh = params.get('obh')
-        team0 = self.userSession['team0']
+        team_id = params.get('team_id')
         # Set webhost's credentials.json
         for site in (self.userSession.get('sites') or []):
             if obh == site.get('obh'):
@@ -1211,12 +1229,12 @@ class ApiDesktop(ApiOverHttp):
                 if not oldVal.get('errinfo'):
                     if params.get('credentialListing'):
                         oldVal['credentialListing'] = params.get('credentialListing')
-                    if params.get('credentialMapping') and params['credentialMapping'].get(team0):
+                    if params.get('credentialMapping') and params['credentialMapping'].get(team_id):
                         if not oldVal.get('credentialMapping'):
                             oldVal['credentialMapping'] = {}
-                        if not oldVal['credentialMapping'].get(team0):
-                            oldVal['credentialMapping'][team0] = {}
-                        oldVal['credentialMapping'][team0].update(params['credentialMapping'][team0])
+                        if not oldVal['credentialMapping'].get(team_id):
+                            oldVal['credentialMapping'][team_id] = {}
+                        oldVal['credentialMapping'][team_id].update(params['credentialMapping'][team_id])
                 retval = self.save_remote_file({'target': serverKey, 'path': os.path.join('.oysape','credentials.json'), 'content': json.dumps(oldVal)})
                 if retval and retval.get('errinfo'): return retval
                 return oldVal
@@ -1240,7 +1258,7 @@ class ApiDesktop(ApiOverHttp):
         for site in (self.userSession.get('sites') or []):
             serverKey = site.get('target')
             if serverKey and site.get('verified') and site.get('target') in [x.get('key') for x in objs['servers']]:
-                filename = tools.get_key(self.userSession.get('tname'))+'.json'
+                filename = self.userSession.get('team0')+'.json'
                 self.save_remote_file({'target': serverKey, 'path': os.path.join('.oysape','teams',filename), 'content': json.dumps(objs)})
         # Create or update webhost's schedule
         obh = params.get('obh')

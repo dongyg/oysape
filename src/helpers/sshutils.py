@@ -3,7 +3,7 @@
 
 import os, base64, traceback, json, re, json, _thread, time, getpass, stat
 import paramiko
-from . import tools, scheduler
+from . import tools, scheduler, apis
 
 BUF_SIZE = 1024
 CR = '\r'
@@ -829,7 +829,7 @@ class SchedulerClient(WebSocketSSHClient):
         # print(self.__class__, 'channelCommandStart', command)
         # if hasattr(self.parentApi, 'log_id'):
         #     print('log_id', self.parentApi.log_id)
-        #     dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
+        #     dbpath = os.path.join(apis.folder_base, 'scheduler.db')
         #     logdb = tools.SQLiteDB(dbpath)
         #     logdb.update("UPDATE schedule_logs SET out = COALESCE(out, '') || ? WHERE id = ?", (command, self.parentApi.log_id))
 
@@ -845,7 +845,7 @@ class SchedulerClient(WebSocketSSHClient):
             #     self.input.insert(0, self.prompt_string)
             # for line in self.input:
             #     out2 = out2.replace(line, '')
-            dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
+            dbpath = os.path.join(apis.folder_base, 'scheduler.db')
             logdb = tools.SQLiteDB(dbpath)
             # Get the obh, sch. Then get the schedule object
             sql_str = "SELECT * FROM schedule_logs WHERE id = ?"

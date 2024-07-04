@@ -206,12 +206,12 @@ def getScheduleLogs():
     if retval.get('errinfo'):
         return retval
     # Call the API
-    tname = retval.get('tname')
-    if not tname in scheduler.apiSchedulers:
+    tid = retval.get('tid')
+    if not tid in scheduler.apiSchedulers:
         if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
             return json.dumps({"errinfo": "Too many requests4."})
-        return {'errinfo': 'Invalid team name.'}
-    return scheduler.apiSchedulers[tname].execQueryScheduleLogs(retval)
+        return {'errinfo': 'Invalid team.'}
+    return scheduler.apiSchedulers[tid].execQueryScheduleLogs(retval)
 
 
 ################################################################################
@@ -286,7 +286,7 @@ def add_cors_headers():
 @app.route('/log/<msg>', method='GET')
 def getLogObject(msg):
     if apis.noti_cache.get(msg):
-        dbpath = os.path.expanduser(os.path.join('~', '.oysape', 'scheduler.db'))
+        dbpath = os.path.join(apis.folder_base, 'scheduler.db')
         logdb = tools.SQLiteDB(dbpath)
         retdat = logdb.query("SELECT * FROM schedule_logs WHERE id = ?", (apis.noti_cache.get(msg),))
         if retdat and retdat[0]:

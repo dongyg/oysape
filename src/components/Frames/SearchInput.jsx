@@ -427,7 +427,7 @@ const SearchInput = () => {
           }>{!dropMenuShowed?(window.oypaseTabs&&window.oypaseTabs.workspace&&window.oypaseTabs.workspace._core.browser.isMac?<BsCommand/>:<PiControl/>):null}<BsArrowReturnLeft /></div> }}
         />
       </AutoComplete>
-      <CredentialsModal visible={visibleCredentialsModal} onCancel={handleCredentialsCancel} onChoose={handleCredentialsChoose} initialMode="choose" initTitle={'Choose Credential'+(passForServer?' for '+passForServer:'')} />
+      <CredentialsModal visible={visibleCredentialsModal} onCancel={handleCredentialsCancel} onChoose={handleCredentialsChoose} onRemove={() => {}} initialMode="choose" initTitle={'Choose Credential'+(passForServer?' for '+passForServer:'')} />
     </div>
   )
 };

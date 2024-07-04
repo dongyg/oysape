@@ -8,7 +8,7 @@ import { callApi, decolorizeText } from '../Common/global';
 
 const { Content, Sider } = Layout;
 
-const ScheduleLogViewer = ({ obh, sch, tname }) => {
+const ScheduleLogViewer = ({ obh, sch, tid, tname }) => {
     const { message } = App.useApp();
     const { customTheme } = useCustomContext();
     const [selectedRowKeys, setSelectedRowKeys] = useState([]);
@@ -18,7 +18,7 @@ const ScheduleLogViewer = ({ obh, sch, tname }) => {
     const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0, showSizeChanger: false, showQuickJumper: true, showTotal: total => `Total ${total}` });
 
     const fetchLogs = useCallback((page, pageSize) => {
-        callApi('callFetchScheduleLogs', { obh, sch, page, pageSize, tname }).then((data) => {
+        callApi('callFetchScheduleLogs', { obh, sch, page, pageSize, tid, tname }).then((data) => {
             if(data && data.errinfo) {
                 message.error(data.errinfo);
             }else if(data && data.list){
@@ -26,7 +26,7 @@ const ScheduleLogViewer = ({ obh, sch, tname }) => {
                 setPagination(prev => ({ ...prev, total: data.total, current: page, pageSize }));
             }
         });
-    }, [obh, sch, message, tname]);
+    }, [obh, sch, message, tid, tname]);
 
     const handleTableChange = useCallback((pagination) => {
         fetchLogs(pagination.current, pagination.pageSize);

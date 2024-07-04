@@ -156,7 +156,8 @@ const ScheduleForm = (props, ref) => {
         values['interval'] = parseInt(values.interval);
         values.start = values.start.toDate().getTime(); // get time stamp
         if(values.end) values.end = values.end.toDate().getTime();  // get time stamp
-        values['team'] = userSession.tname;
+        values['tid'] = userSession.team0;
+        values['tname'] = userSession.tname;
         values['action'] = actionInput.current.input.value;
         callApi('setSchedule', {obh: props.obh, schedule: values}).then((data) => {
           if(data && data.errinfo) {

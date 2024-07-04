@@ -5,7 +5,7 @@ import { EditOutlined, DeleteOutlined, QuestionCircleFilled, FolderOpenOutlined,
 import { useCustomContext } from '../Contexts/CustomContext'
 import { callApi, getCredentials, saveCredentialListing } from '../Common/global';
 
-const CredentialsModal = ({ visible, onCancel, onChoose, initialMode = 'list', initTitle = 'My Credentials' }) => {
+const CredentialsModal = ({ visible, onCancel, onChoose, onRemove=() => {}, initialMode = 'list', initTitle = 'My Credentials' }) => {
   const { message } = App.useApp();
   const { userSession } = useCustomContext();
   const [mode, setMode] = useState(initialMode);
@@ -69,6 +69,11 @@ const CredentialsModal = ({ visible, onCancel, onChoose, initialMode = 'list', i
     onCancel();
   };
 
+  const handleRemove = () => {
+    onRemove();
+    onCancel();
+  };
+
   const afterOpenChange = (open) => {
     if (open) {
       loadCredentials();
@@ -124,7 +129,8 @@ const CredentialsModal = ({ visible, onCancel, onChoose, initialMode = 'list', i
       case 'choose':
         return (
           <>
-            <Button type="primary" onClick={handleAdd} style={{ marginBottom: 16 }} icon={<PlusOutlined/>}>Add</Button>
+            <Button type="primary" onClick={handleAdd} style={{ marginBottom: 16 }} icon={<PlusOutlined/>}>New</Button>
+            {mode === 'choose' && <Button danger onClick={handleRemove} style={{ marginBottom: 16 }} icon={<DeleteOutlined/>}>Remove</Button> }
             <Table size='small' columns={columns} dataSource={credentials} rowKey="key" />
           </>
         );

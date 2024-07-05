@@ -129,7 +129,7 @@ const CredentialsModal = ({ visible, onCancel, onChoose, onRemove=() => {}, init
       case 'choose':
         return (
           <>
-            <Button type="primary" onClick={handleAdd} style={{ marginBottom: 16 }} icon={<PlusOutlined/>}>New</Button>
+            <Button type="primary" onClick={handleAdd} style={{ marginBottom: 16 }} icon={<PlusOutlined/>}>New</Button>&nbsp;
             {mode === 'choose' && <Button danger onClick={handleRemove} style={{ marginBottom: 16 }} icon={<DeleteOutlined/>}>Remove</Button> }
             <Table size='small' columns={columns} dataSource={credentials} rowKey="key" />
           </>

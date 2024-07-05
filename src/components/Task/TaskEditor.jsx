@@ -199,8 +199,8 @@ export default function TaskEditor(props) {
           <TagsComponent tags={tags} onChange={handleTagChange} backgroundColor={customTheme.colors["editor.background"]} />
         </Form.Item>
         <Form.Item label=" " colon={false}>
-          <Button type="primary" htmlType="submit" loading={saving}>{saving ? 'Saving...' : 'Save'}</Button>
-          <Button onClick={onSaveAsNew}>Save as New</Button>
+          <Button type="primary" htmlType="submit" loading={saving}>{saving ? 'Saving...' : 'Save'}</Button>&nbsp;
+          <Button onClick={onSaveAsNew}>Save as New</Button>&nbsp;
           <Button onClick={onRunIt}>Run it</Button>
         </Form.Item>
       </Form>

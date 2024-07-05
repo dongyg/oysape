@@ -156,7 +156,7 @@ export default function ServerEditor(props) {
           </Typography.Text>
         </Form.Item>
         <Form.Item label=" " colon={false}>
-          <Button type="primary" htmlType="submit" loading={saving}>{saving ? 'Saving...' : 'Save'}</Button>
+          <Button type="primary" htmlType="submit" loading={saving}>{saving ? 'Saving...' : 'Save'}</Button>&nbsp;
           <Button onClick={onRunIt}>Run it</Button>
         </Form.Item>
       </Form>

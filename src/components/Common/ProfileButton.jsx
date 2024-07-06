@@ -58,7 +58,7 @@ export default function ProfileButton() {
     return userSession.last_login_agent ? userSession.email + ' (' + userSession.last_login_agent + ')' : 'Sign In';
   }
   const reloadEverything = (callDone) => {
-    callApi('reloadUserSession', getCredentials()).then((res) => {
+    callApi('reloadUserSession', {credentials: getCredentials()}).then((res) => {
       setUserSession(res);
       window.reloadFolderFiles && window.reloadFolderFiles();
       if(callDone) callDone();
@@ -157,7 +157,7 @@ export default function ProfileButton() {
       // If key is teamId, switch team
       if(userSession && userSession.teams){
         if (key !== userSession.team0 && key in userSession.teams) {
-          callApi('switchToTeam', {tid: key}).then((res) => {
+          callApi('switchToTeam', {tid: key, credentials: getCredentials()}).then((res) => {
             reloadEverything(() => {
               message.success('Switched to ' + userSession.teams[key].tname);
             });

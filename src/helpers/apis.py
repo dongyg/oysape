@@ -45,6 +45,22 @@ def merge_steps(steps):
     merged_data = [{"target": target, "tasks": tasks} for target, tasks in merged_data.items()]
     return merged_data
 
+def merge_credentials(c1, c2):
+    # Merge credentialListing
+    alias_dict = {cred['alias']: cred for cred in c1['credentialListing']}
+    for cred in c2['credentialListing']:
+        alias_dict[cred['alias']] = cred
+    c1['credentialListing'] = list(alias_dict.values())
+
+    # Merge credentialMapping
+    for key, value in c2['credentialMapping'].items():
+        if key in c1['credentialMapping']:
+            c1['credentialMapping'][key].update(value)
+        else:
+            c1['credentialMapping'][key] = value
+
+    return c1
+
 def loadEntrypointWindow(window=None, apiObject=None):
     import webview
     if not window:
@@ -174,9 +190,9 @@ class ApiOysape(ApiOauth):
             pdata['deviceType'] = params.get('deviceType')
         if params.get('deviceToken'):
             pdata['deviceToken'] = params.get('deviceToken')
-        credentials = self.loadCredentials()
-        if credentials.get('credentialMapping'): params['credentialMapping'] = credentials.get('credentialMapping')
-        if credentials.get('credentialListing'): params['credentialListing'] = credentials.get('credentialListing')
+        credWebhost = self.loadCredentials() if not self.isDesktopVersion() else {}
+        credUser = params.get('credentials') or {}
+        merge_credentials(credWebhost, credUser)
         if self.userToken:
             retval = tools.callServerApiPost('/user/test', pdata, self)
             if retval and not retval.get('errinfo'):
@@ -186,7 +202,7 @@ class ApiOysape(ApiOauth):
                 self.listFolder = ff
                 self.listExclude = ee
                 self.userSession['clientId'] = self.clientId
-                self.attach_credential_for_server(params, self.userSession["team0"])
+                self.attach_credential_for_server(credWebhost, self.userSession["team0"])
                 return self.userSession
             else:
                 # self.userToken = ''
@@ -197,6 +213,9 @@ class ApiOysape(ApiOauth):
 
     def switchToTeam(self, params):
         if not params.get('tid'): return {"errinfo": "No team"}
+        credWebhost = self.loadCredentials() if not self.isDesktopVersion() else {}
+        credUser = params.get('credentials') or {}
+        merge_credentials(credWebhost, credUser)
         retval = tools.callServerApiPost('/user/team', {'tid': params.get('tid')}, self)
         if retval and not retval.get('errcode'):
             ff = retval.get('folders', []) or []
@@ -205,25 +224,30 @@ class ApiOysape(ApiOauth):
             self.listFolder = ff
             self.listExclude = ee
             self.userSession['clientId'] = self.clientId
+            self.attach_credential_for_server(credWebhost, self.userSession["team0"])
             return self.userSession
         return retval
 
     def addServer(self, params):
         # Return server list in {'servers': []}
         serverObject = params.get('serverObject') or {}
-        credentials = params.get('credentials') or {}
+        credWebhost = self.loadCredentials() if not self.isDesktopVersion() else {}
+        credUser = params.get('credentials') or {}
+        merge_credentials(credWebhost, credUser)
         if params.get('prikey') and not os.path.isfile(os.path.expanduser(serverObject.get('prikey'))):
             return {"errinfo": "Private key file not found: %s" % serverObject.get('prikey')}
         self.importTo({'what': 'servers', 'items': [serverObject]})
-        return self.attach_credential_for_server(credentials, self.userSession["team0"])
+        return self.attach_credential_for_server(credWebhost, self.userSession["team0"])
 
     def deleteServer(self, params):
         # Return server list in {'servers': []}
         if not self.hasPermission('writable'): return {"errinfo": "Writable access denied"}
-        credentials = params.get('credentials') or {}
+        credWebhost = self.loadCredentials() if not self.isDesktopVersion() else {}
+        credUser = params.get('credentials') or {}
+        merge_credentials(credWebhost, credUser)
         retval = tools.callServerApiDelete('/user/servers', {'key': params.get('key')}, self)
         self.userSession['servers'] = retval.get('servers') or []
-        return self.attach_credential_for_server(credentials, self.userSession["team0"])
+        return self.attach_credential_for_server(credUser, self.userSession["team0"])
 
     def getTaskObject(self, taskKey):
         taskObj = [x for x in self.userSession['tasks'] if x.get('name') == taskKey]

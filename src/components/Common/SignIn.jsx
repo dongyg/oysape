@@ -87,7 +87,7 @@ export default function BodyContainer() {
   window.showMessageInWebpage = showMessageInWebpage;
 
   const reloadUserSession = (token) => {
-    callApi('reloadUserSession', {...getCredentials(), token}).then((data) => {
+    callApi('reloadUserSession', {credentials: getCredentials(), token}).then((data) => {
       setLoading(false);
       if(data?.uid) {
         setUserSession(data);

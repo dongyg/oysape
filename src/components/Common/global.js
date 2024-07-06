@@ -542,7 +542,7 @@ const languageDict = {
     "lua": [".lua"],
     "swift": [".swift"],
     "tcl": [".tcl"],
-    "yaml": [".yaml"],
+    "yaml": [".yaml", ".yml"],
     "vb": [".vb"],
     "powershell": [".ps1"],
     "brainfuck": [".bf"],

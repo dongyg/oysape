@@ -105,14 +105,15 @@ def oauthCallback():
     # Send the code to backend to finish the OAuth process and finish the sign in process. Get the token.
     retval = tools.callServerApiPost('/signin/finish', {'code': code, 'state': state, 'cid': clientId}, apis.apiInstances[clientId])
     if not retval: return 'Something wrong'
+    hint = ' You can close this window now.' if apis.apiInstances[clientId].isMobileVersion() else ' Please reopen the App and sign in if needed.'
     if retval.get('errinfo'):
-        apis.apiInstances[clientId].signInMessage = retval.get('errinfo')
+        apis.apiInstances[clientId].signInMessage = retval.get('errinfo')+hint
         return template_signin_failed_close.replace('{msg}', apis.apiInstances[clientId].signInMessage)
     if not retval.get('data'):
-        apis.apiInstances[clientId].signInMessage = 'Invalid response'
+        apis.apiInstances[clientId].signInMessage = 'Invalid response'+hint
         return template_signin_failed_close.replace('{msg}', apis.apiInstances[clientId].signInMessage)
     if not retval.get('data').get('token'):
-        apis.apiInstances[clientId].signInMessage = 'Authentication failed'
+        apis.apiInstances[clientId].signInMessage = 'Authentication failed'+hint
         return template_signin_failed_close.replace('{msg}', apis.apiInstances[clientId].signInMessage)
     # Set the token to this client. The sign page will get the token and reload the user session
     apis.apiInstances[clientId].userToken = retval.get('data').get('token')

@@ -645,11 +645,12 @@ class ApiWorkspace(ApiTerminal):
             serverKey = step['target']
             tasks = step['tasks']
             for taskKey in tasks:
-                retval += self.taskOnServer(taskKey, serverKey, isCommandMode)
-            while True: # Wait for all tasks on current server to finish
-                if serverKey in self.combinedConnections and self.combinedConnections[serverKey].areAllTasksDone():
-                    break
                 time.sleep(0.5)
+                retval += self.taskOnServer(taskKey, serverKey, isCommandMode)
+                while True: # Wait for all tasks on current server to finish
+                    if serverKey in self.combinedConnections and self.combinedConnections[serverKey].areAllTasksDone():
+                        break
+                    time.sleep(0.5)
         return retval
 
 class ApiSftp(ApiWorkspace):

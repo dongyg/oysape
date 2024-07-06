@@ -55,7 +55,7 @@ template_signin_failed_close = """
 </head>
 <body>
     <div class="container mt-5 col-6" style="text-align: center;">
-        <h3>{msg} You can close this window now.</h3>
+        <h3>{msg}</h3>
     </div>
     <script>
         setTimeout(function(){window.close();},50);

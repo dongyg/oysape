@@ -148,14 +148,8 @@ def initScheduler(obh, schedule_items):
             apiSchedulers[teamId].teamId = teamId
             apiSchedulers[teamId].teamName = teamName
         # Load credentials for this webhost
-        cerdPath = os.path.join(apis.folder_base,'credentials.json')
-        if os.path.isfile(cerdPath):
-            try:
-                with open(cerdPath, 'r') as f:
-                    apiSchedulers[teamId].credentials = json.load(f)
-            except Exception as e:
-                apiSchedulers[teamId].credentials = {}
-        apiSchedulers[teamId].reloadUserSession(apiSchedulers[teamId].credentials if hasattr(apiSchedulers[teamId], 'credentials') else {})
+        credWebhost = apiSchedulers[teamId].loadCredentials()
+        apiSchedulers[teamId].reloadUserSession({'credentials': credWebhost})
         if item.get('running'):
             # print('Scheduled:', item.get('title'))
             functionObj = None

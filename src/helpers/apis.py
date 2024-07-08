@@ -47,6 +47,10 @@ def merge_steps(steps):
 
 def merge_credentials(c1, c2):
     # Merge credentialListing
+    if not c1.get('credentialListing'): c1['credentialListing'] = []
+    if not c2.get('credentialListing'): c2['credentialListing'] = []
+    if not c1.get('credentialMapping'): c1['credentialMapping'] = {}
+    if not c2.get('credentialMapping'): c2['credentialMapping'] = {}
     alias_dict = {cred['alias']: cred for cred in c1['credentialListing']}
     for cred in c2['credentialListing']:
         alias_dict[cred['alias']] = cred
@@ -231,23 +235,37 @@ class ApiOysape(ApiOauth):
     def addServer(self, params):
         # Return server list in {'servers': []}
         serverObject = params.get('serverObject') or {}
-        credWebhost = self.loadCredentials() if not self.isDesktopVersion() else {}
-        credUser = params.get('credentials') or {}
-        merge_credentials(credWebhost, credUser)
         if params.get('prikey') and not os.path.isfile(os.path.expanduser(serverObject.get('prikey'))):
             return {"errinfo": "Private key file not found: %s" % serverObject.get('prikey')}
-        self.importTo({'what': 'servers', 'items': [serverObject]})
-        return self.attach_credential_for_server(credWebhost, self.userSession["team0"])
+        self.importTo({'what': 'servers', 'items': [serverObject], 'credentials': params.get('credentials')})
+        return self.userSession
 
     def deleteServer(self, params):
         # Return server list in {'servers': []}
         if not self.hasPermission('writable'): return {"errinfo": "Writable access denied"}
+        retval = tools.callServerApiDelete('/user/servers', {'key': params.get('key')}, self)
+        self.userSession['servers'] = retval.get('servers') or []
         credWebhost = self.loadCredentials() if not self.isDesktopVersion() else {}
         credUser = params.get('credentials') or {}
         merge_credentials(credWebhost, credUser)
-        retval = tools.callServerApiDelete('/user/servers', {'key': params.get('key')}, self)
-        self.userSession['servers'] = retval.get('servers') or []
-        return self.attach_credential_for_server(credUser, self.userSession["team0"])
+        self.attach_credential_for_server(credWebhost, self.userSession["team0"])
+        # If current user has webhost set, and those webhosts are verified, Save servers/tasks/pipelines to webhost target
+        objs = {
+            'servers': self.userSession['servers'],
+            'tasks': self.userSession['tasks'],
+            'pipelines': self.userSession['pipelines'],
+            'folders': self.listFolder,
+            'excludes': self.listExclude,
+        }
+        for site in (self.userSession.get('sites') or []):
+            serverKey = site.get('target')
+            if serverKey and site.get('verified') and serverKey in [x.get('key') for x in objs['servers']]:
+                filename = self.userSession.get('team0')+'.json'
+                self.save_remote_file({'target': serverKey, 'path': os.path.join('.oysape','teams',filename), 'content': json.dumps(objs)})
+                retval = tools.callServerApiPost('/user/webhost/verify', {'obh': site.get('obh')}, self)
+                if retval and retval.get('errinfo'):
+                    site['verified'] = False
+        return self.userSession
 
     def getTaskObject(self, taskKey):
         taskObj = [x for x in self.userSession['tasks'] if x.get('name') == taskKey]
@@ -329,13 +347,20 @@ class ApiOysape(ApiOauth):
                 return_list = retval.get(what, []) or []
                 objs[what].clear()
                 objs[what].extend(return_list)
+                if what == 'servers':
+                    credWebhost = self.loadCredentials() if not self.isDesktopVersion() else {}
+                    credUser = params.get('credentials') or {}
+                    merge_credentials(credWebhost, credUser)
+                    self.attach_credential_for_server(credWebhost, self.userSession["team0"])
                 # If current user has webhost set, and those webhosts are verified, and the target is in servers. Save servers/tasks/pipelines to webhost target
                 for site in (self.userSession.get('sites') or []):
                     serverKey = site.get('target')
-                    if serverKey and site.get('verified') and site.get('target') in [x.get('key') for x in objs['servers']]:
+                    if serverKey and site.get('verified') and serverKey in [x.get('key') for x in objs['servers']]:
                         filename = self.userSession.get('team0')+'.json'
                         self.save_remote_file({'target': serverKey, 'path': os.path.join('.oysape','teams',filename), 'content': json.dumps(objs)})
-                        tools.callServerApiPost('/user/webhost/verify', {'obh': site.get('obh')}, self)
+                        retval = tools.callServerApiPost('/user/webhost/verify', {'obh': site.get('obh')}, self)
+                        if retval and retval.get('errinfo'):
+                            site['verified'] = False
                 return retval
             return {}
         except Exception as e:
@@ -1196,7 +1221,7 @@ class ApiDesktop(ApiOverHttp):
 
     def verifyWebHost(self, params={}):
         # If current user has webhost set, and those webhosts are verified, and the target is in servers. Save servers/tasks/pipelines to webhost target.
-        # This needs to be done before verify webhost, because once verified, the webhost will need servers/tasks/pipelines data.
+        # That needs to be done before verify webhost, because once verified, the webhost will need servers/tasks/pipelines data.
         objs = {
             'servers': self.userSession['servers'],
             'tasks': self.userSession['tasks'],

@@ -183,7 +183,7 @@ export default function ProfileButton() {
       if(!isSignOut.current) event.returnValue = 'Are you sure you want to leave?';
     };
 
-    if(!isDesktopVersion && !isMobileVersion) {
+    if(!(isDesktopVersion || isMobileVersion)) {
       window.addEventListener('beforeunload', handleBeforeUnload);
     }
 

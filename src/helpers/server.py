@@ -278,8 +278,12 @@ def enable_cors_after_request_hook():
 
 def add_cors_headers():
     if consts.IS_DEBUG:
-        response.headers['Access-Control-Allow-Origin'] = 'http://localhost:3000' # for local testing
-        # response.headers['Access-Control-Allow-Origin'] = 'http://192.168.0.2:19790'
+        allowed_origins = ['http://localhost:3000', 'http://192.168.0.2:9790', 'http://192.168.0.2:19790']
+        origin = request.headers.get('Origin')
+        if origin in allowed_origins:
+            response.headers['Access-Control-Allow-Origin'] = origin
+        else:
+            response.headers['Access-Control-Allow-Origin'] = allowed_origins[0]
         response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, OPTIONS'
         response.headers['Access-Control-Allow-Headers'] = 'Origin, Accept, Content-Type, X-Requested-With, X-CSRF-Token'
         response.headers['Access-Control-Allow-Credentials'] = 'true'

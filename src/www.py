@@ -17,7 +17,7 @@ if __name__ == '__main__':
     consts.initVariants(args.debug, version)
 
     signal.signal(signal.SIGTERM, sig_handler)
-    if sys.argv and sys.argv[0].find('src/www.py')>0:
+    if sys.argv and sys.argv[0].find('src/www.py')>=0:
         # run in interactive mode
         server.start_http_server('0.0.0.0', int(args.port or 19790))
         console.embed()

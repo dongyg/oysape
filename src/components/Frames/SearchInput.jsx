@@ -147,7 +147,7 @@ const SearchInput = () => {
     });
   }
   const getFilesForSearch = (query) => {
-    const flatFiles = flatFileTree(JSON.parse(JSON.stringify(folderFiles)));
+    const flatFiles = folderFiles ? flatFileTree(JSON.parse(JSON.stringify(folderFiles))) : [];
     return folderFiles ? flatFiles.filter((item) => getPathAndName(item).toLowerCase().indexOf(query) >= 0).map((item) => {
       return { value: getPathAndName(item), label: (<div>{getPathAndName(item)}</div>) }
     }) : [];
@@ -397,7 +397,7 @@ const SearchInput = () => {
   return (
     <div style={{ width: '100%', padding: '0 12px' }}>
       <Button icon={<SearchOutlined />} style={{ width: '100%', display: !showSearch ? 'block' : 'none', transition: 'none' }} onClick={onSearch}>
-        { userSession && userSession.teams && userSession.teams[userSession.team0] && userSession.teams[userSession.team0].tname ?
+        &nbsp;{ userSession && userSession.teams && userSession.teams[userSession.team0] && userSession.teams[userSession.team0].tname ?
           userSession.teams[userSession.team0].tname :
           'Workspace'
         }

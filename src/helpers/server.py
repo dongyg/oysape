@@ -24,15 +24,16 @@ def not_allowed(error):
 
 def getClientIdAndToken(req, params={}):
     clientIpAddress = req.headers.get('X-Forwarded-For') or req.remote_addr
+    clientId = req.cookies.get('client_id')
+    clientToken = req.cookies.get('client_token') or req.cookies.get('mobile_token')
     if req.headers.get('User-Agent').find('OysapeDesktop') >= 0:
         # Use the pywebview token as the clientId for desktop version. It should have a apiObject in apis.apiInstances
         import webview
-        clientId = webview.token
-        apiObject = apis.apiInstances.get(clientId) if clientId else None
-        clientToken = apiObject.userToken if apiObject else None
-    else:
-        clientId = req.cookies.get('client_id')
-        clientToken = req.cookies.get('client_token') or req.cookies.get('mobile_token')
+        if not clientId:
+            clientId = webview.token
+        if not clientToken:
+            apiObject = apis.apiInstances.get(clientId) if clientId else None
+            clientToken = apiObject.userToken if apiObject else None
     # logging.info(('getClientIdAndToken', req.path, clientIpAddress, clientId, clientToken))
     return clientIpAddress, clientId, clientToken
 
@@ -132,8 +133,8 @@ def oauthCallback():
     else:
         # In the web version, can set the cookie here. The cookies are only available for this session.
         # cookies 的有效期可以让用户在设置 web host 的时候自行设置. 仅会话有效的话会更安全(token泄露被盗用的可能性更小). 另外用户也可以选择在 web version 使用后自行 sign out. sign out 后 token 已经删除并失效了, 就不存在泄露和被盗用风险了.
-        response.set_cookie("client_token", retval.get('data').get('token'), path="/", httponly=True)
         response.set_cookie("client_id", clientId, path="/", httponly=True)
+        response.set_cookie("client_token", retval.get('data').get('token'), path="/", httponly=True)
         # response.set_cookie("client_token", retval.get('data').get('token'), path="/", max_age=3600*24*30, httponly=True)
         # response.set_cookie("client_id", clientId, path="/", max_age=3600*24*30, httponly=True)
         rendered_template = template_signin_success_redirect.replace('{url}', apis.apiInstances[clientId].backendHost+'/index.html')
@@ -278,7 +279,7 @@ def enable_cors_after_request_hook():
 
 def add_cors_headers():
     if consts.IS_DEBUG:
-        allowed_origins = ['http://localhost:3000', 'http://192.168.0.2:9790', 'http://192.168.0.2:19790']
+        allowed_origins = ['http://127.0.0.1:3000', 'http://127.0.0.1:19790', 'http://192.168.0.2:9790', 'http://192.168.0.2:19790']
         origin = request.headers.get('Origin')
         if origin in allowed_origins:
             response.headers['Access-Control-Allow-Origin'] = origin
@@ -305,7 +306,7 @@ def api(functionName):
     add_cors_headers()
     data = request.json
     clientIpAddress, clientId, clientToken = getClientIdAndToken(request, data)
-    logging.info(('OverHttp', clientIpAddress, clientId, clientToken, functionName))
+    # logging.info(('OverHttp', clientIpAddress, clientId, clientToken, functionName))
     if functionName in ['signInWithEmail','signInWithGithub','signInWithGoogle']:
         # Request to sign in is limited. These 3 requests have no clientId in the headers
         if not consts.IS_DEBUG and not tools.rate_limit(KVStore, clientIpAddress+request.urlparts.path):
@@ -371,6 +372,8 @@ def serve_static(filename):
         base_path = os.path.join(base_path, '..', 'gui')
     elif os.path.exists(os.path.join(base_path, 'public')):
         base_path = os.path.join(base_path, 'public')
+    elif consts.IS_DEBUG and os.path.exists('/Users/Shared/Projects/oysape/client/gui'):
+        base_path = '/Users/Shared/Projects/oysape/client/gui'
     logging.info('File requested: ' + os.path.join(base_path, filename))
     return static_file(filename, root=base_path)
 

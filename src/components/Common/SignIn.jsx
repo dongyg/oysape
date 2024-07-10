@@ -4,7 +4,7 @@ import { App, Layout, Button, Image, Alert, } from 'antd';
 import { GithubOutlined, GoogleOutlined, GlobalOutlined, LoadingOutlined, AppleFilled } from "@ant-design/icons";
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { isDesktopVersion, callApi, getCredentials, setTokenToCookie, delTokenFromCookie, isMobileVersion } from '../Common/global';
+import { isDesktopVersion, callApi, getCredentials, setTokenToCookie, delTokenFromCookie, isMobileVersion, setDataToCookie } from '../Common/global';
 
 export default function BodyContainer() {
   const { message } = App.useApp();
@@ -54,6 +54,9 @@ export default function BodyContainer() {
             if(loginData && loginData.token) {
               clearInterval(waitForSigninResultTimer);
               setTokenToCookie(loginData.token);
+              if(loginData.clientId) {
+                setDataToCookie([{name:'client_id', value:loginData.clientId, days:30}]);
+              }
               window.reloadUserSession(loginData.token);
             }else if(loginData && loginData.errinfo) {
               clearInterval(waitForSigninResultTimer);
@@ -114,11 +117,14 @@ export default function BodyContainer() {
 
     if(isDesktopVersion) {
       const waitForPywebivewTimer = setInterval(() => {
-        if(window.pywebview && window.pywebview.token) {
+        if(window.pywebview && window.pywebview.token && typeof window.pywebview.token === 'string') {
           clearInterval(waitForPywebivewTimer);
           callApi('get_token').then((data) => {
             runMeFirst();
           });
+        } else {
+          clearInterval(waitForPywebivewTimer);
+          runMeFirst();
         }
       })
     } else if (isMobileVersion) {

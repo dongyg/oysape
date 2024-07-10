@@ -71,7 +71,7 @@ const HeadFrame = () => {
 
   return (
     <Row wrap={false} className='ant-layout-header' style={{ position: 'relative', overflow: 'visible', zIndex: 3 }}>
-      <Col flex="none">
+      <Col flex="none" style={{ lineHeight: 'initial' }}>
         <Button type='text' icon={hideSidebar? <MenuUnfoldOutlined /> : <MenuFoldOutlined />} onClick={handleShowSidebar}></Button>
       </Col>
       <Col flex="auto" style={{ textAlign: 'center' }}>
@@ -80,7 +80,7 @@ const HeadFrame = () => {
           : <SearchInput style={{ width: '100%' }}></SearchInput>
         }
       </Col>
-      <Col flex="none">
+      <Col flex="none" style={{ lineHeight: 'initial' }}>
         <ProfileButton />
       </Col>
     </Row>

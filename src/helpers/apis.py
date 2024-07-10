@@ -991,8 +991,9 @@ class ApiOverHttp(ApiDockerManager):
             return {"number": retval}
         return {"number": 0}
 
-
-class ApiDesktop(ApiOverHttp):
+# When using pywebview in desktop version, the functions blow are called through window.pywebview.
+# When using Electron, all the functions are called through HTTP. So they need to be defined in ApiOverHttp.
+# class ApiDesktop(ApiOverHttp):
     def get_token(self):
         import webview
         for c in webview.windows[0].get_cookies():
@@ -1004,7 +1005,7 @@ class ApiDesktop(ApiOverHttp):
     def querySigninResult(self, params={}):
         outmsg = self.signInMessage
         self.signInMessage = ''
-        return {'token': self.userToken, 'errinfo': outmsg}
+        return {'token': self.userToken, 'clientId': self.clientId, 'errinfo': outmsg}
 
     def toggle_fullscreen(self):
         import webview
@@ -1363,6 +1364,10 @@ class ApiDesktop(ApiOverHttp):
         # Send http request, will call execQueryScheduleLogs
         retval = tools.send_get_request(obh+'/schedule/logs', params, {'Content-Type': 'application/json'})
         return retval or {'list': [], 'total': 0}
+
+
+class ApiDesktop(ApiOverHttp):
+    pass
 
 
 apiInstances = {}

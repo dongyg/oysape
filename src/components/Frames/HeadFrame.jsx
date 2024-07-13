@@ -74,7 +74,7 @@ const HeadFrame = () => {
       <Col flex="none" style={{ lineHeight: 'initial' }}>
         <Button type='text' icon={hideSidebar? <MenuUnfoldOutlined /> : <MenuFoldOutlined />} onClick={handleShowSidebar}></Button>
       </Col>
-      <Col flex="auto" style={{ textAlign: 'center' }}>
+      <Col flex="auto" style={{ lineHeight: 'initial', textAlign: 'center' }}>
         {searchMode === 'language'
           ? <SearchLanguage style={{ width: '100%' }}></SearchLanguage>
           : <SearchInput style={{ width: '100%' }}></SearchInput>

@@ -15,7 +15,7 @@ const { Text } = Typography;
 
 export default function ScheduleLogsPanel() {
   const { message, modal } = App.useApp();
-  const { customTheme, userSession } = useCustomContext();
+  const { customTheme, userSession, currentSideKey } = useCustomContext();
   const headerHeight = '56px';
   const [schItems, setSchItems] = useState([]);
   const [currentSch, setCurrentSch] = useState('');
@@ -203,6 +203,7 @@ export default function ScheduleLogsPanel() {
   const filterItems = () => {
     callApi('execQueryScheduleLogs', {'sch': currentSch, 'qrytxt': searchKeyword.toLowerCase(), 'page': currentPage}).then((resp) => {
       if(resp && resp.errinfo) {
+        setHasMore(false);
         message.error(resp.errinfo);
       } else if(resp.list) {
         setTotalNumber(resp.total);
@@ -221,7 +222,8 @@ export default function ScheduleLogsPanel() {
 
   const divRef = React.useRef(null);
   const handleScroll = () => {
-    if (divRef.current) {
+    // 判断当前显示的边栏面板是否是本面板, 并且要判断 divRef.current.clientHeight > 0 说明不是刚刚切换到当前面板
+    if (divRef.current && currentSideKey === 'sideWebhostLogs' && divRef.current.clientHeight > 0) {
       const isBottom = divRef.current.scrollHeight - divRef.current.scrollTop === divRef.current.clientHeight;
       if (isBottom && hasMore) {
         filterItems();

@@ -5,7 +5,7 @@ import { App, Tree, Select, Dropdown, Button, Tooltip, Space } from 'antd';
 import { UploadOutlined, CloudUploadOutlined, DownloadOutlined, DownOutlined, LoadingOutlined, ExclamationOutlined, EditOutlined, CopyOutlined, FolderViewOutlined, ReloadOutlined } from '@ant-design/icons';
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { callApi, getLanguages, calculateMD5, isDesktopVersion } from '../Common/global';
+import { callApi, getCodeMirrorLanguages, calculateMD5, isDesktopVersion } from '../Common/global';
 import CodeEditor from '../Modules/CodeEditor';
 
 const { DirectoryTree } = Tree; // 把 Tree 赋值给 DirectoryTree, 然后使用 DirectoryTree 就是出现整行选中效果, 否则就不出现整行选中效果
@@ -134,7 +134,7 @@ export default function Sftp(props) {
         reloadWholeTree();
       } else {
         openIt();
-        const v1 = getLanguages(anode.path);
+        const v1 = getCodeMirrorLanguages(anode.path);
         if(!(v1&&v1.length>0)) {
           modal.confirm({
             title: anode.title,

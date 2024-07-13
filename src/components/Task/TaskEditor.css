@@ -34,7 +34,7 @@
     border-style: solid;
     border-radius: 0px;
     max-height: calc(100vh - 450px);
-    min-height: 29px;
+    min-height: 58px;
     overflow: auto;
 }
 .dark-theme .codeCmd {

@@ -1,6 +1,6 @@
 import React, { useState, useContext, useEffect } from "react";
 
-import { callApi, isDesktopVersion, OYSAPE_DESKTOP_NAME } from '../Common/global';
+import { callApi, isDesktopVersion, isMacOs, OYSAPE_DESKTOP_NAME } from '../Common/global';
 import { StyleDark } from "./StyleDark";
 import { StyleLight } from "./StyleLight";
 
@@ -13,7 +13,7 @@ const ThemeContext = React.createContext({
   toggleCustomTheme: () => {},
 });
 
-const statusDefaultText = (isDesktopVersion ? OYSAPE_DESKTOP_NAME : 'OysapeWebhost') + ' 2.7.6';
+const statusDefaultText = (isDesktopVersion ? OYSAPE_DESKTOP_NAME : 'OysapeWebhost') + ' 3.7.12';
 
 export const ThemeProvider = ({ children }) => {
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
@@ -33,6 +33,7 @@ export const ThemeProvider = ({ children }) => {
   const [codeEditCurrentLang, setCodeEditCurrentLang] = useState(null);
   const [searchMode, setSearchMode] = useState('');
   const [hideSidebar, setHideSidebar] = useState(window.innerWidth<=800);
+  const [editorType, setEditorType] = useState(isDesktopVersion&&isMacOs ? 'codemirror5' : 'monaco');
 
   let menuWidth = 60;
 
@@ -121,6 +122,7 @@ export const ThemeProvider = ({ children }) => {
     codeEditRowColText, setCodeEditRowColText, codeEditCurrentLang, setCodeEditCurrentLang,
     searchMode, setSearchMode,
     hideSidebar, setHideSidebar,
+    editorType, setEditorType,
   }
 
   return (

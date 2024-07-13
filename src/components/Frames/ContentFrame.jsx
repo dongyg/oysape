@@ -11,16 +11,16 @@ import Workspace from '../Modules/Workspace';
 
 import './ContentFrame.css';
 
-const defaultPanes = [
-  {label: 'Workspace', key: 'workspace', children: <Workspace uniqueKey='workspace' />},
-  // {label: 'CodeEditor', key: '1', children: <CodeEditor uniqueKey='1' filename='/Users/Shared/Projects/oysape/requirements.txt' />},
-  // {label: 'ServerEditor', key: '2', children: <ServerEditor />},
-  // {label: 'Tab 3', key: '3', children: <BlankContent />},
-];
-
 const ContentFrame = () => {
   const { modal, notification } = App.useApp();
   const { customTheme, tabItems, setTabItems, tabActiveKey, setTabActiveKey, userSession } = useCustomContext();
+
+  const defaultPanes = [
+    {label: 'Workspace', key: 'workspace', children: <Workspace uniqueKey='workspace' />},
+    // {label: 'CodeEditor', key: '1', children: <CodeEditor uniqueKey='1' filename='/Users/Shared/Projects/oysape/server/config.py' />},
+    // {label: 'ServerEditor', key: '2', children: <ServerEditor />},
+    // {label: 'Tab 3', key: '3', children: <BlankContent />},
+  ];
 
   const getTabTitle = (key) => {
     const { label } = tabItems.find((pane) => pane.key === key) || '';

@@ -10,7 +10,7 @@ const { useToken } = theme;
 
 export default function ProfileButton() {
   const { message, modal } = App.useApp();
-  const { customTheme, toggleCustomTheme, userSession, setUserSession } = useCustomContext();
+  const { customTheme, toggleCustomTheme, userSession, setUserSession, editorType, setEditorType } = useCustomContext();
   const [visibleCredentialsModal, setVisibleCredentialsModal] = useState(false);
   const { token } = useToken();
   const isSignOut = useRef(false);
@@ -65,6 +65,14 @@ export default function ProfileButton() {
     });
   }
   const menuItems = [
+    {
+      key: 'menuCodeEditors',
+      label: 'Code Editors',
+      children: [
+        { key: 'menuCodeMirror5', label: 'Code Mirror 5', icon: editorType!=='monaco'?<CheckOutlined />:null, },
+        { key: 'menuCodeiumAI', label: 'Codeium AI Editor', icon: editorType==='monaco'?<CheckOutlined />:null, },
+      ],
+    },
     { type: 'divider', },
     ...getTeamMenus(),
     {
@@ -83,7 +91,11 @@ export default function ProfileButton() {
     process.env.NODE_ENV === 'development' ? { key: 'menuTest3', label: ( 'testApi' ), } : undefined,
   ];
   const onClickMenu = ({ key }) => {
-    if(key === 'menuManageTeams') {
+    if(key === 'menuCodeMirror5') {
+      setEditorType('codemirror5');
+    }else if(key === 'menuCodeiumAI') {
+      setEditorType('monaco');
+    }else if(key === 'menuManageTeams') {
       window.openWebpageInTab && window.openWebpageInTab('http://localhost:8080/index.html', 'Webpage Demo');
     }else if(key === 'menuReloadTeams') {
       reloadEverything(() => {

@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { App, Button, Form, Input, Radio, Alert } from 'antd';
 import CodeMirror from '@uiw/react-codemirror'
+import { CodeiumEditor } from "@codeium/react-code-editor";
 import { solarizedLight, solarizedDark } from '@uiw/codemirror-theme-solarized';
 import { loadLanguage } from '@uiw/codemirror-extensions-langs';
 
@@ -14,7 +15,7 @@ import './TaskEditor.css';
 
 export default function TaskEditor(props) {
   const { message } = App.useApp();
-  const { customTheme, tabActiveKey, tabItems, setTabItems, setFooterStatusText, userSession, setUserSession, hideSidebar } = useCustomContext();
+  const { customTheme, tabActiveKey, tabItems, setTabItems, setFooterStatusText, userSession, setUserSession, hideSidebar, editorType } = useCustomContext();
   const [isFileTransfer, setIsFileTransfer] = useState(false);
   const taskKey = React.useRef(props.taskKey);
   const uniqueKey = props.uniqueKey;
@@ -25,6 +26,7 @@ export default function TaskEditor(props) {
   // codemirror
   const [codeValue, setCodeValue] = useState('');
   const [saving, setSaving] = useState(false);
+  let prevHeight = useRef(58)
 
   // tags
   const handleTagChange = (newTags) => {
@@ -133,6 +135,7 @@ export default function TaskEditor(props) {
     event.preventDefault(); return;
   });
 
+
   return (
     <div className={customTheme.className+' withScrollContent'} style={{ backgroundColor: customTheme.colors["editor.background"], color: customTheme.colors["editor.foreground"], height: '100%', paddingTop: '24px', overflow: 'auto' }}>
       <Form
@@ -176,16 +179,57 @@ export default function TaskEditor(props) {
           <Input placeholder='Give the files/folders to be excluded. eg: .git .DS_Store' autoCapitalize='off' autoComplete='off' autoCorrect='off' />
         </Form.Item>
         <Form.Item hidden={isFileTransfer} label="Commands" name="cmdText" rules={!isFileTransfer?[{required: true, message: 'Please input commands!',},]:null}>
-          <CodeMirror className='codeCmd withScrollContent'
-            theme={customTheme.isDark?solarizedDark:solarizedLight}
-            basicSetup={{highlightActiveLine:false}}
-            value={codeValue}
-            extensions={[loadLanguage('shell')]}
-            onChange={onCodeChange}
-            onStatistics={(data)=>{
-              // console.log(data)
-            }}
-          />
+          { editorType==='monaco' ?
+            <CodeiumEditor height={'auto'}
+              className='codeCmd withScrollContent'
+              theme={customTheme.isDark?'vs-dark':'light'}
+              value={codeValue}
+              defaultLanguage='shell'
+              onChange={onCodeChange}
+              options={{
+                minimap: { enabled: false },
+                wordWrap: 'off',
+                scrollbar: {
+                  vertical: 'visible',
+                  horizontal: 'visible',
+                },
+                automaticLayout: true,
+              }}
+              onMount={(editor, monaco) => {
+                editor.onDidChangeModelDecorations(() => {
+                  updateEditorHeight() // typing
+                  requestAnimationFrame(updateEditorHeight) // folding
+                })
+                const updateEditorHeight = () => {
+                  const editorElement = editor.getDomNode()
+                  if (!editorElement) {
+                    return
+                  }
+                  const padding = 58
+                  const lineHeight = editor.getOption(monaco.editor.EditorOption.lineHeight)
+                  const lineCount = editor.getModel()?.getLineCount() || 1
+                  const height = editor.getTopForLineNumber(lineCount + 0) + lineHeight + padding
+                  if (prevHeight !== height) {
+                    prevHeight = height
+                    editorElement.style.height = `${height}px`
+                    editor.layout()
+                  }
+                }
+                updateEditorHeight()
+              }}
+            /> :
+            <CodeMirror
+              className='codeCmd withScrollContent'
+              theme={customTheme.isDark?solarizedDark:solarizedLight}
+              basicSetup={{highlightActiveLine:false}}
+              value={codeValue}
+              extensions={[loadLanguage('shell')]}
+              onChange={onCodeChange}
+              onStatistics={(data)=>{
+                // console.log(data)
+              }}
+            />
+          }
         </Form.Item>
         <Form.Item hidden={isFileTransfer} label="Run mode" name="runmode" tooltip={<div><strong>line-by-line</strong>: The commands will be executed line-by-line.<br/><br/><strong>batch-join</strong>: The commands will be joined with '&&' for example in Linux, then executed.<br/><br/><strong>batch-escape</strong>: The commands will be executed as a batch.<br/><br/><strong>script</strong>: The commands will be executed as a script file.</div>}>
           <Radio.Group>

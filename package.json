@@ -1,6 +1,6 @@
 {
   "name": "oysape",
-  "version": "2.7.6",
+  "version": "3.7.12",
   "private": true,
   "homepage": "./",
   "dependencies": {
@@ -8,6 +8,7 @@
     "@ant-design/compatible": "^5.1.2",
     "@babel/core": "^7.16.0",
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "@codeium/react-code-editor": "^1.0.12",
     "@codemirror/lang-javascript": "^6.2.1",
     "@pmmmwh/react-refresh-webpack-plugin": "^0.5.3",
     "@svgr/webpack": "^5.5.0",

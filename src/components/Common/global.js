@@ -63,6 +63,7 @@ export const OYSAPE_MOBILE_NAME = 'OysapeMobile';
 export const isDesktopVersion = navigator.userAgent.indexOf(OYSAPE_DESKTOP_NAME) !== -1;
 export const isMobileVersion = navigator.userAgent.indexOf(OYSAPE_MOBILE_NAME) !== -1;
 export const isIos = navigator.userAgent.indexOf('iPhone') !== -1 || navigator.userAgent.indexOf('iPad') !== -1;
+export const isMacOs = navigator.userAgent.indexOf('Macintosh') !== -1 || navigator.userAgent.indexOf('Mac OS') !== -1 || navigator.userAgent.indexOf('macOS') !== -1;
 
 // 调用原生API
 export function callNativeApi(functionName, params) {
@@ -436,153 +437,232 @@ export const writeWelcome = function(xterm) {
     }
 }
 
-const languageDict = {
-    "apl": [".apl"],
-    "asciiArmor": [".asciiArmor"],
-    "asterisk": [".asterisk"],
-    "c": [".c"],
-    "csharp": [".cs"],
-    "scala": [".scala"],
-    "solidity": [".sol"],
-    "kotlin": [".kt"],
-    "shader": [".shader"],
-    "nesC": [".nc"],
-    "objectiveC": [".m"],
-    "objectiveCpp": [".mm"],
-    "squirrel": [".nut"],
-    "ceylon": [".ceylon"],
-    "dart": [".dart"],
-    "cmake": [".cmake"],
-    "cobol": [".cob"],
-    "commonLisp": [".lisp"],
-    "crystal": [".cr"],
-    "cypher": [".cypher"],
-    "d": [".d"],
-    "diff": [".diff"],
-    "dtd": [".dtd"],
-    "dylan": [".dylan"],
-    "ebnf": [".ebnf"],
-    "ecl": [".ecl"],
-    "eiffel": [".e"],
-    "elm": [".elm"],
-    "factor": [".factor"],
-    "fcl": [".fcl"],
-    "forth": [".forth"],
-    "fortran": [".f"],
-    "gas": [".s"],
-    "gherkin": [".feature"],
-    "groovy": [".groovy"],
-    "haskell": [".hs"],
-    "haxe": [".hx"],
-    "http": [".http"],
-    "idl": [".idl"],
-    "jinja2": [".jinja2"],
-    "mathematica": [".nb"],
-    "mbox": [".mbox"],
-    "mirc": [".mrc"],
-    "modelica": [".mo"],
-    "mscgen": [".mscgen"],
-    "mumps": [".m"],
-    "nsis": [".nsi"],
-    "ntriples": [".nt"],
-    "octave": [".m"],
-    "oz": [".oz"],
-    "pig": [".pig"],
-    "properties": [".properties"],
-    "protobuf": [".proto"],
-    "puppet": [".pp"],
-    "q": [".q"],
-    "sas": [".sas"],
-    "sass": [".sass"],
-    "mermaid": [".mermaid"],
-    "nix": [".nix"],
-    "svelte": [".svelte"],
-    "sieve": [".sieve"],
-    "smalltalk": [".st"],
-    "solr": [".solr"],
-    "sparql": [".rq"],
-    "spreadsheet": [".xls"],
-    "stex": [".stex"],
-    "textile": [".textile"],
-    "tiddlyWiki": [".tid"],
-    "tiki": [".tiki"],
-    "troff": [".tr"],
-    "ttcn": [".ttcn"],
-    "turtle": [".ttl"],
-    "velocity": [".vm"],
-    "verilog": [".v"],
-    "vhdl": [".vhd"],
-    "webIDL": [".webidl"],
-    "xQuery": [".xq"],
-    "yacas": [".ys"],
-    "z80": [".z80"],
-    "wast": [".wast"],
-    "javascript": [".js"],
-    "jsx": [".jsx"],
-    "typescript": [".ts"],
-    "tsx": [".tsx"],
-    "vue": [".vue"],
-    "angular": [".js"],
-    "json": [".json"],
-    "html": [".html"],
-    "css": [".css"],
-    "python": [".py"],
-    "markdown": [".md", ".markdown"],
-    "xml": [".xml"],
-    "sql": [".sql"],
-    "mysql": [".sql"],
-    "pgsql": [".sql"],
-    "java": [".java"],
-    "rust": [".rs"],
-    "cpp": [".cpp"],
-    "lezer": [".lezer"],
-    "php": [".php"],
-    "go": [".go"],
-    "shell": [".sh"],
-    "lua": [".lua"],
-    "swift": [".swift"],
-    "tcl": [".tcl"],
-    "yaml": [".yaml", ".yml"],
-    "vb": [".vb"],
-    "powershell": [".ps1"],
-    "brainfuck": [".bf"],
-    "stylus": [".styl"],
-    "erlang": [".erl"],
-    "nginx": [".conf"],
-    "perl": [".pl"],
-    "ruby": [".rb"],
-    "pascal": [".pas"],
-    "livescript": [".ls"],
-    "less": [".less"],
-    "scheme": [".scm"],
-    "toml": [".toml"],
-    "vbscript": [".vbs"],
-    "clojure": [".clj"],
-    "coffeescript": [".coffee"],
-    "julia": [".jl"],
-    "dockerfile": ["Dockerfile"],
-    "r": [".r"],
+const languageDictMonaco = {
+  "abap": [".abap"],
+  "apex": [".apex"],
+  "azcli": [".azcli"],
+  "bat": [".bat", ".cmd"],
+  "c": [".c", ".h"],
+  "clojure": [".clj", ".cljs", ".cljc", ".edn"],
+  "coffeescript": [".coffee"],
+  "cpp": [".cpp", ".cc", ".cxx", ".hpp", ".hh", ".hxx"],
+  "csharp": [".cs", ".csx"],
+  "csp": [".csp"],
+  "css": [".css"],
+  "dart": [".dart"],
+  "dockerfile": ["Dockerfile"],
+  "fsharp": [".fs", ".fsi", ".ml", ".mli"],
+  "go": [".go"],
+  "graphql": [".graphql", ".gql"],
+  "handlebars": [".handlebars", ".hbs"],
+  "html": [".html", ".htm", ".shtml", ".xhtml"],
+  "ini": [".ini"],
+  "java": [".java"],
+  "javascript": [".js", ".mjs"],
+  "julia": [".jl"],
+  "kotlin": [".kt", ".kts"],
+  "less": [".less"],
+  "lua": [".lua"],
+  "markdown": [".md", ".markdown"],
+  "msdax": [".msdax"],
+  "mysql": [".sql"],
+  "objective-c": [".m", ".mm"],
+  "pascal": [".pas", ".p"],
+  "perl": [".pl", ".pm"],
+  "pgsql": [".pgsql"],
+  "php": [".php"],
+  "plaintext": [".txt"],
+  "postiats": [".dats", ".sats", ".hats"],
+  "powerquery": [".pq", ".pqm"],
+  "powershell": [".ps1", ".psm1"],
+  "pug": [".pug"],
+  "python": [".py", ".rpy", ".pyw", ".cpy", ".gyp", ".gypi"],
+  "r": [".r"],
+  "razor": [".cshtml"],
+  "redis": [".redis"],
+  "redshift": [".rsql"],
+  "ruby": [".rb", ".rbw"],
+  "rust": [".rs"],
+  "sb": [".sb"],
+  "scheme": [".scm", ".ss"],
+  "scss": [".scss"],
+  "shell": [".sh", ".bash"],
+  "solidity": [".sol"],
+  "sql": [".sql"],
+  "st": [".st"],
+  "swift": [".swift"],
+  "tcl": [".tcl"],
+  "twig": [".twig"],
+  "typescript": [".ts", ".tsx"],
+  "vb": [".vb"],
+  "xml": [".xml", ".dtd", ".ascx", ".csproj", ".config", ".props", ".targets", ".wxi", ".wxl", ".wxs", ".xaml", ".svg"],
+  "yaml": [".yaml", ".yml"]
+}
+
+const languageDictCodeMirror = {
+  "angular": [".js"],
+  "apl": [".apl"],
+  "asciiArmor": [".asc"],
+  "asterisk": [".asterisk"],
+  "brainfuck": [".bf"],
+  "c": [".c"],
+  "ceylon": [".ceylon"],
+  "clojure": [".clj"],
+  "cmake": [".cmake"],
+  "cobol": [".cob"],
+  "coffeescript": [".coffee"],
+  "commonLisp": [".lisp"],
+  "cpp": [".cpp"],
+  "crystal": [".cr"],
+  "csharp": [".cs"],
+  "cypher": [".cypher"],
+  "d": [".d"],
+  "dart": [".dart"],
+  "diff": [".diff"],
+  "dockerfile": ["Dockerfile"],
+  "dtd": [".dtd"],
+  "dylan": [".dylan"],
+  "ebnf": [".ebnf"],
+  "ecl": [".ecl"],
+  "eiffel": [".e"],
+  "elm": [".elm"],
+  "erlang": [".erl"],
+  "factor": [".factor"],
+  "fcl": [".fcl"],
+  "forth": [".forth"],
+  "fortran": [".f"],
+  "gas": [".s"],
+  "gherkin": [".feature"],
+  "go": [".go"],
+  "groovy": [".groovy"],
+  "haskell": [".hs"],
+  "haxe": [".hx"],
+  "html": [".html"],
+  "http": [".http"],
+  "idl": [".idl"],
+  "javascript": [".js"],
+  "jinja2": [".jinja2"],
+  "json": [".json"],
+  "jsx": [".jsx"],
+  "java": [".java"],
+  "julia": [".jl"],
+  "kotlin": [".kt"],
+  "lezer": [".lezer"],
+  "less": [".less"],
+  "lua": [".lua"],
+  "markdown": [".md", ".markdown"],
+  "mathematica": [".nb"],
+  "mbox": [".mbox"],
+  "mermaid": [".mermaid"],
+  "mirc": [".mrc"],
+  "modelica": [".mo"],
+  "mscgen": [".mscgen"],
+  "mumps": [".mumps"],
+  "mysql": [".sql"],
+  "nesC": [".nc"],
+  "nginx": [".conf"],
+  "nix": [".nix"],
+  "nsis": [".nsi"],
+  "ntriples": [".nt"],
+  "objectiveC": [".m", ".mm"],
+  "octave": [".octave"],
+  "oz": [".oz"],
+  "pascal": [".pas"],
+  "perl": [".pl"],
+  "php": [".php"],
+  "pig": [".pig"],
+  "plaintext": [".txt"],
+  "powershell": [".ps1"],
+  "protobuf": [".proto"],
+  "properties": [".properties"],
+  "puppet": [".pp"],
+  "python": [".py"],
+  "q": [".q"],
+  "r": [".r"],
+  "ruby": [".rb"],
+  "rust": [".rs"],
+  "sas": [".sas"],
+  "sass": [".sass"],
+  "scala": [".scala"],
+  "scheme": [".scm"],
+  "shader": [".shader"],
+  "shell": [".sh"],
+  "sieve": [".sieve"],
+  "smalltalk": [".st"],
+  "solidity": [".sol"],
+  "solr": [".solr"],
+  "sparql": [".rq"],
+  "spreadsheet": [".xls"],
+  "squirrel": [".nut"],
+  "stex": [".stex"],
+  "stylus": [".styl"],
+  "svelte": [".svelte"],
+  "swift": [".swift"],
+  "tcl": [".tcl"],
+  "textile": [".textile"],
+  "tiddlyWiki": [".tid"],
+  "tiki": [".tiki"],
+  "toml": [".toml"],
+  "troff": [".tr"],
+  "ttcn": [".ttcn"],
+  "turtle": [".ttl"],
+  "typescript": [".ts"],
+  "tsx": [".tsx"],
+  "vb": [".vb"],
+  "vbscript": [".vbs"],
+  "velocity": [".vm"],
+  "verilog": [".v"],
+  "vhdl": [".vhd"],
+  "vue": [".vue"],
+  "webIDL": [".webidl"],
+  "wast": [".wast"],
+  "xQuery": [".xq"],
+  "xml": [".xml"],
+  "yaml": [".yaml", ".yml"],
+  "yacas": [".ys"],
+  "z80": [".z80"]
 };
 
-export const getLanguageDict = languageDict;
 
-export const getLanguages = function(fileName) {
-    if(fileName) {
-        const basename = fileName.split(/[\\/]/).pop();
-        const fileExtension = fileName.includes('.') ? '.'+fileName.split('.').pop().toLowerCase() : '';
-        const possibleLanguages = Object.keys(languageDict).filter(lang => {
-            if (fileExtension && languageDict[lang].includes(fileExtension)) {
-                return true;
-            }
-            if (!fileExtension && languageDict[lang].includes(basename)) {
-                return true;
-            }
-            return false;
-        });
-        return possibleLanguages;
-    } else {
-        return Object.keys(languageDict);
-    }
+export const getLanguageDictCodeMirror = languageDictCodeMirror;
+export const getLanguageDictMonaco = languageDictMonaco;
+
+export const getCodeMirrorLanguages = function(fileName) {
+  if(fileName) {
+    const basename = fileName.split(/[\\/]/).pop();
+    const fileExtension = fileName.includes('.') ? '.'+fileName.split('.').pop().toLowerCase() : '';
+    const possibleLanguages = Object.keys(languageDictCodeMirror).filter(lang => {
+      if (fileExtension && languageDictCodeMirror[lang].includes(fileExtension)) {
+        return true;
+      }
+      if (!fileExtension && languageDictCodeMirror[lang].includes(basename)) {
+        return true;
+      }
+      return false;
+    });
+    return possibleLanguages;
+  } else {
+    return Object.keys(languageDictCodeMirror);
+  }
+}
+
+export const getMonacoLanguages = function(fileName) {
+  if(fileName) {
+    const basename = fileName.split(/[\\/]/).pop();
+    const fileExtension = fileName.includes('.') ? '.'+fileName.split('.').pop().toLowerCase() : '';
+    const possibleLanguages = Object.keys(languageDictMonaco).filter(lang => {
+      if (fileExtension && languageDictMonaco[lang].includes(fileExtension)) {
+        return true;
+      }
+      if (!fileExtension && languageDictMonaco[lang].includes(basename)) {
+        return true;
+      }
+      return false;
+    });
+    return possibleLanguages;
+  } else {
+    return Object.keys(languageDictMonaco);
+  }
 }
 
 export const decolorizeText = function(text) {

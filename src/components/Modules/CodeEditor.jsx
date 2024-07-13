@@ -1,23 +1,49 @@
 import React from 'react'
 import CodeMirror from '@uiw/react-codemirror'
+import { CodeiumEditor } from "@codeium/react-code-editor";
 import { App } from 'antd';
 import { solarizedLight, solarizedDark } from '@uiw/codemirror-theme-solarized';
 import { loadLanguage } from '@uiw/codemirror-extensions-langs';
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { callApi, getLanguages } from '../Common/global';
+import { callApi, getCodeMirrorLanguages, getMonacoLanguages } from '../Common/global';
 import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
 
 import './CodeEditor.css';
 
 export default function CodeEditor(props) {
   const { message } = App.useApp();
-  const { customTheme, tabActiveKey, tabItems, setTabItems, setCodeEditRowColText, setCodeEditCurrentLang, setFooterStatusText, setFolderFiles } = useCustomContext();
+  const { customTheme, tabActiveKey, tabItems, setTabItems, setCodeEditRowColText, setCodeEditCurrentLang, setFooterStatusText, setFolderFiles, editorType } = useCustomContext();
   const [value, setValue] = React.useState('');
   const [langExts, setLangExts] = React.useState([]);
   const [langCurr, setLangCurr] = React.useState(null);
   const inputCode = React.useRef(null);
   const uniqueKey = props.uniqueKey;
+
+  const handleEditorDidMount = (editor, monaco) => {
+    inputCode.current = editor;
+    window.oypaseTabs = window.oypaseTabs || {};
+    window.oypaseTabs[uniqueKey] = editor;
+    editor.onDidChangeCursorPosition((e) => {
+      if(tabActiveKey !== uniqueKey) return;
+      const position = e.position;
+      let rowColText = `Ln ${position.lineNumber}, Col ${position.column}`;
+      setCodeEditRowColText(rowColText);
+    });
+
+    editor.onDidChangeCursorSelection((e) => {
+      if(tabActiveKey !== uniqueKey) return;
+      const selection = e.selection;
+      const selectionLength = editor.getModel().getValueInRange(selection).length;
+      if (selectionLength > 0) {
+        let rowColText = `${selectionLength} characters selected`;
+        if (e.secondarySelections && e.secondarySelections.length > 0) {
+          rowColText = `${e.secondarySelections.length + 1} selections (${selectionLength} characters selected)`;
+        }
+        setCodeEditRowColText(rowColText);
+      }
+    });
+  }
 
   const onValuesChange = React.useCallback((val, viewUpdate) => {
     setValue(val);
@@ -35,7 +61,7 @@ export default function CodeEditor(props) {
 
   React.useEffect(() => {
     // console.log(props);
-    const v1 = getLanguages(props.filename);
+    const v1 = editorType==='monaco'?getMonacoLanguages(props.filename):getCodeMirrorLanguages(props.filename);
     setLangCurr(v1&&v1.length>0?v1[0]:'plaintext');
     setCodeEditCurrentLang(v1&&v1.length>0?v1[0]:'plaintext');
     const v2 = v1.map(lang=>loadLanguage(lang));
@@ -52,7 +78,7 @@ export default function CodeEditor(props) {
       })
     }
     window.oypaseTabs = window.oypaseTabs || {}; window.oypaseTabs[uniqueKey] = inputCode.current;
-  }, [setCodeEditCurrentLang, props.filebody, props.filename, uniqueKey, message]);
+  }, [setCodeEditCurrentLang, props.filebody, props.filename, uniqueKey, message]); // Donot include editorType to avoid reload value when editorType changes
 
   const chooseLang = (lang) => {
     setLangCurr(lang);
@@ -106,30 +132,50 @@ export default function CodeEditor(props) {
   });
 
   return (
-    <CodeMirror ref={inputCode}
-      style={{ height: '100%' }}
-      theme={customTheme.isDark?solarizedDark:solarizedLight}
-      basicSetup={{highlightActiveLine:false}}
-      value={value}
-      extensions={langExts}
-      autoFocus={true}
-      onChange={onValuesChange}
-      onStatistics={(data)=>{
-        if(tabActiveKey !== uniqueKey) {
-          return;
-        }
-        setCodeEditCurrentLang(langCurr);
-        var rowColText = '';
-        if(data.ranges.length>1) {
-          rowColText += data.ranges.length + ' selections (' + (data.selections.join('').length) + ' characters selected)';
-        }else{
-          rowColText += 'Ln '+data.line.number+', Col '+(data.ranges[0].from-data.line.from+1);
-          if(data.ranges[0].to !== data.ranges[0].from){
-            rowColText += ' (' + (data.ranges[0].to - data.ranges[0].from) + ' selected)'
+    <>{
+      editorType==='monaco' ?
+      <CodeiumEditor ref={inputCode} height={'100%'}
+        theme={customTheme.isDark?'vs-dark':'light'}
+        language={langCurr}
+        value={value}
+        autoFocus={true}
+        onChange={onValuesChange}
+        onMount={handleEditorDidMount}
+        options={{
+          minimap: { enabled: false },
+          wordWrap: 'off',
+          scrollbar: {
+            vertical: 'visible',
+            horizontal: 'visible',
+          },
+          automaticLayout: true,
+        }}
+      /> :
+      <CodeMirror ref={inputCode}
+        style={{ height: '100%' }}
+        theme={customTheme.isDark?solarizedDark:solarizedLight}
+        basicSetup={{highlightActiveLine:false}}
+        value={value}
+        extensions={langExts}
+        autoFocus={true}
+        onChange={onValuesChange}
+        onStatistics={(data)=>{
+          if(tabActiveKey !== uniqueKey) {
+            return;
           }
-        }
-        setCodeEditRowColText(rowColText);
-      }}
-    />
+          setCodeEditCurrentLang(langCurr);
+          var rowColText = '';
+          if(data.ranges.length>1) {
+            rowColText += data.ranges.length + ' selections (' + (data.selections.join('').length) + ' characters selected)';
+          }else{
+            rowColText += 'Ln '+data.line.number+', Col '+(data.ranges[0].from-data.line.from+1);
+            if(data.ranges[0].to !== data.ranges[0].from){
+              rowColText += ' (' + (data.ranges[0].to - data.ranges[0].from) + ' selected)'
+            }
+          }
+          setCodeEditRowColText(rowColText);
+        }}
+      />
+    }</>
   )
 }

@@ -70,7 +70,7 @@ export default function SideFrame() {
       buttons.push({ key: 'sideWebsites', label: <GlobalOutlined style={{fontSize:'2em', marginRight: '0px'}} />, children: <WebsitesPanel /> })
     }
     if(!isDesktopVersion) {
-      buttons.push({ key: 'sideLogs', label: <RxActivityLog style={{fontSize:'2em', marginRight: '0px'}} />, children: <ScheduleLogsPanel /> })
+      buttons.push({ key: 'sideWebhostLogs', label: <RxActivityLog style={{fontSize:'2em', marginRight: '0px'}} />, children: <ScheduleLogsPanel /> })
     }
     return buttons;
   }

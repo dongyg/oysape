@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import CodeMirror from '@uiw/react-codemirror'
+import { CodeiumEditor } from "@codeium/react-code-editor";
 import { solarizedLight, solarizedDark } from '@uiw/codemirror-theme-solarized';
 import { loadLanguage } from '@uiw/codemirror-extensions-langs';
 import { App, Dropdown, Button, Typography, Steps, Tabs, Checkbox, Divider, Row, Col, List, Form, Input, Modal, Tooltip, Table } from 'antd';
@@ -68,7 +69,7 @@ const nginxConfigDemo = `server {
 
 const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
   const { message, modal } = App.useApp();
-  const { customTheme, userSession, setUserSession } = useCustomContext();
+  const { customTheme, userSession, setUserSession, editorType } = useCustomContext();
   const [webhostObject, setWebHostObject] = useState(websiteObject);
   const [currentStep, setCurrentStep] = useState(!websiteObject.target ? 0 : (!websiteObject.verified ? 1 : 2));
   const [currentWorkKey, setCurrentWorkKey] = useState('webhost_teams');
@@ -78,6 +79,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
   const [visibleWebsiteCredentials, setVisibleWebsiteCredentials] = useState(false);
   const credForServer = useRef('');
   const credForTeam = useRef('');
+  let prevHeight = useRef(58)
 
   // codemirror
   const onCodeChange = React.useCallback((val, viewUpdate) => {
@@ -356,17 +358,57 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
             <Input autoComplete="off" autoCapitalize="off" autoCorrect="off" placeholder="Enter port mapping. Default: 19790:19790" disabled={!!webhostObject.target} />
           </Form.Item>
           <Form.Item name="initScript" label="Initialization" tooltip={<><p>Initialize the container with this script.</p><p>It will be executed after the container is created.</p><p>Do not include single quote(') in the script</p></>}>
-            <CodeMirror className='codeCmd withScrollContent'
-              theme={customTheme.isDark?solarizedDark:solarizedLight}
-              basicSetup={{highlightActiveLine:false}}
-              value={codeValue||''}
-              extensions={[loadLanguage('shell')]}
-              onChange={onCodeChange}
-              onStatistics={(data)=>{
-                // console.log(data)
-              }}
-              readOnly={!!webhostObject.target}
-            />
+            { editorType==='monaco' ?
+              <CodeiumEditor height={'auto'}
+                className='codeCmd withScrollContent'
+                theme={customTheme.isDark?'vs-dark':'light'}
+                value={codeValue}
+                defaultLanguage='shell'
+                onChange={onCodeChange}
+                options={{
+                  minimap: { enabled: false },
+                  wordWrap: 'off',
+                  scrollbar: {
+                    vertical: 'visible',
+                    horizontal: 'visible',
+                  },
+                  automaticLayout: true,
+                }}
+                onMount={(editor, monaco) => {
+                  editor.onDidChangeModelDecorations(() => {
+                    updateEditorHeight() // typing
+                    requestAnimationFrame(updateEditorHeight) // folding
+                  })
+                  const updateEditorHeight = () => {
+                    const editorElement = editor.getDomNode()
+                    if (!editorElement) {
+                      return
+                    }
+                    const padding = 58
+                    const lineHeight = editor.getOption(monaco.editor.EditorOption.lineHeight)
+                    const lineCount = editor.getModel()?.getLineCount() || 1
+                    const height = editor.getTopForLineNumber(lineCount + 0) + lineHeight + padding
+                    if (prevHeight !== height) {
+                      prevHeight = height
+                      editorElement.style.height = `${height}px`
+                      editor.layout()
+                    }
+                  }
+                  updateEditorHeight()
+                }}
+              /> :
+              <CodeMirror className='codeCmd withScrollContent'
+                theme={customTheme.isDark?solarizedDark:solarizedLight}
+                basicSetup={{highlightActiveLine:false}}
+                value={codeValue||''}
+                extensions={[loadLanguage('shell')]}
+                onChange={onCodeChange}
+                onStatistics={(data)=>{
+                  // console.log(data)
+                }}
+                readOnly={!!webhostObject.target}
+              />
+            }
           </Form.Item>
           <Form.List name="volumes">
             {(fields, { add, remove }) => (

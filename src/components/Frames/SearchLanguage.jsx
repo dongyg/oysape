@@ -1,14 +1,14 @@
 import { useState, useRef } from 'react';
 import { AutoComplete, Input } from 'antd';
-import { langNames } from '@uiw/codemirror-extensions-langs';
 
 import { useCustomContext } from '../Contexts/CustomContext'
+import { getLanguageDictCodeMirror, getLanguageDictMonaco } from '../Common/global';
 
 import './SearchInput.css';
 
 const SearchLanguage = () => {
-  const { tabActiveKey, setSearchMode } = useCustomContext();
-  const [options, setOptions] = useState(langNames.map((langName) => { return { value: langName, label: (<div>{langName}</div>) } }));
+  const { tabActiveKey, setSearchMode, editorType } = useCustomContext();
+  const [options, setOptions] = useState(Object.keys(editorType==='monaco'?getLanguageDictMonaco:getLanguageDictCodeMirror).map((lang) => { return { value: lang, label: (<div>{lang}</div>) } }));
   const [searchValue, setSearchValue] = useState('');
   const inputSearch = useRef(null);
 
@@ -28,7 +28,7 @@ const SearchLanguage = () => {
   }
   const getLanguagesForSearch = (query) => {
     query = query.toLowerCase();
-    return langNames.filter((langName) => query === '' || langName.toLowerCase().indexOf(query) >= 0).map((langName) => {
+    return Object.keys(editorType==='monaco'?getLanguageDictMonaco:getLanguageDictCodeMirror).filter((langName) => query === '' || langName.toLowerCase().indexOf(query) >= 0).map((langName) => {
       return { value: langName, label: (<div>{langName}</div>) }
     })
   }

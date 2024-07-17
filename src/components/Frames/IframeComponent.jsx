@@ -14,7 +14,7 @@ const IframeComponent = (props) => {
 
     return (
         <div id="iframeContainer" style={{ minHeight: 480, height: '100%' }}>
-            <iframe id="myIframe" src={src} title="iframe-example" width="100%" height="100%" frameBorder="0" />
+            <iframe id="myIframe" src={src} title={props.title||src} width="100%" height="100%" frameBorder="0" />
         </div>
     );
 };

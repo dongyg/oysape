@@ -179,8 +179,8 @@ const SearchInput = () => {
     }else{
       setTabItems([...tabItems || [], {
         key: tabKey,
-        label: title,
-        children: <IframeComponent src={url} />,
+        label: title || url,
+        children: <IframeComponent src={url} title={title} />,
       }]);
       setTabActiveKey(tabKey);
     }

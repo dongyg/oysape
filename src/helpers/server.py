@@ -24,16 +24,15 @@ def not_allowed(error):
 
 def getClientIdAndToken(req, params={}):
     clientIpAddress = req.headers.get('X-Forwarded-For') or req.remote_addr
-    clientId = req.cookies.get('client_id')
-    clientToken = req.cookies.get('client_token') or req.cookies.get('mobile_token')
     if req.headers.get('User-Agent').find('OysapeDesktop') >= 0:
         # Use the pywebview token as the clientId for desktop version. It should have a apiObject in apis.apiInstances
         import webview
-        if not clientId:
-            clientId = webview.token
-        if not clientToken:
-            apiObject = apis.apiInstances.get(clientId) if clientId else None
-            clientToken = apiObject.userToken if apiObject else None
+        clientId = webview.token
+        apiObject = apis.apiInstances.get(clientId) if clientId else None
+        clientToken = apiObject.userToken if apiObject else None
+    else:
+        clientId = req.cookies.get('client_id')
+        clientToken = req.cookies.get('client_token') or req.cookies.get('mobile_token')
     # logging.info(('getClientIdAndToken', req.path, clientIpAddress, clientId, clientToken))
     return clientIpAddress, clientId, clientToken
 
@@ -72,7 +71,7 @@ def handle_websocket():
                 else:
                     apiObject.sendCombinedInput(recvData) if uniqueKey == 'workspace' else apiObject.sendTerminalInput(recvData)
             else:
-                logging.info(('Socket Error:', clientIpAddress, clientId, uniqueKey, apiObject, clientToken))
+                logging.info(('Socket Error:', clientIpAddress, clientId, uniqueKey, apiObject))
                 break
     except WebSocketError:
         traceback.print_exc()

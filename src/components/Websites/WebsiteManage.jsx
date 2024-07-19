@@ -292,7 +292,6 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
         message.error('Server ' + websiteObject.target + ' has no credentials. Please set credentials first.');
       } else {
         callApi('get_credentials', {'obh': websiteObject.obh}).then((res) => {
-          console.log('res', res);
           if(res) {
             setCredentialMapping(res.credentialMapping || {});
             setCredentialListing(res.credentialListing || []);

@@ -10,6 +10,7 @@ from gevent.pywsgi import WSGIServer
 from geventwebsocket.handler import WebSocketHandler
 from . import tools, apis, consts, obhs, scheduler
 from .templs import template_signin_success_close, template_signin_success_redirect, template_signin_failed_close
+import githook
 
 KVStore = {}
 app = Bottle()
@@ -216,46 +217,69 @@ def getScheduleLogs():
 
 
 ################################################################################
-# For GitHub webhook
+# For GitHub/Bitbucket webhook
 @app.route('/webhook/github', method='POST')
 def github_webhook():
     # Get the request body
     payload = request.body.read()
+    print(payload)
+    print(dict(request.headers))
     # Get the signature
     signature = request.headers.get('X-Hub-Signature-256')
-    if not is_valid_signature(payload, signature):
+    if not github_check_signature(payload, signature):
         response.status = 401  # Unauthorized
         return "Invalid signature"
     # Decode the JSON payload
     data = json.loads(payload.decode('utf-8'))
     # Do something to handle the event
-    event_type = request.headers.get('X-GitHub-Event')
-    return handle_github_event(event_type, data)
+    return githook.handle_github_event(dict(request.headers), data)
 
-def is_valid_signature(payload, signature):
+def github_check_signature(payload, signature):
     # Use the HMAC algorithm and SHA256 hash function
     webhostFile = os.path.join(apis.folder_base, 'webhost.json')
     if os.path.isfile(webhostFile):
         try:
             with open(webhostFile, 'r') as f:
                 webhostObject = json.load(f)
-            if webhostObject.get('github_hook_secret'):
-                SECRET = webhostObject.get('github_hook_secret')
-                hash = hmac.new(SECRET, payload, hashlib.sha256)
+            SECRET = webhostObject.get('github_hook_secret') or '15820604a97b46ccab4f1d2c6592f6de'
+            if SECRET:
+                hash = hmac.new(SECRET.encode('utf-8'), payload, hashlib.sha256)
                 expected_signature = 'sha256=' + hash.hexdigest()
                 return hmac.compare_digest(expected_signature, signature)
         except Exception as e:
             traceback.print_exc()
 
-def handle_github_event(event_type, data):
-    #TODO: Call the user-defined function
-    if event_type == 'push':
-        print(f"Pushed to {data['repository']['full_name']}")
-        print(f"Commit message: {data['head_commit']['message']}")
-        print(data)
-    elif event_type == 'pull_request':
-        print(f"Pull request action: {data['action']}")
-        print(f"Pull request title: {data['pull_request']['title']}")
+@app.route('/webhook/bitbucket', method='POST')
+def bitbucket_webhook():
+    # Get the request body
+    payload = request.body.read()
+    print(payload)
+    print(dict(request.headers))
+    # Get the signature
+    signature = request.headers.get('X-Hub-Signature')
+    if not bitbucket_check_signature(payload, signature):
+        response.status = 401  # Unauthorized
+        return "Invalid signature"
+    # Decode the JSON payload
+    data = json.loads(payload.decode('utf-8'))
+    # Do something to handle the event
+    return githook.handle_bitbucket_event(dict(request.headers), data)
+
+def bitbucket_check_signature(payload, signature):
+    # Use the HMAC algorithm and SHA256 hash function
+    webhostFile = os.path.join(apis.folder_base, 'webhost.json')
+    if os.path.isfile(webhostFile):
+        try:
+            with open(webhostFile, 'r') as f:
+                webhostObject = json.load(f)
+            SECRET = webhostObject.get('bitbucket_hook_secret') or '15820604a97b46ccab4f1d2c6592f6de'
+            if SECRET:
+                hash = hmac.new(SECRET.encode('utf-8'), payload, hashlib.sha256)
+                print(hash.hexdigest())
+                expected_signature = 'sha256=' + hash.hexdigest()
+                return hmac.compare_digest(expected_signature, signature)
+        except Exception as e:
+            traceback.print_exc()
 
 
 ################################################################################
@@ -371,8 +395,6 @@ def serve_static(filename):
         base_path = os.path.join(base_path, '..', 'gui')
     elif os.path.exists(os.path.join(base_path, 'public')):
         base_path = os.path.join(base_path, 'public')
-    elif consts.IS_DEBUG and os.path.exists('/Users/Shared/Projects/oysape/client/gui'):
-        base_path = '/Users/Shared/Projects/oysape/client/gui'
     logging.info('File requested: ' + os.path.join(base_path, filename))
     return static_file(filename, root=base_path)
 

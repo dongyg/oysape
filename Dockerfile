@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir paramiko==3.3.1 bottle==0.12.25 gevent==24.2.1 ge
 
 COPY gui ./gui
 COPY src/www.py ./src/www.py
+COPY src/githook.py ./src/githook.py
 COPY src/webhost-setup.py ./src/webhost-setup.py
 COPY src/helpers ./src/helpers
 

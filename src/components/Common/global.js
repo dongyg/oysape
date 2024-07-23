@@ -428,7 +428,7 @@ export const writeWelcome = function(xterm) {
     xterm.write(colorizeText('Welcome! \r\n\r\n', 'green'));
     if(!isMobileVersion){
       xterm.write(colorizeText(ctrlOrMeta+'+K','cyan') + ' - Clear the workspace/terminal\r\n\r\n');
-      xterm.write(colorizeText(ctrlOrMeta+'+P','cyan') + ' - Search for Servers/Tasks/Pipelines/Files\r\n\r\n');
+      xterm.write(colorizeText(ctrlOrMeta+'+P','cyan') + ' - Search for Teams/Servers/Tasks/Pipelines/Files\r\n\r\n');
       xterm.write(colorizeText(ctrlOrMeta+'+Shift+@','cyan') + ' - Search for Servers\r\n\r\n');
       xterm.write(colorizeText(ctrlOrMeta+'+Shift+:','cyan') + ' - Search for Tasks\r\n\r\n');
       xterm.write(colorizeText(ctrlOrMeta+'+Shift+!','cyan') + ' - Search for Pipelines\r\n\r\n');

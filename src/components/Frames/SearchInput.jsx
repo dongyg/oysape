@@ -4,7 +4,7 @@ import { SearchOutlined } from "@ant-design/icons";
 import { BsCommand, BsArrowReturnLeft } from "react-icons/bs";
 import { PiControl } from "react-icons/pi";
 
-import { callApi, saveCredentialMapping } from '../Common/global';
+import { callApi, getCredentials, saveCredentialMapping } from '../Common/global';
 import { useCustomContext } from '../Contexts/CustomContext'
 import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
 import { getShowTitle, getPathAndName, flatFileTree, parseTaskString0, getUniqueKey, calculateMD5 } from '../Common/global';
@@ -59,6 +59,21 @@ const SearchInput = () => {
         searchMode.current = '';
         handleSearch(searchMode.current);
       }, 5)
+    } else if (value&&value.indexOf('team:')>=0){
+      // If key is teamId, switch team. Reset search
+      if(userSession && userSession.teams){
+        const key = value.split(':')[1];
+        if (key !== userSession.team0 && key in userSession.teams) {
+          callApi('switchToTeam', {tid: key, credentials: getCredentials()}).then((res) => {
+            message.success('Switched to ' + userSession.teams[key].tname);
+            setUserSession(res);
+            window.reloadFolderFiles && window.reloadFolderFiles();
+          });
+        } else {
+          // Team not found
+        }
+      }
+      setShowSearch(false); setSearchValue(''); setShowDropdown(false); setOptions([]); searchMode.current = '';
     } else {
       setTimeout(() => {
         if(value&&[indexTaskSign].includes(value[0])) {
@@ -95,12 +110,19 @@ const SearchInput = () => {
       }
       if([13].includes(e.keyCode) && (e.metaKey === true || e.ctrlKey === true)){
         executeInput(searchValue);
+      } else if([27].includes(e.keyCode)){
+        setShowSearch(false); setSearchValue(''); setShowDropdown(false); setOptions([]); searchMode.current = '';
       }
     } else if ([8].includes(e.keyCode)) {
       if (searchValue.indexOf(indexServerSign) >= 0 && searchValue.indexOf(indexServerSign)>searchValue.indexOf(indexTaskSign)) searchMode.current = indexServerSign;
       if (searchValue.indexOf(indexTaskSign) >= 0 && searchValue.indexOf(indexTaskSign)>searchValue.indexOf(indexServerSign)) searchMode.current = indexTaskSign;
       if (searchValue.indexOf(indexPipelineSign) >= 0) searchMode.current = indexPipelineSign;
     }
+  }
+  const getTeamsForSearch = (query) => {
+    return Object.entries(userSession.teams).flatMap(([tid, item]) => {
+      return query===''||('Team: '+item.tname).toLowerCase().includes(query) ? { value: 'team:'+tid, label: 'Team: '+item.tname } : null
+    }).filter((item) => item !== null);
   }
   const getServersForSearch = (query) => {
     const v1 = query.indexOf(indexServerSign)>=0;
@@ -160,15 +182,17 @@ const SearchInput = () => {
       return getTasksForSearch(query);
     } else if (searchMode.current === indexPipelineSign) {
       return getPipelinesForSearch(query);
+    } else if (query==='') {
+      return getTeamsForSearch(query);
     } else {
-      return getServersForSearch(query).concat(getTasksForSearch(query)).concat(getPipelinesForSearch(query)).concat(getFilesForSearch(query));
+      return getTeamsForSearch(query).concat(getServersForSearch(query)).concat(getTasksForSearch(query)).concat(getPipelinesForSearch(query)).concat(getFilesForSearch(query));
     }
   };
   const handleSearch = (value) => {
     const v1 = searchResult(value);
-    setOptions(value ? v1 : []);
+    setOptions(v1);
     // console.log('handleSearch', value, v1.length);
-    setDropMenuShowed(value && v1.length > 0);
+    setDropMenuShowed(v1.length > 0);
   };
 
   const openWebpageInTab = (url, title) => {
@@ -281,6 +305,10 @@ const SearchInput = () => {
 
   useKeyPress(keyMapping["showAndRunCommand"], (event) => {
     onSearch(event);
+    setTimeout(() => {
+      setSearchValue('');
+      handleSearch('');
+    }, 11);
     event.preventDefault(); return;
   });
   useKeyPress(keyMapping["showAndSelectServer"], (event) => {
@@ -396,7 +424,10 @@ const SearchInput = () => {
 
   return (
     <div style={{ width: '100%', padding: '0 12px' }}>
-      <Button icon={<SearchOutlined />} style={{ width: '100%', display: !showSearch ? 'block' : 'none', transition: 'none' }} onClick={onSearch}>
+      <Button icon={<SearchOutlined />} style={{ width: '100%', display: !showSearch ? 'block' : 'none', transition: 'none' }} onClick={ (e) => { onSearch(e); setTimeout(() => {
+          setSearchValue('');
+          handleSearch('');
+        }, 11); } }>
         &nbsp;{ userSession && userSession.teams && userSession.teams[userSession.team0] && userSession.teams[userSession.team0].tname ?
           userSession.teams[userSession.team0].tname :
           'Workspace'

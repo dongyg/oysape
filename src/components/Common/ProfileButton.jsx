@@ -64,6 +64,7 @@ export default function ProfileButton() {
       if(callDone) callDone();
     });
   }
+  window.reloadEverything = reloadEverything;
   const menuItems = [
     {
       key: 'menuCodeEditors',

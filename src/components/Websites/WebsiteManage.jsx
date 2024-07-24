@@ -5,20 +5,20 @@ import { solarizedLight, solarizedDark } from '@uiw/codemirror-theme-solarized';
 import { loadLanguage } from '@uiw/codemirror-extensions-langs';
 import { App, Dropdown, Button, Typography, Steps, Tabs, Checkbox, Divider, Row, Col, List, Form, Input, Modal, Tooltip, Table } from 'antd';
 import { DeleteOutlined, QuestionCircleFilled, EditOutlined, PlusOutlined, ClockCircleOutlined, PlayCircleOutlined, CheckCircleOutlined, RedoOutlined, MinusCircleOutlined } from '@ant-design/icons';
-import { SolutionOutlined, CaretRightOutlined, PauseOutlined, DeleteFilled } from "@ant-design/icons";
+import { SolutionOutlined, CaretRightOutlined, PauseOutlined, DeleteFilled, SettingOutlined } from "@ant-design/icons";
 import { RiInstallLine, RiUninstallLine } from "react-icons/ri";
 import { TbCalendarRepeat } from "react-icons/tb";
 import { RxActivityLog } from "react-icons/rx";
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { callApi } from '../Common/global';
+import { callApi, isDesktopVersion } from '../Common/global';
 
 import ScheduleForm from './ScheduleForm';
 import ScheduleLogViewer from './ScheduleLogViewer';
 import WebsiteCredentials from './WebsiteCredentials';
 
 const CheckboxGroup = Checkbox.Group;
-const { Title, Paragraph } = Typography;
+const { Title, Paragraph, Link } = Typography;
 
 const capitalizeFirstLetter = function(str) {
   if (str.length === 0) return str;
@@ -66,6 +66,41 @@ const nginxConfigDemo = `server {
   }
 }
 `;
+
+const githookDemo = `#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+from helpers import apis
+
+def handle_github_event(headers, payload):
+    # Call the user-defined function
+    event_type = headers.get('X-GitHub-Event')
+    print(f"GitHub event: {event_type}")
+    print(headers)
+    print(payload)
+    # Get the API object by team name
+    apiObj = apis.getApiObjectByTeam('Demo Team')
+    if apiObj:
+        # Call a task or pipeline if API object is found. runMode=command will get the output synchronously
+        print(apiObj.callTask({'runMode':'command', 'taskKey':'hello', 'serverKey':'localhost'}))
+        # Send a notification to users by emails
+        print(apiObj.sendNotification({'recipients':[], 'title':"Hello, World!", 'message':"Hello, World!"}))
+
+
+def handle_bitbucket_event(headers, payload):
+    # Call the user-defined function
+    event_type = headers.get('X-Event-Key')
+    print(f"Bitbucket event: {event_type}")
+    print(headers)
+    print(payload)
+    # Get the API object by team name
+    apiObj = apis.getApiObjectByTeam('Demo Team')
+    if apiObj:
+        # Call a task or pipeline if API object is found. runMode=command will get the output synchronously
+        print(apiObj.callPipeline({'runMode':'command', 'pipelineName':'hello world'}))
+        # Send a notification to users by emails
+        print(apiObj.sendNotification({'recipients':[], 'title':"Hello, World!", 'message':"Hello, World!"}))
+`
 
 const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
   const { message, modal } = App.useApp();
@@ -325,7 +360,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
             description: webhostObject.target&&!webhostObject.verified ? null : (webhostObject.verified?'Verified':null),
             status: currentStep === 1 ? 'process' : 'wait',
           },
-          { title: 'Config', icon: <SolutionOutlined />,
+          { title: 'Config', icon: <SettingOutlined />,
             description: webhostObject.target&&webhostObject.verified ? 'features' : null,
             status: currentStep === 2 ? 'process' : 'wait',
           },
@@ -346,7 +381,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
         { !!webhostObject.target ? <h3>Started on {webhostObject.target}</h3> :
           <><h3>Start</h3><p>Webhost will be run as a Docker container. Please customize your webhost as needed.</p></>
         }
-        <Form name={uniqueKey+'_install_form'} form={formInstall} autoComplete="off" labelCol={{ span: 4, }} wrapperCol={{ span: 18, }} initialValues={webhostObject}>
+        <Form name={uniqueKey+'_install_form'} form={formInstall} autoComplete="off" labelCol={{ span: 6, }} wrapperCol={{ span: 18, }} initialValues={webhostObject}>
           <Form.Item label="Title" name="title">
             <Input autoComplete="off" autoCapitalize="off" autoCorrect="off" disabled={!!webhostObject.target} />
           </Form.Item>
@@ -414,9 +449,9 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
               <>
                 {fields.map((field, index) => (
                   <>
-                    <Form.Item wrapperCol={{ offset: index === 0 ? 0 : 4, span: 18, }}
-                      label={index === 0 ? <>{!webhostObject.target?<Button type="link" onClick={() => add()} icon={<PlusOutlined />}></Button>:null}Volumes</> : null}
-                      tooltip={<>"You probably want to add ~/.ssh so that the container can access your SSH keys"<Button size='small' onClick={() => {add({'volume':'~/.ssh:/root/.ssh'});}}>Add it for me</Button></>}
+                    <Form.Item wrapperCol={{ offset: index === 0 ? 0 : 6, span: 18, }}
+                      label={index === 0 ? <>{!!webhostObject.target ? null : <Button type="link" onClick={() => add()} icon={<PlusOutlined />}></Button>}Volumes</> : null}
+                      tooltip={<>You probably want to add ~/.ssh so that the container can access your SSH keys{!!webhostObject.target ? null : <Button size='small' hidden={!!webhostObject.target} onClick={() => {add({'volume':'~/.ssh:/root/.ssh'});}}>Add it for me</Button>}</>}
                       {...field}
                       name={[field.name, 'volume']}
                       rules={[{ validator: validateVolumeMapping }]}
@@ -428,16 +463,30 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                   </>
                 ))}
                 { (formInstall.getFieldValue('volumes')||[]).length !== 0 ? null :
-                <Form.Item wrapperCol={{ offset: (formInstall.getFieldValue('volumes')||[]).length === 0 ? 0 : 4, span: 18, }}
-                  label={(formInstall.getFieldValue('volumes')||[]).length === 0 ? <><Button type="link" onClick={() => add()} icon={<PlusOutlined />}></Button>Volumes</> : ''}
+                <Form.Item wrapperCol={{ offset: (formInstall.getFieldValue('volumes')||[]).length === 0 ? 0 : 6, span: 18, }}
+                  label={(formInstall.getFieldValue('volumes')||[]).length === 0 ? <>{!!webhostObject.target ? null : <Button type="link" onClick={() => add()} icon={<PlusOutlined />}></Button>}Volumes</> : ''}
                   tooltip={<>You probably want to add ~/.ssh so that the container can access your SSH keys{!!webhostObject.target ? null : <Button size='small' onClick={() => {add({'volume':'~/.ssh:/root/.ssh'});}}>Add it for me</Button>}</>}
                 >
-                  <Button type="link" onClick={() => add()} icon={<PlusOutlined />}>Add Volume</Button>
+                  {!!webhostObject.target ? null : <Button type="link" onClick={() => add()} icon={<PlusOutlined />}>Add Volume</Button>}
                 </Form.Item>}
               </>
             )}
           </Form.List>
-          <Form.Item wrapperCol={{ offset: 4 }}>
+          <Form.Item label="GitHub Webhook Secret" name="github_hook_secret" tooltip={<>You probably want to mount a Python script to container's <Link component={Typography.Link} onClick={() => {
+            setCurrentStep(2);
+            setCurrentWorkKey('webhost_github');
+          }}>/approot/src/githook.py</Link> to handle webhooks
+            {!!webhostObject.target ? null : <Button size='small' onClick={() => {
+              let volumes = formInstall.getFieldValue('volumes')||[]
+              volumes.push({'volume':'./githook.py:/approot/src/githook.py'});
+              formInstall.setFieldValue('volumes', volumes);
+            }}>Add it for me</Button>}</>}>
+            <Input autoComplete="off" autoCapitalize="off" autoCorrect="off" disabled={!!webhostObject.target} />
+          </Form.Item>
+          <Form.Item label="Bitbucket Webhook Secret" name="bitbucket_hook_secret">
+            <Input autoComplete="off" autoCapitalize="off" autoCorrect="off" disabled={!!webhostObject.target} />
+          </Form.Item>
+          <Form.Item wrapperCol={{ offset: 6 }}>
             {!webhostObject.target ?
               <Dropdown menu={{ items: userSession.servers.map((item) => {return {key: item.key, label: item.name}}), onClick: ({key}) => { execInstall(webhostObject.obh, key); } }} trigger={['click']}>
                 <Button type="primary" loading={installing}>{installing ? 'Starting' : 'Start on ...'}</Button>
@@ -691,8 +740,34 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                 </div>
                 : unavailable}
             </> },
-            { key: 'webhost_github', label: 'Github webhook', children: comingSoon },
-            { key: 'webhost_bitbucket', label: 'Bitbucket hook', children: comingSoon },
+            { key: 'webhost_github', label: 'Github webhook', children: <>
+              <Typography style={{ marginTop: '20px' }} >
+                <Link component={Typography.Link} onClick={
+                  () => {
+                    if(isDesktopVersion){ // Won't have the webhost management in other versions
+                      callApi('openUrlInBrowser', {url: 'https://docs.github.com/en/webhooks'})
+                    }
+                  }} >GitHub Webhooks documentation</Link>
+                <Paragraph style={{ marginTop: '20px' }}>
+                  Mount a Python script to container's <code className='enableHighlight'>/approot/src/githook.py</code>
+                </Paragraph>
+                <pre className='enableHighlight'><code>{githookDemo}</code></pre>
+              </Typography>
+            </> },
+            { key: 'webhost_bitbucket', label: 'Bitbucket hook', children: <>
+              <Typography style={{ marginTop: '20px' }} >
+                <Link component={Typography.Link} onClick={
+                  () => {
+                    if(isDesktopVersion){ // Won't have the webhost management in other versions
+                      callApi('openUrlInBrowser', {url: 'https://support.atlassian.com/bitbucket-cloud/docs/manage-webhooks/'})
+                    }
+                  }} >Bitbucket Webhooks documentation</Link>
+                <Paragraph style={{ marginTop: '20px' }}>
+                  Mount a Python script to container's <code className='enableHighlight'>/approot/src/githook.py</code>
+                </Paragraph>
+                <pre className='enableHighlight'><code>{githookDemo}</code></pre>
+              </Typography>
+            </> },
           ]}
         />
         <Modal title={"Schedule Task (Team: "+userSession.tname+")"} open={showScheduleForm} onOk={handleScheduleOk} onCancel={handleScheduleCancel}

@@ -62,3 +62,8 @@ def openAccountDashboard(otp, userAgent, serverHome):
         return {}
     else:
         return {'url': landing_url}
+
+def openExternalUrl(userAgent, url):
+    isDesktopVersion = (userAgent.find('OysapeDesktop') >= 0)
+    if isDesktopVersion:
+        webbrowser.open_new(url)

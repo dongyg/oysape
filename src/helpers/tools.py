@@ -160,6 +160,7 @@ def send_post_request(url, data, headers=None):
         with urllib.request.urlopen(request, context=context, timeout=10) as response:
             response_data = response.read()
             response_text = response_data.decode('utf-8')
+            # if consts.IS_DEBUG: print(response_text, type(response_text))
             json_data = json.loads(response_text)
             return json_data
     except:
@@ -177,7 +178,7 @@ def send_delete_request(url, data, headers=None):
         with urllib.request.urlopen(request, context=context, timeout=10) as response:
             response_data = response.read()
             response_text = response_data.decode('utf-8')
-            if consts.IS_DEBUG: print(response_text, type(response_text))
+            # if consts.IS_DEBUG: print(response_text, type(response_text))
             json_data = json.loads(response_text)
             return json_data
     except:

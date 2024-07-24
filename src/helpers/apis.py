@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os, traceback, json, json, time, base64, fnmatch, platform, hmac, hashlib, logging
-from . import auth, tools, consts, obhs, apis, scheduler
+from . import auth, tools, consts, obhs, scheduler
 
 BUF_SIZE = 1024
 CR = '\r'
@@ -15,6 +15,18 @@ es_end = '\u001b[201~'
 folder_base = os.path.expanduser(os.path.join('~', '.oysape'))
 folder_cache = os.path.join(folder_base, 'localcache')
 noti_cache = {}
+
+def getApiObjectByTeam(tname):
+    for file in os.listdir(os.path.join(folder_base, 'teams')):
+        if file.endswith('.json'):
+            teamId = os.path.splitext(file)[0]
+            if scheduler.apiSchedulers.get(teamId) == None:
+                scheduler.apiSchedulers[teamId] = ApiScheduler(clientId='scheduler_for_'+teamId, clientUserAgent='OysapeScheduler/3.7.12')
+                scheduler.apiSchedulers[teamId].teamId = teamId
+                scheduler.apiSchedulers[teamId].reloadUserSession({'credentials': scheduler.apiSchedulers[teamId].loadCredentials()})
+    for tid in scheduler.apiSchedulers:
+        if scheduler.apiSchedulers[tid].teamName == tname:
+            return scheduler.apiSchedulers[tid]
 
 def get_files(apath, recurse=True, exclude=[], ignore=None):
     if os.path.isdir(apath):
@@ -232,6 +244,17 @@ class ApiOysape(ApiOauth):
             return self.userSession
         return retval
 
+    def saveTeamDataToServer(self, data, needVerify=False):
+        for site in (self.userSession.get('sites') or []):
+            serverKey = site.get('target')
+            if serverKey and site.get('verified') and serverKey in [x.get('key') for x in data['servers']]:
+                filename = self.userSession.get('team0')+'.json'
+                self.save_remote_file({'target': serverKey, 'path': os.path.join('.oysape','teams',filename), 'content': json.dumps(data)})
+                if needVerify:
+                    retval = tools.callServerApiPost('/user/webhost/verify', {'obh': site.get('obh')}, self)
+                    if retval and retval.get('errinfo'):
+                        site['verified'] = False
+
     def addServer(self, params):
         # Return server list in {'servers': []}
         serverObject = params.get('serverObject') or {}
@@ -251,20 +274,14 @@ class ApiOysape(ApiOauth):
         self.attach_credential_for_server(credWebhost, self.userSession["team0"])
         # If current user has webhost set, and those webhosts are verified, Save servers/tasks/pipelines to webhost target
         objs = {
+            'tname': self.userSession.get('teams',{}).get(self.userSession.get('team0'),{}).get('tname') or self.userSession.get('team0'),
             'servers': self.userSession['servers'],
             'tasks': self.userSession['tasks'],
             'pipelines': self.userSession['pipelines'],
             'folders': self.listFolder,
             'excludes': self.listExclude,
         }
-        for site in (self.userSession.get('sites') or []):
-            serverKey = site.get('target')
-            if serverKey and site.get('verified') and serverKey in [x.get('key') for x in objs['servers']]:
-                filename = self.userSession.get('team0')+'.json'
-                self.save_remote_file({'target': serverKey, 'path': os.path.join('.oysape','teams',filename), 'content': json.dumps(objs)})
-                retval = tools.callServerApiPost('/user/webhost/verify', {'obh': site.get('obh')}, self)
-                if retval and retval.get('errinfo'):
-                    site['verified'] = False
+        self.saveTeamDataToServer(objs, needVerify=True)
         return self.userSession
 
     def getTaskObject(self, taskKey):
@@ -317,6 +334,7 @@ class ApiOysape(ApiOauth):
         if not self.hasPermission('writable'): return {"errinfo": "Writable access denied"}
         what = params.get('what')
         objs = {
+            'tname': self.userSession.get('teams',{}).get(self.userSession.get('team0'),{}).get('tname') or self.userSession.get('team0'),
             'servers': self.userSession['servers'],
             'tasks': self.userSession['tasks'],
             'pipelines': self.userSession['pipelines'],
@@ -353,14 +371,7 @@ class ApiOysape(ApiOauth):
                     merge_credentials(credWebhost, credUser)
                     self.attach_credential_for_server(credWebhost, self.userSession["team0"])
                 # If current user has webhost set, and those webhosts are verified, and the target is in servers. Save servers/tasks/pipelines to webhost target
-                for site in (self.userSession.get('sites') or []):
-                    serverKey = site.get('target')
-                    if serverKey and site.get('verified') and serverKey in [x.get('key') for x in objs['servers']]:
-                        filename = self.userSession.get('team0')+'.json'
-                        self.save_remote_file({'target': serverKey, 'path': os.path.join('.oysape','teams',filename), 'content': json.dumps(objs)})
-                        retval = tools.callServerApiPost('/user/webhost/verify', {'obh': site.get('obh')}, self)
-                        if retval and retval.get('errinfo'):
-                            site['verified'] = False
+                self.saveTeamDataToServer(objs, needVerify=True)
                 return retval
             return {}
         except Exception as e:
@@ -418,6 +429,14 @@ class ApiOysape(ApiOauth):
                     if not self.isDesktopVersion():
                         credentials = self.loadCredentials()
                         self.attach_credential_for_server(credentials, self.userSession["team0"])
+                    self.saveTeamDataToServer({
+                        'tname': self.userSession.get('teams',{}).get(self.userSession.get('team0'),{}).get('tname') or self.userSession.get('team0'),
+                        'servers': self.userSession['servers'],
+                        'tasks': self.userSession['tasks'],
+                        'pipelines': self.userSession['pipelines'],
+                        'folders': self.listFolder,
+                        'excludes': self.listExclude,
+                    }, needVerify=True)
                     return self.userSession
         return {'errinfo': 'Server not found'}
 
@@ -695,7 +714,7 @@ class ApiWorkspace(ApiTerminal):
             tasks = step['tasks']
             for taskKey in tasks:
                 time.sleep(0.5)
-                retval += self.taskOnServer(taskKey, serverKey, isCommandMode)
+                retval += self.taskOnServer(taskKey, serverKey, isCommandMode) or ''
                 while True: # Wait for all tasks on current server to finish
                     if serverKey in self.combinedConnections and self.combinedConnections[serverKey].areAllTasksDone():
                         break
@@ -923,10 +942,11 @@ class ApiScheduler(ApiDockerManager):
         ee = retval.get('excludes', []) or consts.DEFAULT_EXCLUDE
         self.userSession = retval
         self.userSession["team0"] = self.teamId
+        self.teamName = retval.get('tname', None)
         self.listFolder = ff
         self.listExclude = ee
         self.userSession['clientId'] = self.clientId
-        self.attach_credential_for_server(params, self.teamId) #TODO: 这里需要真的 tid, 但 scheduler 中没有保存 tid
+        self.attach_credential_for_server(params, self.teamId)
         return self.userSession
 
     def createCombConnection(self, serverKey):
@@ -993,7 +1013,7 @@ class ApiOverHttp(ApiDockerManager):
 
 # When using pywebview in desktop version, the functions blow are called through window.pywebview.
 # When using Electron, all the functions are called through HTTP. So they need to be defined in ApiOverHttp.
-# class ApiDesktop(ApiOverHttp):
+class ApiDesktop(ApiOverHttp):
     def get_token(self):
         import webview
         for c in webview.windows[0].get_cookies():
@@ -1209,7 +1229,7 @@ class ApiOverHttp(ApiDockerManager):
                     cmdText = self.combinedConnections[serverKey].dockerCommandPrefix + 'docker exec '+containerName+" bash -c '"+x+"'"
                     retcmd = self.combinedConnections[serverKey].execute_command(cmdText)
             # Save the secret and others fields
-            adata = {'obh': obh, 'target': serverKey, 'secret': oneTimeSecret, 'title': params.get('title'), 'containerName': containerName, 'port': portMapping, 'volumes': (params.get('volumes') or []), 'initScript': initScript}
+            adata = {'obh': obh, 'target': serverKey, 'secret': oneTimeSecret, 'title': params.get('title'), 'containerName': containerName, 'port': portMapping, 'volumes': (params.get('volumes') or []), 'initScript': initScript, 'github_hook_secret': params.get('github_hook_secret') or '', 'bitbucket_hook_secret': params.get('bitbucket_hook_secret') or ''}
             if params.get('title'): adata['title'] = params.get('title')
             retval = tools.callServerApiPost('/user/webhosts', adata, self)
             self.combinedConnections[serverKey].onChannelString((CRLF+'Webhost started'+CRLF))
@@ -1224,17 +1244,14 @@ class ApiOverHttp(ApiDockerManager):
         # If current user has webhost set, and those webhosts are verified, and the target is in servers. Save servers/tasks/pipelines to webhost target.
         # That needs to be done before verify webhost, because once verified, the webhost will need servers/tasks/pipelines data.
         objs = {
+            'tname': self.userSession.get('teams',{}).get(self.userSession.get('team0'),{}).get('tname') or self.userSession.get('team0'),
             'servers': self.userSession['servers'],
             'tasks': self.userSession['tasks'],
             'pipelines': self.userSession['pipelines'],
             'folders': self.listFolder,
             'excludes': self.listExclude,
         }
-        for site in (self.userSession.get('sites') or []):
-            serverKey = site.get('target')
-            if serverKey and site.get('verified') and site.get('target') in [x.get('key') for x in objs['servers']]:
-                filename = self.userSession.get('team0')+'.json'
-                self.save_remote_file({'target': serverKey, 'path': os.path.join('.oysape','teams',filename), 'content': json.dumps(objs)})
+        self.saveTeamDataToServer(objs, needVerify=False)
         # Verify webhost
         obh = params.get('obh')
         retval = tools.callServerApiPost('/user/webhost/verify', {'obh': obh}, self)
@@ -1300,17 +1317,14 @@ class ApiOverHttp(ApiDockerManager):
         # If current user has webhost set, and those webhosts are verified, and the target is in servers. Save servers/tasks/pipelines to webhost target.
         # This needs to be done before verify webhost, because once verified, the webhost will need servers/tasks/pipelines data.
         objs = {
+            'tname': self.userSession.get('teams',{}).get(self.userSession.get('team0'),{}).get('tname') or self.userSession.get('team0'),
             'servers': self.userSession['servers'],
             'tasks': self.userSession['tasks'],
             'pipelines': self.userSession['pipelines'],
             'folders': self.listFolder,
             'excludes': self.listExclude,
         }
-        for site in (self.userSession.get('sites') or []):
-            serverKey = site.get('target')
-            if serverKey and site.get('verified') and site.get('target') in [x.get('key') for x in objs['servers']]:
-                filename = self.userSession.get('team0')+'.json'
-                self.save_remote_file({'target': serverKey, 'path': os.path.join('.oysape','teams',filename), 'content': json.dumps(objs)})
+        self.saveTeamDataToServer(objs, needVerify=False)
         # Create or update webhost's schedule
         obh = params.get('obh')
         retval = tools.callServerApiPost('/user/webhost/schedule', {'obh': obh, 'schedule': params.get('schedule')}, self)
@@ -1365,9 +1379,12 @@ class ApiOverHttp(ApiDockerManager):
         retval = tools.send_get_request(obh+'/schedule/logs', params, {'Content-Type': 'application/json'})
         return retval or {'list': [], 'total': 0}
 
+    def openUrlInBrowser(self, params={}):
+        auth.openExternalUrl(self.clientUserAgent, params.get('url'))
 
-class ApiDesktop(ApiOverHttp):
-    pass
+
+# class ApiDesktop(ApiOverHttp):
+#     pass
 
 
 apiInstances = {}

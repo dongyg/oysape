@@ -130,7 +130,7 @@ def initScheduler(obh, schedule_items):
     from . import apis
     global runner, apiSchedulers, OBH, SCH_ITEMS
     OBH = obh
-    SCH_ITEMS = schedule_items
+    SCH_ITEMS = schedule_items if schedule_items else []
     dbpath = os.path.join(apis.folder_base, 'scheduler.db')
     logdb = tools.SQLiteDB(dbpath)
     logdb.query('CREATE TABLE IF NOT EXISTS schedule_logs (id INTEGER PRIMARY KEY,ts TIMESTAMP,obh TEXT,sch TEXT,out1 TEXT, out2 TEXT, ext1 TEXT, ext2 TEXT)')
@@ -140,7 +140,8 @@ def initScheduler(obh, schedule_items):
     runner.start()
     count = 0
     # print('Initializing scheduler...')
-    for item in schedule_items:
+    apis.getApiObjectByTeam('')
+    for item in SCH_ITEMS:
         teamName = item['tname']
         teamId = item['tid']
         if not teamId in apiSchedulers:
@@ -176,18 +177,18 @@ def initScheduler(obh, schedule_items):
 
 def loadScheduleConfigAndInit(init=False):
     global OBH, SCH_ITEMS
+
     # Load schedule config
     webhostFile = os.path.join(apis.folder_base, 'webhost.json')
     if os.path.isfile(webhostFile):
         try:
             with open(webhostFile, 'r') as f:
                 webhostObject = json.load(f)
-            if webhostObject.get('schedules'):
-                if init:
-                    initScheduler(webhostObject.get('obh'), webhostObject.get('schedules'))
-                else:
-                    OBH = webhostObject.get('obh')
-                    SCH_ITEMS = webhostObject.get('schedules')
+            if init:
+                initScheduler(webhostObject.get('obh'), webhostObject.get('schedules'))
+            else:
+                OBH = webhostObject.get('obh')
+                SCH_ITEMS = webhostObject.get('schedules')
         except Exception as e:
             traceback.print_exc()
             logging.info(('Error', e))

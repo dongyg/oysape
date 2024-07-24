@@ -141,7 +141,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
     setCheckedList(e.target.checked ? plainOptions : []);
   };
 
-  const comingSoon = <Title style={{ textAlign: 'center', marginTop: '60px' }}>Coming soon</Title>;
+  // const comingSoon = <Title style={{ textAlign: 'center', marginTop: '60px' }}>Coming soon</Title>;
   const unavailable = <Title style={{ textAlign: 'center', marginTop: '60px' }}>Please start and verify first</Title>;
 
   const validatePortMapping = (_, value) => {
@@ -749,7 +749,10 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                     }
                   }} >GitHub Webhooks documentation</Link>
                 <Paragraph style={{ marginTop: '20px' }}>
-                  Mount a Python script to container's <code className='enableHighlight'>/approot/src/githook.py</code>
+                  <ol>
+                    <li>URL: <code className='enableHighlight'>{webhostObject.obh}/webhook/github</code></li>
+                    <li>Mount a Python script to the container's <code className='enableHighlight'>/approot/src/githook.py</code> like below to handle webhooks</li>
+                  </ol>
                 </Paragraph>
                 <pre className='enableHighlight'><code>{githookDemo}</code></pre>
               </Typography>
@@ -763,7 +766,10 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                     }
                   }} >Bitbucket Webhooks documentation</Link>
                 <Paragraph style={{ marginTop: '20px' }}>
-                  Mount a Python script to container's <code className='enableHighlight'>/approot/src/githook.py</code>
+                  <ol>
+                    <li>URL: <code className='enableHighlight'>{webhostObject.obh}/webhook/bitbucket</code></li>
+                    <li>Mount a Python script to the container's <code className='enableHighlight'>/approot/src/githook.py</code> like below to handle webhooks</li>
+                  </ol>
                 </Paragraph>
                 <pre className='enableHighlight'><code>{githookDemo}</code></pre>
               </Typography>

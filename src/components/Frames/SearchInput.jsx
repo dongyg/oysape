@@ -175,24 +175,26 @@ const SearchInput = () => {
     }) : [];
   }
   const searchResult = (query) => {
-    // console.log('searchResult: ', query);
+    // console.log('searchResult: ', query, searchMode.current, inputSearch.current.input.value);
     if (searchMode.current === indexServerSign) {
       return getServersForSearch(query);
     } else if (searchMode.current === indexTaskSign) {
       return getTasksForSearch(query);
     } else if (searchMode.current === indexPipelineSign) {
       return getPipelinesForSearch(query);
-    } else if (query==='') {
-      return getTeamsForSearch(query);
-    } else {
+    } else if (searchMode.current === '') {
       return getTeamsForSearch(query).concat(getServersForSearch(query)).concat(getTasksForSearch(query)).concat(getPipelinesForSearch(query)).concat(getFilesForSearch(query));
     }
   };
   const handleSearch = (value) => {
     const v1 = searchResult(value);
-    setOptions(v1);
-    // console.log('handleSearch', value, v1.length);
-    setDropMenuShowed(v1.length > 0);
+    if(inputSearch.current.input.value==='') {
+      setOptions(v1 || []);
+      setDropMenuShowed(v1 && v1.length > 0);
+    } else {
+      setOptions(value ? v1 : []);
+      setDropMenuShowed(value && v1.length > 0);
+    }
   };
 
   const openWebpageInTab = (url, title) => {

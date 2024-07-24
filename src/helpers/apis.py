@@ -1266,6 +1266,9 @@ class ApiDesktop(ApiOverHttp):
         target = params.get('target')
         retval = tools.callServerApiPost('/user/webhost/apply', {'obh': obh, 'teams': teams}, self)
         if retval and not retval.get('errinfo'):
+            # retval includes 'servers', need to remove 'servers' from retval, then it can be merged to self.userSession
+            # otherwise, the credentials data in servers will be overwritten
+            retval.pop('servers', None)
             return self.update_session(retval)
         else:
             return retval

@@ -241,7 +241,7 @@ def github_check_signature(payload, signature):
         try:
             with open(webhostFile, 'r') as f:
                 webhostObject = json.load(f)
-            SECRET = webhostObject.get('github_hook_secret') or '15820604a97b46ccab4f1d2c6592f6de'
+            SECRET = webhostObject.get('github_hook_secret') or 'd9afd1b62e5644b1bc95574299daa307'
             if SECRET:
                 hash = hmac.new(SECRET.encode('utf-8'), payload, hashlib.sha256)
                 expected_signature = 'sha256=' + hash.hexdigest()
@@ -272,7 +272,7 @@ def bitbucket_check_signature(payload, signature):
         try:
             with open(webhostFile, 'r') as f:
                 webhostObject = json.load(f)
-            SECRET = webhostObject.get('bitbucket_hook_secret') or '15820604a97b46ccab4f1d2c6592f6de'
+            SECRET = webhostObject.get('bitbucket_hook_secret') or 'd9afd1b62e5644b1bc95574299daa307'
             if SECRET:
                 hash = hmac.new(SECRET.encode('utf-8'), payload, hashlib.sha256)
                 print(hash.hexdigest())
@@ -302,7 +302,7 @@ def enable_cors_after_request_hook():
 
 def add_cors_headers():
     if consts.IS_DEBUG:
-        allowed_origins = ['http://127.0.0.1:3000', 'http://127.0.0.1:19790', 'http://192.168.0.2:9790', 'http://192.168.0.2:19790']
+        allowed_origins = ['http://127.0.0.1:3000', 'http://127.0.0.1:19790', 'http://192.168.0.2:3000', 'http://192.168.0.2:9790', 'http://192.168.0.2:19790']
         origin = request.headers.get('Origin')
         if origin in allowed_origins:
             response.headers['Access-Control-Allow-Origin'] = origin

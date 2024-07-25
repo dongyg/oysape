@@ -1290,6 +1290,7 @@ class ApiDesktop(ApiOverHttp):
     def verifyWebHost(self, params={}):
         # If current user has webhost set, and those webhosts are verified, and the target is in servers. Save servers/tasks/pipelines to webhost target.
         # That needs to be done before verify webhost, because once verified, the webhost will need servers/tasks/pipelines data.
+        obh = params.get('obh')
         objs = {
             'tname': self.userSession.get('teams',{}).get(self.userSession.get('team0'),{}).get('tname') or self.userSession.get('team0'),
             'servers': self.userSession['servers'],
@@ -1301,7 +1302,6 @@ class ApiDesktop(ApiOverHttp):
         self.saveTeamDataToServer(objs, needVerify=False)
         self.saveWebhostConfigToWebhost({'obh': obh, 'sites': (self.userSession.get('sites') or [])})
         # Verify webhost
-        obh = params.get('obh')
         retval = tools.callServerApiPost('/user/webhost/verify', {'obh': obh}, self)
         if retval and not retval.get('errinfo'):
             return self.update_session(retval)

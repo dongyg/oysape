@@ -20,6 +20,7 @@ export default function ProjectFileTree() {
   const miDivider = {type: 'divider', }
   // const miCollapse = {label: 'Collapse', key: 'tree_menu_collapse', }
   // const miExpand = {label: 'Expand', key: 'tree_menu_expand', }
+  const miNewFile = {label: 'New', key: 'tree_menu_newfile', }
   const miOpenfile = {label: 'Open', key: 'tree_menu_openfile', }
   const miCopyPath = {label: 'Copy Name', key: 'tree_menu_copy_name', }
   const miCopyAbsolutePath = {label: 'Copy Path', key: 'tree_menu_copy_path', }
@@ -27,7 +28,9 @@ export default function ProjectFileTree() {
   const miAddToExclude = {label: 'Add to exclude', key: 'tree_menu_add_to_exclude', }
   const onClickMenu = ({ key }) => {
     if(!node1.current) return;
-    if(key === 'tree_menu_copy_name') {
+    if(key === 'tree_menu_newfile') {
+      createNewFile(node1.current.path);
+    }else if(key === 'tree_menu_copy_name') {
       message.info(node1.current.title);
       navigator.clipboard.writeText(node1.current.title);
     }else if(key === 'tree_menu_copy_path') {
@@ -81,6 +84,16 @@ export default function ProjectFileTree() {
     }
   }
 
+  const createNewFile = (path) => {
+    callApi('createNewFile', {path:path}).then((data) => {
+      if(data && data.errinfo) {
+        message.error(data.errinfo);
+      }else if(data && data.folderFiles) {
+        setFolderFiles(data.folderFiles);
+      }
+    })
+  }
+
   const reloadFolderFiles = useCallback(() => {
     callApi('getFolderFiles', {refresh: true}).then((data) => {
       // console.log('getFolderFiles', data)
@@ -90,32 +103,34 @@ export default function ProjectFileTree() {
   window.reloadFolderFiles = reloadFolderFiles;
 
   return (
-    <Dropdown menu={{items: contextMenuItems, onClick: onClickMenu}} trigger={['contextMenu']}>
-      <DirectoryTree ref={filetree} treeData={folderFiles} switcherIcon={<DownOutlined />} className={customTheme.className}
-        onSelect={(selectedKeys, info) => {
-          if(Date.now() - time1.current < 500 && path1.current === info.node.path) {
-            time1.current = Date.now();
-            if(info.node.children&&info.node.children.length>0) {
-              return;
-            } else{
-              handleDoubleClick(info.node);
+    <>
+      <Dropdown menu={{items: contextMenuItems, onClick: onClickMenu}} trigger={['contextMenu']}>
+        <DirectoryTree ref={filetree} treeData={folderFiles} switcherIcon={<DownOutlined />} className={customTheme.className}
+          onSelect={(selectedKeys, info) => {
+            if(Date.now() - time1.current < 500 && path1.current === info.node.path) {
+              time1.current = Date.now();
+              if(info.node.children&&info.node.children.length>0) {
+                return;
+              } else{
+                handleDoubleClick(info.node);
+              }
             }
-          }
-          time1.current = Date.now();
-          path1.current = info.node.path;
-        }}
-        onRightClick={(event) => {
-          node1.current = event.node;
-          if(!event.node.isLeaf) {
-            var items = [miCopyPath, miCopyAbsolutePath];
-            // items.push(miDivider, event.node.expanded ? miCollapse : miExpand);
-            items.push(miDivider, event.node.root ? miRemoveFromWorkspace : miAddToExclude);
-            setContextMenuItems(items);
-          }else{
-            setContextMenuItems([miCopyPath, miCopyAbsolutePath, miDivider, miOpenfile, miDivider, miAddToExclude]);
-          }
-        }}
-      />
-    </Dropdown>
+            time1.current = Date.now();
+            path1.current = info.node.path;
+          }}
+          onRightClick={(event) => {
+            node1.current = event.node;
+            if(!event.node.isLeaf) {
+              var items = [miNewFile, miDivider, miCopyPath, miCopyAbsolutePath];
+              // items.push(miDivider, event.node.expanded ? miCollapse : miExpand);
+              items.push(miDivider, event.node.root ? miRemoveFromWorkspace : miAddToExclude);
+              setContextMenuItems(items);
+            }else{
+              setContextMenuItems([miOpenfile, miDivider, miCopyPath, miCopyAbsolutePath, miDivider, miAddToExclude]);
+            }
+          }}
+        />
+      </Dropdown>
+    </>
   )
 }

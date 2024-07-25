@@ -86,7 +86,23 @@ def loadEntrypointWindow(window=None, apiObject=None):
     return window
 
 def mainloop(window):
+    import webview
     window.load_url(consts.HOME_ENTRY)
+    # Get default user agent
+    user_agent = window.evaluate_js('navigator.userAgent')
+    # Add OysapeDesktop to the default user agent, so that the React JS can work on the right user agent. Then the Codeium Editor will work properly
+    apiInstances[webview.token].clientUserAgent = f'{user_agent} OysapeDesktop/3.7.12'
+    # Change user agent for webview. So that the webview(javascript) can get the right user agent, and know if it's OysapeDesktop or not
+    script = f'''
+    Object.defineProperty(navigator, 'userAgent', {{
+        get: function() {{
+            return '{apiInstances[webview.token].clientUserAgent}';
+        }}
+    }});
+    window.updateUserAgent && window.updateUserAgent();
+    '''
+    window.evaluate_js(script)
+    if consts.IS_DEBUG: print(apiInstances[webview.token].clientUserAgent)
 
 
 ################################################################################
@@ -822,6 +838,19 @@ class ApiSftp(ApiWorkspace):
         else:
             return {'errinfo': 'Desktop version only'}
 
+    def create_remote_file(self, params={}):
+        if not self.hasPermission('sftp'): return {'errinfo': 'SFTP access denied'}
+        serverKey = params.get('target')
+        path = params.get('path')
+        filename = params.get('filename')
+        if not serverKey in self.combinedConnections:
+            ret1 = self.createCombConnection(serverKey)
+            if ret1 and ret1.get('errinfo'): return ret1
+        if not serverKey in self.combinedConnections:
+            return {'errinfo': 'SSH connection not found'}
+        retval = self.combinedConnections[serverKey].create_remote_file(os.path.join(path, filename))
+        return retval
+
 
 class ApiDockerManager(ApiSftp):
     def dockerGetWholeTree(self, params={}):
@@ -1109,6 +1138,22 @@ class ApiDesktop(ApiOverHttp):
         self.listFolder = [x for x in self.listFolder if x.get('path') != path]
         self.importTo({'what': 'folders', 'items': self.listFolder})
         return {'folderFiles':self.getFolderFiles()}
+
+    def createNewFile(self, params={}):
+        if self.isDesktopVersion():
+            import webview
+            filename = webview.windows[0].create_file_dialog(webview.SAVE_DIALOG, directory=params.get('path', ''))
+            if filename:
+                try:
+                    with open(filename, 'w') as f:
+                        f.write('')
+                    return {'folderFiles':self.getFolderFiles()}
+                except Exception as e:
+                    return {'errinfo': str(e)}
+            else:
+                return {}
+        else:
+            return {'errinfo': "Unavailable unless in desktop version"}
 
     def addExcludeToFolder(self, params={}):
         path = params.get('path', '')

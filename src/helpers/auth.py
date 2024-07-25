@@ -43,7 +43,7 @@ def openOAuthWindow(oauthAgent, clientId, userAgent, serverHome):
     retval = {'clientId': clientId}
     isDesktopVersion = (userAgent.find('OysapeDesktop') >= 0)
     isMobileVersion = (userAgent.find('OysapeMobile') >= 0)
-    sdata = getSignInState(clientId, ((socket.gethostname()+' '+userAgent) if isDesktopVersion else userAgent), serverHome)
+    sdata = getSignInState(clientId, ((userAgent+' '+socket.gethostname()) if isDesktopVersion else userAgent), serverHome)
     if sdata and sdata.get('errinfo'):
         retval['errinfo'] = sdata.get('errinfo')
     elif sdata and sdata.get('state'):

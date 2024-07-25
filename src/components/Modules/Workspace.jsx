@@ -147,7 +147,7 @@ export default function WorkspaceTerminal(props) {
             socketObject.current = new WebSocket(url);
             xtermRef.current.socketObject = socketObject.current;
             socketObject.current.onopen = () => {
-                // console.log('WebSocket Connected');
+                console.log('WebSocket Connected');
                 socketObject.current.send(JSON.stringify({action: 'init', uniqueKey:uniqueKey }));
                 socketPinger.current = setInterval(() => {
                     if (socketObject.current.readyState === WebSocket.OPEN) {
@@ -167,7 +167,7 @@ export default function WorkspaceTerminal(props) {
                 }
             }
             socketObject.current.onclose = () => {
-                // console.log('WebSocket Disconnected');
+                console.log('WebSocket Disconnected');
                 socketPinger.current && clearInterval(socketPinger.current);
             };
             socketObject.current.onerror = (error) => {

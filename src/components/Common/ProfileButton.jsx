@@ -70,8 +70,8 @@ export default function ProfileButton() {
       key: 'menuCodeEditors',
       label: 'Code Editors',
       children: [
-        { key: 'menuCodeMirror5', label: 'Code Mirror 5', icon: editorType!=='monaco'?<CheckOutlined />:null, },
-        { key: 'menuCodeiumAI', label: 'Codeium AI Editor', icon: editorType==='monaco'?<CheckOutlined />:null, },
+        { key: 'menuCodeiumAI', label: 'AI Editor', icon: editorType==='monaco'?<CheckOutlined />:null, },
+        { key: 'menuCodeMirror5', label: 'Code Mirror', icon: editorType!=='monaco'?<CheckOutlined />:null, },
       ],
     },
     { type: 'divider', },

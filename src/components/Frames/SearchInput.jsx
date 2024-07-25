@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { App, Button, AutoComplete, Input, Tag } from 'antd';
-import { SearchOutlined } from "@ant-design/icons";
+import { SearchOutlined, LoadingOutlined } from "@ant-design/icons";
 import { BsCommand, BsArrowReturnLeft } from "react-icons/bs";
 import { PiControl } from "react-icons/pi";
 
@@ -363,23 +363,16 @@ const SearchInput = () => {
     callApi('get_absolute_path', {path:filepath}).then((absPath)=>{
       if(typeof absPath === 'string') {
         if(absPath.length>0){
-          callApi('read_file', {path:absPath}).then((fileBody)=>{
-            if(typeof fileBody === 'string' && fileBody.length>0) {
-              const uniqueKey = calculateMD5(absPath);
-              if (tabItems.find((item) => item.key === uniqueKey)) {
-              } else {
-                setTabItems([...tabItems || [], {
-                  key: uniqueKey,
-                  fileKey: fileBody,
-                  label: title,
-                  children: <CodeEditor uniqueKey={uniqueKey} filename={absPath} filebody={fileBody} tabTitle={title} />,
-                }]);
-              }
-              setTabActiveKey(uniqueKey);
-            }else if(fileBody && fileBody.errinfo) {
-              message.error(fileBody.errinfo);
-            }
-          })
+          const uniqueKey = calculateMD5(absPath);
+          if (tabItems.find((item) => item.key === uniqueKey)) {
+          } else {
+            setTabItems([...tabItems || [], {
+              key: uniqueKey,
+              label: <><LoadingOutlined/> {title}</>,
+              children: <CodeEditor uniqueKey={uniqueKey} filename={absPath} tabTitle={title} />,
+            }]);
+          }
+          setTabActiveKey(uniqueKey);
         }else{
           message.error(filepath + ' not found');
         }

@@ -1,6 +1,7 @@
 import React from 'react'
 import CodeMirror from '@uiw/react-codemirror'
 import { CodeiumEditor } from "@codeium/react-code-editor";
+import { Base64 } from 'js-base64';
 import { App } from 'antd';
 import { solarizedLight, solarizedDark } from '@uiw/codemirror-theme-solarized';
 import { loadLanguage } from '@uiw/codemirror-extensions-langs';
@@ -69,16 +70,39 @@ export default function CodeEditor(props) {
     if(props.filebody){
       setValue(props.filebody);
     }else if(props.filename) {
-      callApi('read_file', {path:props.filename}).then((data)=>{
-        if(typeof data === 'string' && data.length>0) {
-          setValue(data);
-        }else if(data && data.errinfo) {
-          message.error(data.errinfo);
-        }
-      })
+      if(props.target) {
+        callApi('open_remote_file', {target: props.target, path:props.filename}).then((resp)=>{
+          setTabItems(tabItems.map((item) => {
+            if(item.key === uniqueKey) {
+              item.label = props.tabTitle;
+            }
+            return item;
+          }));
+          if(resp && resp.errinfo) {
+            message.error(resp.errinfo);
+          } else if(resp && resp.hasOwnProperty('content')) {
+            const fileBody = Base64.decode(resp.content);
+            setValue(fileBody);
+          }
+        })
+      } else {
+        callApi('read_file', {path:props.filename}).then((data)=>{
+          setTabItems(tabItems.map((item) => {
+            if(item.key === uniqueKey) {
+              item.label = props.tabTitle;
+            }
+            return item;
+          }));
+          if(typeof data === 'string') {
+            setValue(data);
+          }else if(data && data.errinfo) {
+            message.error(data.errinfo);
+          }
+        })
+      }
     }
     window.oypaseTabs = window.oypaseTabs || {}; window.oypaseTabs[uniqueKey] = inputCode.current;
-  }, [setCodeEditCurrentLang, props.filebody, props.filename, uniqueKey, message]); // Donot include editorType to avoid reload value when editorType changes
+  }, [setCodeEditCurrentLang, props, uniqueKey, message]); // Donot include editorType, tabItems, to avoid reload value when editorType changes
 
   const chooseLang = (lang) => {
     setLangCurr(lang);

@@ -1,14 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import argparse, platform, distro, logging
+import argparse, logging
 import webview
 from helpers import server, consts, apis
 
 def initialize_app():
     version = '3.7.12'
-    os_info = distro.name(pretty=True) if platform.system() == 'Linux' else platform.platform()
-    clientAgent = f'{os_info} OysapeDesktop/{version}'
+    # os_info = distro.name(pretty=True) if platform.system() == 'Linux' else platform.platform()
+    # Give a user agent including OysapeDesktop, so that the SignIn.jsx in React JS can indicate this is a desktop version.
+    # Otherwise, the SignIn.jsx in React JS will execute reloadUserSession because it is not a desktop version as the beginning.
+    clientAgent = f'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 OysapeDesktop/{version}'
+    # clientAgent = f'{os_info} OysapeDesktop/{version}'
 
     parser = argparse.ArgumentParser(description="Oysape Desktop Entry Point")
     parser.add_argument('--debug', type=bool, help="Debug mode", default=False)

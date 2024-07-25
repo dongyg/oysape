@@ -1,5 +1,6 @@
 import React from 'react'
 import { CodeiumEditor } from "@codeium/react-code-editor";
+import { Base64 } from 'js-base64';
 import { App } from 'antd';
 
 import { useCustomContext } from '../Contexts/CustomContext'
@@ -63,16 +64,27 @@ export default function CodeEditor(props) {
     if(props.filebody){
       setValue(props.filebody);
     }else if(props.filename) {
-      callApi('read_file', {path:props.filename}).then((data)=>{
-        if(typeof data === 'string' && data.length>0) {
-          setValue(data);
-        }else if(data && data.errinfo) {
-          message.error(data.errinfo);
-        }
-      })
+      if(props.target) {
+        callApi('open_remote_file', {target: props.target, path:props.filename}).then((resp)=>{
+          if(resp && resp.errinfo) {
+            message.error(resp.errinfo);
+          } else if(resp && resp.hasOwnProperty('content')) {
+            const fileBody = Base64.decode(resp.content);
+            setValue(fileBody);
+          }
+        })
+      } else {
+        callApi('read_file', {path:props.filename}).then((data)=>{
+          if(typeof data === 'string' && data.length>0) {
+            setValue(data);
+          }else if(data && data.errinfo) {
+            message.error(data.errinfo);
+          }
+        })
+      }
     }
     window.oypaseTabs = window.oypaseTabs || {}; window.oypaseTabs[uniqueKey] = inputCode.current;
-  }, [setCodeEditCurrentLang, props.filebody, props.filename, uniqueKey, message]);
+  }, [setCodeEditCurrentLang, props, props.filebody, props.filename, uniqueKey, message]);
 
   const chooseLang = (lang) => {
     setLangCurr(lang);
@@ -140,6 +152,7 @@ export default function CodeEditor(props) {
           horizontal: 'visible',
         },
         automaticLayout: true,
+        readOnly: false,
       }}
     />
   )

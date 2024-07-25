@@ -598,6 +598,18 @@ class SSHClient:
             traceback.print_exc()
             return {'errinfo': str(e)}
 
+    def create_remote_file(self, remote_file_path):
+        if not self.client: return {'errinfo': 'No server connection'}
+        try:
+            sftp = self.client.open_sftp()
+            with sftp.open(remote_file_path, 'w') as f:
+                f.write('')
+        except Exception as e:
+            return {'errinfo': str(e)}
+        finally:
+            sftp.close()
+        return {}
+
     def dockerCheckEnv(self):
         self.dockerCommandPrefix = ''
         tryCmds = ['', '/usr/local/bin/' ]

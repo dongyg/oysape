@@ -60,10 +60,20 @@ export const calculateMD5 = function(str) {
 export const OYSAPE_DESKTOP_NAME = 'OysapeDesktop';
 export const OYSAPE_MOBILE_NAME = 'OysapeMobile';
 
-export const isDesktopVersion = navigator.userAgent.indexOf(OYSAPE_DESKTOP_NAME) !== -1;
-export const isMobileVersion = navigator.userAgent.indexOf(OYSAPE_MOBILE_NAME) !== -1;
-export const isIos = navigator.userAgent.indexOf('iPhone') !== -1 || navigator.userAgent.indexOf('iPad') !== -1;
-export const isMacOs = navigator.userAgent.indexOf('Macintosh') !== -1 || navigator.userAgent.indexOf('Mac OS') !== -1 || navigator.userAgent.indexOf('macOS') !== -1;
+export let isDesktopVersion = navigator.userAgent.indexOf(OYSAPE_DESKTOP_NAME) !== -1;
+export let isMobileVersion = navigator.userAgent.indexOf(OYSAPE_MOBILE_NAME) !== -1;
+export let isIos = navigator.userAgent.indexOf('iPhone') !== -1 || navigator.userAgent.indexOf('iPad') !== -1;
+export let isMacOs = navigator.userAgent.indexOf('Macintosh') !== -1 || navigator.userAgent.indexOf('Mac OS') !== -1 || navigator.userAgent.indexOf('macOS') !== -1;
+
+window.updateUserAgent = function() {
+  isDesktopVersion = navigator.userAgent.indexOf(OYSAPE_DESKTOP_NAME) !== -1;
+  isMobileVersion = navigator.userAgent.indexOf(OYSAPE_MOBILE_NAME) !== -1;
+  isIos = navigator.userAgent.indexOf('iPhone') !== -1 || navigator.userAgent.indexOf('iPad') !== -1;
+  isMacOs = navigator.userAgent.indexOf('Macintosh') !== -1 || navigator.userAgent.indexOf('Mac OS') !== -1 || navigator.userAgent.indexOf('macOS') !== -1;
+  callApi('get_token').then((data) => {
+    window.reloadUserSession && window.reloadUserSession();
+  });
+}
 
 // 调用原生API
 export function callNativeApi(functionName, params) {

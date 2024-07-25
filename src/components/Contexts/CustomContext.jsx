@@ -1,6 +1,6 @@
 import React, { useState, useContext, useEffect } from "react";
 
-import { callApi, isDesktopVersion, isMacOs, OYSAPE_DESKTOP_NAME } from '../Common/global';
+import { callApi, isDesktopVersion, OYSAPE_DESKTOP_NAME } from '../Common/global';
 import { StyleDark } from "./StyleDark";
 import { StyleLight } from "./StyleLight";
 
@@ -33,7 +33,7 @@ export const ThemeProvider = ({ children }) => {
   const [codeEditCurrentLang, setCodeEditCurrentLang] = useState(null);
   const [searchMode, setSearchMode] = useState('');
   const [hideSidebar, setHideSidebar] = useState(window.innerWidth<=800);
-  const [editorType, setEditorType] = useState(isDesktopVersion&&isMacOs ? 'codemirror5' : 'monaco');
+  const [editorType, setEditorType] = useState('monaco'); // Could be codemirror5 or monaco
 
   let menuWidth = 60;
 

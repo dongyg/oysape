@@ -478,7 +478,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
           }}>/approot/src/githook.py</Link> to handle webhooks
             {!!webhostObject.target ? null : <Button size='small' onClick={() => {
               let volumes = formInstall.getFieldValue('volumes')||[]
-              volumes.push({'volume':'./githook.py:/approot/src/githook.py'});
+              volumes.push({'volume':'~/githook.py:/approot/src/githook.py'});
               formInstall.setFieldValue('volumes', volumes);
             }}>Add it for me</Button>}</>}>
             <Input autoComplete="off" autoCapitalize="off" autoCorrect="off" disabled={!!webhostObject.target} />

@@ -2,10 +2,11 @@ import React, {useState} from 'react';
 import { Base64 } from 'js-base64';
 
 import { App, Tree, Select, Dropdown, Button, Tooltip, Space } from 'antd';
-import { UploadOutlined, CloudUploadOutlined, DownloadOutlined, DownOutlined, LoadingOutlined, ExclamationOutlined, EditOutlined, CopyOutlined, FolderViewOutlined, ReloadOutlined } from '@ant-design/icons';
+import { UploadOutlined, CloudUploadOutlined, DownloadOutlined, DownOutlined, LoadingOutlined, ExclamationOutlined, EditOutlined, CopyOutlined, FolderViewOutlined, ReloadOutlined, FileAddOutlined } from '@ant-design/icons';
 
 import { useCustomContext } from '../Contexts/CustomContext'
 import { callApi, getCodeMirrorLanguages, calculateMD5, isDesktopVersion } from '../Common/global';
+import TextInputModal from '../Modules/TextInputModal';
 import CodeEditor from '../Modules/CodeEditor';
 
 const { DirectoryTree } = Tree; // 把 Tree 赋值给 DirectoryTree, 然后使用 DirectoryTree 就是出现整行选中效果, 否则就不出现整行选中效果
@@ -16,6 +17,7 @@ export default function Sftp(props) {
   const [sftpTarget, setSftpTarget] = useState('');
   const [sftpFileTree, setSftpFileTree] = useState({});
   const [contextMenuItems, setContextMenuItems] = React.useState([]);
+  const [ showInput, setShowInput ] = React.useState(false);
   const headerHeight = 56;
   const filetree = React.useRef(null);
   const time1 = React.useRef(0);
@@ -23,6 +25,7 @@ export default function Sftp(props) {
   const node1 = React.useRef(null);
   const fileInputRef = React.useRef(null);
   const miDivider = {type: 'divider', }
+  const miNewFile = {label: 'New', key: 'tree_menu_newfile', icon: <FileAddOutlined />, }
   const miOpenfile = {label: 'Open', key: 'tree_menu_openfile', icon: <EditOutlined />, }
   const miCopyPath = {label: 'Copy Name', key: 'tree_menu_copy_name', icon: <CopyOutlined />, }
   const miCopyAbsolutePath = {label: 'Copy Path', key: 'tree_menu_copy_path', icon: <FolderViewOutlined />, }
@@ -50,7 +53,9 @@ export default function Sftp(props) {
 
   const onClickMenu = ({ key }) => {
     if(!node1.current) return;
-    if(key === 'tree_menu_copy_name') {
+    if(key === 'tree_menu_newfile') {
+      setShowInput(true);
+    }else if(key === 'tree_menu_copy_name') {
       message.info(node1.current.title);
       navigator.clipboard.writeText(node1.current.title);
     }else if(key === 'tree_menu_copy_path') {
@@ -109,25 +114,17 @@ export default function Sftp(props) {
   }
   const handleDoubleClick = (anode) => {
     const openIt = () => {
-      callApi('open_remote_file', {target: sftpTarget, path:anode.path}).then((resp)=>{
-        if(resp && resp.content) {
-          const fileBody = Base64.decode(resp.content);
-          const uniqueKey = calculateMD5(anode.path);
-          if (tabItems.find((item) => item.key === uniqueKey)) {
-          } else {
-            setTabItems([...tabItems || [], {
-              key: uniqueKey,
-              fileKey: fileBody,
-              label: sftpTarget+':'+anode.title,
-              children: <CodeEditor uniqueKey={uniqueKey} target={sftpTarget} filename={anode.path} filebody={fileBody} tabTitle={sftpTarget+':'+anode.title} />,
-            }]);
-          }
-          setTabActiveKey(uniqueKey);
-          hideSidebarIfNeed();
-        }else if(resp && resp.errinfo) {
-          message.error(resp.errinfo);
-        }
-      })
+      const uniqueKey = calculateMD5(sftpTarget+':'+anode.path);
+      if (tabItems.find((item) => item.key === uniqueKey)) {
+      } else {
+        setTabItems([...tabItems || [], {
+          key: uniqueKey,
+          label: <><LoadingOutlined/> {sftpTarget+':'+anode.title}</>,
+          children: <CodeEditor uniqueKey={uniqueKey} target={sftpTarget} filename={anode.path} tabTitle={sftpTarget+':'+anode.title} />,
+        }]);
+      }
+      setTabActiveKey(uniqueKey);
+      hideSidebarIfNeed();
     }
     if(anode.isLeaf) {
       if(anode.key.indexOf('_error') !== -1){
@@ -199,6 +196,18 @@ export default function Sftp(props) {
     }
   };
 
+  const createRemoteFile = (path) => {
+    setShowInput(false);
+    message.info(node1.current.path + '/' + path);
+    callApi('create_remote_file', {target: sftpTarget, path:node1.current.path, filename:path}).then((resp)=>{
+      if(resp && resp.errinfo) {
+        message.error(resp.errinfo);
+      } else {
+        reloadThisFolder(node1.current);
+      }
+    })
+  }
+
   const setContextMenus = (anode) => {
     if(anode.isLeaf) {
       if(anode.key.indexOf('_error')>=0) {
@@ -209,9 +218,9 @@ export default function Sftp(props) {
       }
     }else{
       if(isDesktopVersion){
-        setContextMenuItems([miCopyPath, miCopyAbsolutePath, miDivider, miDownload, miDivider, miUploadFolder, miUploadFile, miDivider, miReload, ]);
+        setContextMenuItems([miNewFile, miDivider, miCopyPath, miCopyAbsolutePath, miDivider, miDownload, miDivider, miUploadFolder, miUploadFile, miDivider, miReload, ]);
       } else {
-        setContextMenuItems([miCopyPath, miCopyAbsolutePath, miDivider, miUploadFile, miDivider, miReload, ]);
+        setContextMenuItems([miNewFile, miDivider, miCopyPath, miCopyAbsolutePath, miDivider, miUploadFile, miDivider, miReload, ]);
       }
     }
   }
@@ -253,7 +262,11 @@ export default function Sftp(props) {
           return item.type!=='divider' ? <Tooltip title={item.label}><Button type="text" size="large" icon={item.icon} onClick={(e) => {onClickMenu({key:item.key});}} ></Button></Tooltip> : null
         })}
       </Space>
+      {/* For uploading files */}
       <input type="file" style={{ display: 'none' }} ref={fileInputRef} onChange={handleFileChange} />
+      {/* For create new file */}
+      <TextInputModal visible={showInput} defaultValue={""} title={"Create a new file"} onCreate={createRemoteFile} onCancel={() => setShowInput(false)}
+        placeholder={"Please input a file name"}></TextInputModal>
     </>
   );
 }

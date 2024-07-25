@@ -57,7 +57,7 @@ def handle_websocket():
             except Exception as e:
                 logging.info(('Socket Error:', clientIpAddress, clientId, init_message))
                 break
-            # logging.info((recvData))
+            logging.info((recvData))
             action = recvData.get('action')
             uniqueKey = recvData.get('uniqueKey')
             apiObject = apis.apiInstances.get(clientId) if clientId else None
@@ -78,6 +78,7 @@ def handle_websocket():
         traceback.print_exc()
     finally:
         wsock.close()
+        logging.info(('Socket Close', clientIpAddress, clientId, uniqueKey))
         if clientId and clientId in apis.apiInstances:
             if uniqueKey in apis.apiInstances[clientId].socketConnections:
                 logging.info(('Socket Close', clientIpAddress, clientId, uniqueKey))
@@ -222,8 +223,6 @@ def getScheduleLogs():
 def github_webhook():
     # Get the request body
     payload = request.body.read()
-    print(payload)
-    print(dict(request.headers))
     # Get the signature
     signature = request.headers.get('X-Hub-Signature-256')
     if not github_check_signature(payload, signature):
@@ -253,8 +252,6 @@ def github_check_signature(payload, signature):
 def bitbucket_webhook():
     # Get the request body
     payload = request.body.read()
-    print(payload)
-    print(dict(request.headers))
     # Get the signature
     signature = request.headers.get('X-Hub-Signature')
     if not bitbucket_check_signature(payload, signature):
@@ -275,7 +272,6 @@ def bitbucket_check_signature(payload, signature):
             SECRET = webhostObject.get('bitbucket_hook_secret') or 'd9afd1b62e5644b1bc95574299daa307'
             if SECRET:
                 hash = hmac.new(SECRET.encode('utf-8'), payload, hashlib.sha256)
-                print(hash.hexdigest())
                 expected_signature = 'sha256=' + hash.hexdigest()
                 return hmac.compare_digest(expected_signature, signature)
         except Exception as e:
@@ -302,7 +298,7 @@ def enable_cors_after_request_hook():
 
 def add_cors_headers():
     if consts.IS_DEBUG:
-        allowed_origins = ['http://127.0.0.1:3000', 'http://127.0.0.1:19790', 'http://192.168.0.2:3000', 'http://192.168.0.2:9790', 'http://192.168.0.2:19790']
+        allowed_origins = ['http://127.0.0.1:3000', 'http://127.0.0.1:19790', 'http://localhost:3000', 'http://localhost:9790', 'http://localhost:19790']
         origin = request.headers.get('Origin')
         if origin in allowed_origins:
             response.headers['Access-Control-Allow-Origin'] = origin

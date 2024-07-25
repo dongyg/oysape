@@ -2,7 +2,7 @@ FROM python:3.11-slim-bullseye
 
 WORKDIR /approot
 
-RUN pip install --no-cache-dir paramiko==3.3.1 bottle==0.12.25 gevent==24.2.1 gevent-websocket==0.10.1 py-cpuinfo==9.0.0 distro==1.9.0 && \
+RUN pip install --no-cache-dir paramiko==3.3.1 bottle==0.12.25 gevent==24.2.1 gevent-websocket==0.10.1 py-cpuinfo==9.0.0 && \
     rm -rf /tmp/* /var/cache/apk/*
 
 COPY gui ./gui

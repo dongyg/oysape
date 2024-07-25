@@ -1299,6 +1299,7 @@ class ApiDesktop(ApiOverHttp):
             'excludes': self.listExclude,
         }
         self.saveTeamDataToServer(objs, needVerify=False)
+        self.saveWebhostConfigToWebhost({'obh': obh, 'sites': (self.userSession.get('sites') or [])})
         # Verify webhost
         obh = params.get('obh')
         retval = tools.callServerApiPost('/user/webhost/verify', {'obh': obh}, self)
@@ -1379,11 +1380,7 @@ class ApiDesktop(ApiOverHttp):
         obh = params.get('obh')
         retval = tools.callServerApiPost('/user/webhost/schedule', {'obh': obh, 'schedule': params.get('schedule')}, self)
         if retval and not retval.get('errinfo'):
-            # Update webhost's webhost.json
-            for site in (retval.get('sites') or []):
-                serverKey = site.get('target')
-                if obh == site.get('obh'):
-                    self.save_remote_file({'target': serverKey, 'path': os.path.join('.oysape','webhost.json'), 'content': json.dumps(site)})
+            self.saveWebhostConfigToWebhost({'obh': obh, 'sites': (retval.get('sites') or [])})
             # After the webhost's scheduled tasks are modified, perform a webhost validation. Once the validation is passed, the webhost will recreate the scheduler.
             tools.callServerApiPost('/user/webhost/verify', {'obh': obh}, self)
             # Return
@@ -1395,17 +1392,22 @@ class ApiDesktop(ApiOverHttp):
         obh = params.get('obh')
         retval = tools.callServerApiDelete('/user/webhost/schedule', {'obh': obh, 'title': params.get('title')}, self)
         if retval and not retval.get('errinfo'):
-            # Update webhost's webhost.json
-            for site in (retval.get('sites') or []):
-                serverKey = site.get('target')
-                if obh == site.get('obh'):
-                    self.save_remote_file({'target': serverKey, 'path': os.path.join('.oysape','webhost.json'), 'content': json.dumps(site)})
+            self.saveWebhostConfigToWebhost({'obh': obh, 'sites': (retval.get('sites') or [])})
             # After the webhost's scheduled tasks are modified, perform a webhost validation. Once the validation is passed, the webhost will recreate the scheduler.
             tools.callServerApiPost('/user/webhost/verify', {'obh': obh}, self)
             # Return
             return self.update_session(retval)
         else:
             return retval
+
+    def saveWebhostConfigToWebhost(self, params={}):
+        # Update webhost's webhost.json
+        obh = params.get('obh')
+        sites = params.get('sites')
+        for site in sites:
+            serverKey = site.get('target')
+            if obh == site.get('obh'):
+                self.save_remote_file({'target': serverKey, 'path': os.path.join('.oysape','webhost.json'), 'content': json.dumps(site)})
 
     def callFetchScheduleLogs(self, params={}):
         # params: tname, obh, sch, page, pageSize

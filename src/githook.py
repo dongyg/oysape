@@ -5,7 +5,7 @@ from helpers import apis
 
 def handle_github_event(headers, payload):
     # Call the user-defined function
-    event_type = headers.get('X-GitHub-Event')
+    event_type = headers.get('X-Github-Event')
     print(f"GitHub event: {event_type}")
     print(headers)
     print(payload)

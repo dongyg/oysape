@@ -235,18 +235,11 @@ def github_webhook():
 
 def github_check_signature(payload, signature):
     # Use the HMAC algorithm and SHA256 hash function
-    webhostFile = os.path.join(apis.folder_base, 'webhost.json')
-    if os.path.isfile(webhostFile):
-        try:
-            with open(webhostFile, 'r') as f:
-                webhostObject = json.load(f)
-            SECRET = webhostObject.get('github_hook_secret') or 'd9afd1b62e5644b1bc95574299daa307'
-            if SECRET:
-                hash = hmac.new(SECRET.encode('utf-8'), payload, hashlib.sha256)
-                expected_signature = 'sha256=' + hash.hexdigest()
-                return hmac.compare_digest(expected_signature, signature)
-        except Exception as e:
-            traceback.print_exc()
+    SECRET = os.getenv('GITHUB_WEBHOOK_SECRET') or 'd9afd1b62e5644b1bc95574299daa307'
+    if SECRET:
+        hash = hmac.new(SECRET.encode('utf-8'), payload, hashlib.sha256)
+        expected_signature = 'sha256=' + hash.hexdigest()
+        return hmac.compare_digest(expected_signature, signature)
 
 @app.route('/webhook/bitbucket', method='POST')
 def bitbucket_webhook():
@@ -264,18 +257,11 @@ def bitbucket_webhook():
 
 def bitbucket_check_signature(payload, signature):
     # Use the HMAC algorithm and SHA256 hash function
-    webhostFile = os.path.join(apis.folder_base, 'webhost.json')
-    if os.path.isfile(webhostFile):
-        try:
-            with open(webhostFile, 'r') as f:
-                webhostObject = json.load(f)
-            SECRET = webhostObject.get('bitbucket_hook_secret') or 'd9afd1b62e5644b1bc95574299daa307'
-            if SECRET:
-                hash = hmac.new(SECRET.encode('utf-8'), payload, hashlib.sha256)
-                expected_signature = 'sha256=' + hash.hexdigest()
-                return hmac.compare_digest(expected_signature, signature)
-        except Exception as e:
-            traceback.print_exc()
+    SECRET = SECRET = os.getenv('BITBUCKET_WEBHOOK_SECRET') or 'd9afd1b62e5644b1bc95574299daa307'
+    if SECRET:
+        hash = hmac.new(SECRET.encode('utf-8'), payload, hashlib.sha256)
+        expected_signature = 'sha256=' + hash.hexdigest()
+        return hmac.compare_digest(expected_signature, signature)
 
 
 ################################################################################

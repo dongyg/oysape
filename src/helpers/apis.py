@@ -1254,8 +1254,8 @@ class ApiDesktop(ApiOverHttp):
             self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker ps --filter "name=^/'+containerName+'$" --format \'{{.Names}}\' | grep -qw '+containerName+' && ' + self.combinedConnections[serverKey].dockerCommandPrefix + 'docker stop '+containerName)
             self.combinedConnections[serverKey].onChannelString((CRLF+'Running webhost container...'))
             oneTimeSecret = obhs.keys.get(obh) or tools.getRandomString(60)
-            # cmd1 = self.combinedConnections[serverKey].dockerCommandPrefix + f'docker run --rm --name {containerName} -p {portMapping} -e WEBHOST_CONFIG=' + oneTimeSecret+'@'+obh + f' {volumes} -itd oysape/webhost'
-            cmd1 = self.combinedConnections[serverKey].dockerCommandPrefix + f'docker run --name {containerName} -p {portMapping} -e WEBHOST_CONFIG=' + oneTimeSecret+'@'+obh + f' {volumes} -itd oysape/webhost'
+            # cmd1 = self.combinedConnections[serverKey].dockerCommandPrefix + f'docker run --rm --name {containerName} -p {portMapping} -e WEBHOST_CONFIG={oneTimeSecret+'@'+obh} -e GITHUB_WEBHOOK_SECRET={params.get('github_hook_secret') or ''} -e BITBUCKET_WEBHOOK_SECRET={params.get('bitbucket_hook_secret') or ''} {volumes} -itd oysape/webhost'
+            cmd1 = self.combinedConnections[serverKey].dockerCommandPrefix + f'docker run --name {containerName} -p {portMapping} -e WEBHOST_CONFIG={oneTimeSecret+'@'+obh} -e GITHUB_WEBHOOK_SECRET={params.get('github_hook_secret') or ''} -e BITBUCKET_WEBHOOK_SECRET={params.get('bitbucket_hook_secret') or ''} {volumes} -itd oysape/webhost'
             # self.dockerExecCommand({'command': cmd1, 'target': serverKey, 'output': True})
             retcmd = self.combinedConnections[serverKey].execute_command(cmd1)
             self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
@@ -1274,7 +1274,7 @@ class ApiDesktop(ApiOverHttp):
                     cmdText = self.combinedConnections[serverKey].dockerCommandPrefix + 'docker exec '+containerName+" bash -c '"+x+"'"
                     retcmd = self.combinedConnections[serverKey].execute_command(cmdText)
             # Save the secret and others fields
-            adata = {'obh': obh, 'target': serverKey, 'secret': oneTimeSecret, 'title': params.get('title'), 'containerName': containerName, 'port': portMapping, 'volumes': (params.get('volumes') or []), 'initScript': initScript, 'github_hook_secret': params.get('github_hook_secret') or '', 'bitbucket_hook_secret': params.get('bitbucket_hook_secret') or ''}
+            adata = {'obh': obh, 'target': serverKey, 'secret': oneTimeSecret, 'title': params.get('title'), 'containerName': containerName, 'port': portMapping, 'volumes': (params.get('volumes') or []), 'initScript': initScript}
             if params.get('title'): adata['title'] = params.get('title')
             retval = tools.callServerApiPost('/user/webhosts', adata, self)
             self.combinedConnections[serverKey].onChannelString((CRLF+'Webhost started'+CRLF))

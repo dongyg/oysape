@@ -1254,10 +1254,12 @@ class ApiDesktop(ApiOverHttp):
             self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker ps --filter "name=^/'+containerName+'$" --format \'{{.Names}}\' | grep -qw '+containerName+' && ' + self.combinedConnections[serverKey].dockerCommandPrefix + 'docker stop '+containerName)
             self.combinedConnections[serverKey].onChannelString((CRLF+'Running webhost container...'))
             oneTimeSecret = obhs.keys.get(obh) or tools.getRandomString(60)
-            # cmd1 = self.combinedConnections[serverKey].dockerCommandPrefix + f'docker run --rm --name {containerName} -p {portMapping} -e WEBHOST_CONFIG=' + (oneTimeSecret+'@'+obh) + ' -e GITHUB_WEBHOOK_SECRET='+(params.get('github_hook_secret') or '') + '-e BITBUCKET_WEBHOOK_SECRET=' + (params.get('bitbucket_hook_secret') or '') + f' {volumes} -itd oysape/webhost'
-            cmd1 = self.combinedConnections[serverKey].dockerCommandPrefix + f'docker run --name {containerName} -p {portMapping} -e WEBHOST_CONFIG=' + (oneTimeSecret+'@'+obh) + ' -e GITHUB_WEBHOOK_SECRET='+(params.get('github_hook_secret') or '""') + '-e BITBUCKET_WEBHOOK_SECRET=' + (params.get('bitbucket_hook_secret') or '""') + f' {volumes} -itd oysape/webhost'
+            # cmd1 = self.combinedConnections[serverKey].dockerCommandPrefix + f'docker run --rm --name {containerName} -p {portMapping} -e WEBHOST_CONFIG=' + (oneTimeSecret+'@'+obh) + ' -e GITHUB_WEBHOOK_SECRET='+(params.get('github_hook_secret') or '') + ' -e BITBUCKET_WEBHOOK_SECRET=' + (params.get('bitbucket_hook_secret') or '') + f' {volumes} -itd oysape/webhost'
+            cmd1 = self.combinedConnections[serverKey].dockerCommandPrefix + f'docker run --name {containerName} -p {portMapping} -e WEBHOST_CONFIG=' + (oneTimeSecret+'@'+obh) + ' -e GITHUB_WEBHOOK_SECRET='+(params.get('github_hook_secret') or '""') + ' -e BITBUCKET_WEBHOOK_SECRET=' + (params.get('bitbucket_hook_secret') or '""') + f' {volumes} -itd oysape/webhost'
             # self.dockerExecCommand({'command': cmd1, 'target': serverKey, 'output': True})
             retcmd = self.combinedConnections[serverKey].execute_command(cmd1)
+            if retcmd and retcmd.find("See 'docker run --help'")>=0:
+                return {'errinfo': 'Docker run error'}
             self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
             # Config the webhost
             self.combinedConnections[serverKey].onChannelString((CRLF+'Configuring webhost...'))

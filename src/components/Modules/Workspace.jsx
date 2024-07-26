@@ -8,7 +8,7 @@ import "xterm/css/xterm.css";
 
 import { useCustomContext } from '../Contexts/CustomContext'
 import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
-import { callApi, writeWelcome, colorizeText } from '../Common/global';
+import { callApi, writeWelcome, colorizeText, isMobileVersion } from '../Common/global';
 import "./Terminal.css";
 
 const termOptions = {
@@ -179,6 +179,9 @@ export default function WorkspaceTerminal(props) {
                     });
                 }
                 socketPinger.current && clearInterval(socketPinger.current);
+                if(isMobileVersion && window.cooData && window.cooData.oywebHost) {
+                    window.location.href = window.cooData.oywebHost+'/mob/home';
+                }
             };
         }
         return () => {

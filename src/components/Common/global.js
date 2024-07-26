@@ -62,12 +62,14 @@ export const OYSAPE_MOBILE_NAME = 'OysapeMobile';
 
 export let isDesktopVersion = navigator.userAgent.indexOf(OYSAPE_DESKTOP_NAME) !== -1;
 export let isMobileVersion = navigator.userAgent.indexOf(OYSAPE_MOBILE_NAME) !== -1;
+export let isTabletOrPhone = navigator.userAgent.indexOf(OYSAPE_MOBILE_NAME) === -1 && (navigator.userAgent.indexOf('iPhone') !== -1 || navigator.userAgent.indexOf('iPad') !== -1 || navigator.userAgent.indexOf('Android') !== -1);
 export let isIos = navigator.userAgent.indexOf('iPhone') !== -1 || navigator.userAgent.indexOf('iPad') !== -1;
 export let isMacOs = navigator.userAgent.indexOf('Macintosh') !== -1 || navigator.userAgent.indexOf('Mac OS') !== -1 || navigator.userAgent.indexOf('macOS') !== -1;
 
 window.updateUserAgent = function() {
   isDesktopVersion = navigator.userAgent.indexOf(OYSAPE_DESKTOP_NAME) !== -1;
   isMobileVersion = navigator.userAgent.indexOf(OYSAPE_MOBILE_NAME) !== -1;
+  isTabletOrPhone = navigator.userAgent.indexOf(OYSAPE_MOBILE_NAME) === -1 && (navigator.userAgent.indexOf('iPhone') !== -1 || navigator.userAgent.indexOf('iPad') !== -1 || navigator.userAgent.indexOf('Android') !== -1);
   isIos = navigator.userAgent.indexOf('iPhone') !== -1 || navigator.userAgent.indexOf('iPad') !== -1;
   isMacOs = navigator.userAgent.indexOf('Macintosh') !== -1 || navigator.userAgent.indexOf('Mac OS') !== -1 || navigator.userAgent.indexOf('macOS') !== -1;
   callApi('get_token').then((data) => {
@@ -436,7 +438,7 @@ export const writeWelcome = function(xterm) {
     // xterm.write('\x1b[36m'+text+'\x1b[0m '); // cyan text
     // xterm.write('\x1b[37m'+text+'\x1b[0m \r\n'); // white text
     xterm.write(colorizeText('Welcome! \r\n\r\n', 'green'));
-    if(!isMobileVersion){
+    if(!isMobileVersion && !isTabletOrPhone){
       xterm.write(colorizeText(ctrlOrMeta+'+K','cyan') + ' - Clear the workspace/terminal\r\n\r\n');
       xterm.write(colorizeText(ctrlOrMeta+'+P','cyan') + ' - Search for Teams/Servers/Tasks/Pipelines/Files\r\n\r\n');
       xterm.write(colorizeText(ctrlOrMeta+'+Shift+@','cyan') + ' - Search for Servers\r\n\r\n');

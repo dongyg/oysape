@@ -14,7 +14,7 @@ def handle_github_event(headers, payload):
     # if apiObj:
     #     # Call a task or pipeline if API object is found. runMode=command will get the output synchronously
     #     print(apiObj.callTask({'runMode':'command', 'taskKey':'hello', 'serverKey':'localhost'}))
-    #     # Send a notification to users by emails
+    #     # Send an App notification to specific users
     #     print(apiObj.sendNotification({'recipients':[], 'title':"Hello, World!", 'message':"Hello, World!"}))
 
 
@@ -29,5 +29,5 @@ def handle_bitbucket_event(headers, payload):
     # if apiObj:
     #     # Call a task or pipeline if API object is found. runMode=command will get the output synchronously
     #     print(apiObj.callPipeline({'runMode':'command', 'pipelineName':'hello world'}))
-    #     # Send a notification to users by emails
+    #     # Send an App notification to specific users
     #     print(apiObj.sendNotification({'recipients':[], 'title':"Hello, World!", 'message':"Hello, World!"}))

@@ -222,11 +222,11 @@ class SSHClient:
                 self.channel_available = True
                 self.send_to_channel(LF, human=False)
                 if self.startup:
-                    print('startup', self.startup)
+                    print('startup', self.startup, flush=True)
                     for taskKey in self.startup:
                         taskObj = self.parentApi.getTaskObject(taskKey)
                         taskCmds = self.parentApi.getTaskCommands(taskKey)
-                        print('exec', taskKey, taskObj, taskCmds)
+                        print('exec', taskKey, taskObj, taskCmds, flush=True)
                         self.parentApi.execTask(taskKey, taskObj, taskCmds, self, output=False)
             except:
                 pass
@@ -558,7 +558,7 @@ class SSHClient:
             sftp.close()
             return {'fileList': files}
         except Exception as e:
-            print(self.hostname, folder)
+            print(self.hostname, folder, flush=True)
             traceback.print_exc()
             return {'errinfo': str(e)}
 
@@ -577,7 +577,7 @@ class SSHClient:
                 sftp.close()
             return {'content': base64.b64encode(content).decode()}
         except Exception as e:
-            print(self.hostname, thisPath)
+            print(self.hostname, thisPath, flush=True)
             traceback.print_exc()
             return {'errinfo': str(e)}
 
@@ -594,7 +594,7 @@ class SSHClient:
             sftp.close()
             return {}
         except Exception as e:
-            print(self.hostname, thisPath)
+            print(self.hostname, thisPath, flush=True)
             traceback.print_exc()
             return {'errinfo': str(e)}
 
@@ -654,7 +654,7 @@ class SSHClient:
             outerr = stderr.read().decode()
             return {'output': output, 'errinfo': outerr}
         except Exception as e:
-            print(command)
+            print(command, flush=True)
             traceback.print_exc()
             return {'errinfo': str(e)}
 
@@ -678,7 +678,7 @@ class SSHClient:
             outerr = stderr.read().decode()
             return {'output': output, 'errinfo': outerr}
         except Exception as e:
-            print(command)
+            print(command, flush=True)
             traceback.print_exc()
             return {'errinfo': str(e)}
 

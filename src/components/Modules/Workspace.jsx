@@ -1,5 +1,5 @@
-import React from 'react';
-import { App } from 'antd';
+import React, {useCallback} from 'react';
+import { App, Button, notification, Space } from 'antd';
 import { Base64 } from 'js-base64';
 import { Terminal } from "xterm";
 import { FitAddon } from "xterm-addon-fit";
@@ -8,7 +8,7 @@ import "xterm/css/xterm.css";
 
 import { useCustomContext } from '../Contexts/CustomContext'
 import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
-import { callApi, writeWelcome, colorizeText, isMobileVersion } from '../Common/global';
+import { callApi, writeWelcome, colorizeText, isMobileVersion, isTabletOrPhone } from '../Common/global';
 import "./Terminal.css";
 
 const termOptions = {
@@ -21,8 +21,9 @@ const termOptions = {
 }
 
 export default function WorkspaceTerminal(props) {
-  const { message, notification } = App.useApp();
-  const { customTheme, setTabActiveKey, tabItems, setTabItems, setBrowserInfo, userSession } = useCustomContext();
+    const { message } = App.useApp();
+    const [api, contextHolder] = notification.useNotification();
+    const { customTheme, setTabActiveKey, tabItems, setTabItems, setBrowserInfo, userSession } = useCustomContext();
     const xtermRef = React.useRef(null)
     const divTerminalContainer = React.useRef(null)
     const currentWorkingChannel = React.useRef('')
@@ -137,52 +138,79 @@ export default function WorkspaceTerminal(props) {
         }
     }, [setBrowserInfo, uniqueKey]);
 
+    const socketOnOpen = useCallback(() => {
+        console.log('WebSocket Connected');
+        message.success('WebSocket Connected');
+        socketObject.current.send(JSON.stringify({action: 'init', uniqueKey:uniqueKey }));
+        socketPinger.current = setInterval(() => {
+            if (socketObject.current.readyState === WebSocket.OPEN) {
+                socketObject.current.send(JSON.stringify({action: 'ping', uniqueKey:uniqueKey }));
+            }
+        }, 30*1000);
+    }, [uniqueKey, message]);
+    const socketOnMessage = useCallback((event) => {
+        const message = event.data;
+        const pack1 = JSON.parse(Base64.decode(message));
+        if(pack1.action === 'data') {
+            xtermRef.current.write(Base64.decode(pack1.data));
+        }else if(pack1.action === 'closeThisTab') {
+            window.closeThisTab && window.closeThisTab(pack1.uniqueKey);
+        }else if(pack1.action === 'updateWorkspaceTabTitle') {
+            window.updateWorkspaceTabTitle && window.updateWorkspaceTabTitle(pack1.serverKey);
+        }
+    }, []);
+    const socketOnClose = useCallback(() => {
+        console.log('WebSocket Closed');
+        socketPinger.current && clearInterval(socketPinger.current);
+    }, [])
+    const socketOnError =useCallback((error) => {
+        // console.error('WebSocket Error: ', error);
+        if(process.env.NODE_ENV !== 'development'){
+            message.error('Websocket disconnected');
+        }
+        socketPinger.current && clearInterval(socketPinger.current);
+        if((isMobileVersion || isTabletOrPhone)) {
+            // if(window.cooData && window.cooData.oywebHost){
+            //     window.location.href = window.cooData.oywebHost+'/mob/home';
+            // }
+            // If the websocket is broken, show a notification and allow user to reconnect in Tablet/Phone/Mobile version
+            socketPinger.current && clearInterval(socketPinger.current);
+            api.warning({
+                key: 'webSocketReconnect',
+                message: 'Websocket disconnected',
+                description: 'Click the button below to reconnect',
+                duration: 0,
+                btn: (
+                    <Space>
+                      <Button type="primary" onClick={() => {
+                        api.destroy('webSocketReconnect');
+                        window.reloadUserSession && window.reloadUserSession();
+                        window.createWebSocket && window.createWebSocket();
+                      }}>Reconnect</Button>
+                    </Space>
+                ),
+            });
+        }
+    },[api, message])
+
+    const createWebSocket = useCallback(() => {
+        const url = process.env.NODE_ENV === 'development'
+            ? `ws://${window.location.hostname}:19790/websocket` // for local testing
+            : ((window.OYSAPE_BACKEND_HOST||'').replace('http', 'ws')+'/websocket');
+        console.log(url);
+        socketObject.current = new WebSocket(url);
+        xtermRef.current.socketObject = socketObject.current;
+        socketObject.current.onopen = socketOnOpen;
+        socketObject.current.onmessage = socketOnMessage;
+        socketObject.current.onclose = socketOnClose;
+        socketObject.current.onerror = socketOnError;
+    }, [socketOnOpen, socketOnMessage, socketOnClose, socketOnError]);
+    window.createWebSocket = createWebSocket;
+
     React.useEffect(() => {
         const hasSocket = !!socketObject.current;
         if(!hasSocket) {
-            const url = process.env.NODE_ENV === 'development'
-                ? `ws://${window.location.hostname}:19790/websocket` // for local testing
-                : ((window.OYSAPE_BACKEND_HOST||'').replace('http', 'ws')+'/websocket');
-            console.log(url);
-            socketObject.current = new WebSocket(url);
-            xtermRef.current.socketObject = socketObject.current;
-            socketObject.current.onopen = () => {
-                console.log('WebSocket Connected');
-                socketObject.current.send(JSON.stringify({action: 'init', uniqueKey:uniqueKey }));
-                socketPinger.current = setInterval(() => {
-                    if (socketObject.current.readyState === WebSocket.OPEN) {
-                        socketObject.current.send(JSON.stringify({action: 'ping', uniqueKey:uniqueKey }));
-                    }
-                }, 30*1000);
-            }
-            socketObject.current.onmessage = function(event) {
-                const message = event.data;
-                const pack1 = JSON.parse(Base64.decode(message));
-                if(pack1.action === 'data') {
-                    xtermRef.current.write(Base64.decode(pack1.data));
-                }else if(pack1.action === 'closeThisTab') {
-                    window.closeThisTab && window.closeThisTab(pack1.uniqueKey);
-                }else if(pack1.action === 'updateWorkspaceTabTitle') {
-                    window.updateWorkspaceTabTitle && window.updateWorkspaceTabTitle(pack1.serverKey);
-                }
-            }
-            socketObject.current.onclose = () => {
-                console.log('WebSocket Disconnected');
-                socketPinger.current && clearInterval(socketPinger.current);
-            };
-            socketObject.current.onerror = (error) => {
-                // console.error('WebSocket Error: ', error);
-                if(process.env.NODE_ENV !== 'development'){
-                    notification.error({
-                        message: 'WebSocket Error',
-                        description: 'Failed to connect to WebSocket. Terminal communication will be unavailable.',
-                    });
-                }
-                socketPinger.current && clearInterval(socketPinger.current);
-                if(isMobileVersion && window.cooData && window.cooData.oywebHost) {
-                    window.location.href = window.cooData.oywebHost+'/mob/home';
-                }
-            };
+            createWebSocket();
         }
         return () => {
             if(socketObject.current) {
@@ -190,7 +218,7 @@ export default function WorkspaceTerminal(props) {
                 socketObject.current = null;
             }
         }
-    }, [notification, uniqueKey]);
+    }, [createWebSocket]);
 
     React.useEffect(() => {
         xtermRef.current.setOption('theme', {
@@ -206,8 +234,11 @@ export default function WorkspaceTerminal(props) {
     }, divTerminalContainer.current);
 
     return (
-        <div className={customTheme.className} style={{ height: "100%" }}>
-            <div id="terminal_workspace" ref={divTerminalContainer} style={{ height: "100%", width: "100%" }}></div>
-        </div>
+        <>
+            {contextHolder}
+            <div className={customTheme.className} style={{ height: "100%" }}>
+                <div id="terminal_workspace" ref={divTerminalContainer} style={{ height: "100%", width: "100%" }}></div>
+            </div>
+        </>
     );
 }

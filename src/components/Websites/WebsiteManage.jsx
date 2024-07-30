@@ -406,7 +406,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                     vertical: 'visible',
                     horizontal: 'visible',
                   },
-                  automaticLayout: true,
+                  automaticLayout: false,
                 }}
                 onMount={(editor, monaco) => {
                   editor.onDidChangeModelDecorations(() => {

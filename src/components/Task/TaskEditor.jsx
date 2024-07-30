@@ -193,7 +193,7 @@ export default function TaskEditor(props) {
                   vertical: 'visible',
                   horizontal: 'visible',
                 },
-                automaticLayout: true,
+                automaticLayout: false,
               }}
               onMount={(editor, monaco) => {
                 editor.onDidChangeModelDecorations(() => {

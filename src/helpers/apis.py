@@ -90,18 +90,19 @@ def mainloop(window):
     window.load_url(consts.HOME_ENTRY)
     # Get default user agent
     user_agent = window.evaluate_js('navigator.userAgent')
-    # Add OysapeDesktop to the default user agent, so that the React JS can work on the right user agent. Then the Codeium Editor will work properly
-    apiInstances[webview.token].clientUserAgent = f'{user_agent} OysapeDesktop/3.7.12'
-    # Change user agent for webview. So that the webview(javascript) can get the right user agent, and know if it's OysapeDesktop or not
-    script = f'''
-    Object.defineProperty(navigator, 'userAgent', {{
-        get: function() {{
-            return '{apiInstances[webview.token].clientUserAgent}';
-        }}
-    }});
-    window.updateUserAgent && window.updateUserAgent();
-    '''
-    window.evaluate_js(script)
+    if user_agent.find('OysapeDesktop') < 0:
+        # Add OysapeDesktop to the default user agent, so that the React JS can work on the right user agent. Then the Codeium Editor will work properly
+        apiInstances[webview.token].clientUserAgent = f'{user_agent} OysapeDesktop/3.7.12'
+        # Change user agent for webview. So that the webview(javascript) can get the right user agent, and know if it's OysapeDesktop or not
+        script = f'''
+        Object.defineProperty(navigator, 'userAgent', {{
+            get: function() {{
+                return '{apiInstances[webview.token].clientUserAgent}';
+            }}
+        }});
+        window.updateUserAgent && window.updateUserAgent();
+        '''
+        window.evaluate_js(script)
     if consts.IS_DEBUG: print(apiInstances[webview.token].clientUserAgent)
 
 

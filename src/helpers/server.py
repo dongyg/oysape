@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import sys, threading, traceback, os, json, hashlib, hmac, time
+import sys, threading, traceback, os, json, hashlib, hmac, time, socket
 import logging
 from queue import Queue
 from bottle import Bottle, request, static_file, abort, response, hook, redirect
@@ -383,26 +383,31 @@ def serve_static(filename):
 
 ################################################################################
 def open_http_server(host='', port=19790, queue=None):
-    # run(app, host='127.0.0.1', port=port)
     try:
+        # Try to bind the port
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind((host or "127.0.0.1", port))
+        sock.close()
+        # Start the server
         server = WSGIServer((host or "127.0.0.1", port), app, handler_class=WebSocketHandler)
+        if queue is not None:
+            queue.put(True)
+        logging.info(('Websocket server started on port', port))
         server.serve_forever()
     except Exception as e:
         logging.info(('Websocket server failed to start on port', port, str(e)))
-        result = False
         if queue is not None:
-            queue.put(result)
+            queue.put(False)
 
 def start_http_server(host='', port=19790):
-    # Start a thread with the server
     result_queue = Queue()
     http_server_thread = threading.Thread(target=open_http_server, kwargs={'host': host, 'port': port, 'queue': result_queue})
-    http_server_thread.daemon = True  # Set as a daemon thread
+    http_server_thread.daemon = True
     http_server_thread.start()
-    # Get the thread's result
-    if not result_queue.empty():
-        return result_queue.get()
-    else:
-        logging.info(('Websocket server started on port', port))
-        return True
-
+    # Wait for the result
+    try:
+        result = result_queue.get(timeout=5)  # 5 seconds timeout
+        return result
+    except Queue.Empty:
+        logging.info(('Websocket server start timeout on port', port))
+        return False

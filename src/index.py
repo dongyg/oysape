@@ -26,6 +26,7 @@ def initialize_app():
         webview.start(apis.mainloop, windowObj, debug=consts.IS_DEBUG, private_mode=False, user_agent=clientAgent)
         print('Bye.')
     else:
+        print("Failed to start websocket server.")
         logging.error("Failed to start websocket server.")
 
 

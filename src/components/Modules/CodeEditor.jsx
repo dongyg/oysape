@@ -18,33 +18,46 @@ export default function CodeEditor(props) {
   const [value, setValue] = React.useState('');
   const [langExts, setLangExts] = React.useState([]);
   const [langCurr, setLangCurr] = React.useState(null);
+  const langCurrRef = React.useRef(null);
   const inputCode = React.useRef(null);
   const uniqueKey = props.uniqueKey;
 
-  const handleEditorDidMount = (editor, monaco) => {
-    inputCode.current = editor;
-    window.oypaseTabs = window.oypaseTabs || {};
-    window.oypaseTabs[uniqueKey] = editor;
-    editor.onDidChangeCursorPosition((e) => {
-      if(tabActiveKey !== uniqueKey) return;
-      const position = e.position;
-      let rowColText = `Ln ${position.lineNumber}, Col ${position.column}`;
-      setCodeEditRowColText(rowColText);
-    });
-
-    editor.onDidChangeCursorSelection((e) => {
-      if(tabActiveKey !== uniqueKey) return;
-      const selection = e.selection;
+  const updateStatusBar = (editor) => {
+    if(tabActiveKey !== uniqueKey) return;
+    const selection = editor.getSelection();
+    if(selection) {
       const selectionLength = editor.getModel().getValueInRange(selection).length;
       if (selectionLength > 0) {
         let rowColText = `${selectionLength} characters selected`;
-        if (e.secondarySelections && e.secondarySelections.length > 0) {
-          rowColText = `${e.secondarySelections.length + 1} selections (${selectionLength} characters selected)`;
+        const secondarySelections = editor.getSelections();
+        if (secondarySelections && secondarySelections.length > 0) {
+          rowColText = `${secondarySelections.length} selections (${selectionLength*secondarySelections.length} characters selected)`;
         }
         setCodeEditRowColText(rowColText);
+      }else{
+        const position = editor.getPosition();
+        let rowColText = `Ln ${position.lineNumber}, Col ${position.column}`;
+        setCodeEditRowColText(rowColText);
       }
-    });
+    }
+    setCodeEditCurrentLang(langCurrRef.current);
   }
+
+  const handleEditorDidMount = React.useCallback((editor, monaco) => {
+    inputCode.current = editor;
+    window.oypaseTabs = window.oypaseTabs || {};
+    window.oypaseTabs[uniqueKey] = editor;
+    updateStatusBar(editor);
+    editor.onDidFocusEditorWidget((e) => {
+      updateStatusBar(editor);
+    })
+    editor.onDidChangeCursorPosition((e) => {
+      updateStatusBar(editor);
+    });
+    editor.onDidChangeCursorSelection((e) => {
+      updateStatusBar(editor);
+    });
+  }, []);
 
   const onValuesChange = React.useCallback((val, viewUpdate) => {
     setValue(val);
@@ -63,10 +76,18 @@ export default function CodeEditor(props) {
   React.useEffect(() => {
     // console.log(props);
     const v1 = editorType==='monaco'?getMonacoLanguages(props.filename):getCodeMirrorLanguages(props.filename);
-    setLangCurr(v1&&v1.length>0?v1[0]:'plaintext');
-    setCodeEditCurrentLang(v1&&v1.length>0?v1[0]:'plaintext');
-    const v2 = v1.map(lang=>loadLanguage(lang));
-    setLangExts(v2);
+    const v2 = v1&&v1.length>0?v1[0]:'plaintext';
+    setLangCurr(v2);
+    setCodeEditCurrentLang(v2);
+    const v3 = v1.map(lang=>loadLanguage(lang));
+    setLangExts(v3);
+  }, [editorType, props.filename, setCodeEditCurrentLang, setLangCurr, setLangExts, uniqueKey]);
+
+  React.useEffect(() => {
+    langCurrRef.current = langCurr;
+  }, [langCurr]);
+
+  React.useEffect(() => {
     if(props.filebody){
       setValue(props.filebody);
     }else if(props.filename) {
@@ -102,7 +123,7 @@ export default function CodeEditor(props) {
       }
     }
     window.oypaseTabs = window.oypaseTabs || {}; window.oypaseTabs[uniqueKey] = inputCode.current;
-  }, [setCodeEditCurrentLang, props, uniqueKey, message]); // Donot include editorType, tabItems, to avoid reload value when editorType changes
+  }, [setCodeEditCurrentLang, props, uniqueKey, message, setTabItems]); // Donot include tabItems,editorType, to avoid loop reload value
 
   const chooseLang = (lang) => {
     setLangCurr(lang);

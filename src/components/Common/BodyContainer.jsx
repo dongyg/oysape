@@ -25,7 +25,7 @@ export default function BodyContainer() {
           <div style={{ paddingRight: '4px' }}>{codeEditRowColText}</div>
           <div style={{ paddingRight: '0px' }}>
             <Button type='text'
-              style={{ height: '23px', padding: '0 4px', borderRadius: '0px', marginTop: '-1px' }}
+              style={{ height: '22px', padding: '0 4px', borderRadius: '0px', marginTop: '0px' }}
               onClick={ () => { setSearchMode('language'); } }
             >{codeEditCurrentLang}</Button>
           </div>

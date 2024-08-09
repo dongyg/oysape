@@ -21,7 +21,7 @@ def getApiObjectByTeam(tname):
         if file.endswith('.json'):
             teamId = os.path.splitext(file)[0]
             if scheduler.apiSchedulers.get(teamId) == None:
-                scheduler.apiSchedulers[teamId] = ApiScheduler(clientId='scheduler_for_'+teamId, clientUserAgent='OysapeScheduler/3.7.12')
+                scheduler.apiSchedulers[teamId] = ApiScheduler(clientId='scheduler_for_'+teamId, clientUserAgent='OysapeScheduler/3.8.5')
                 scheduler.apiSchedulers[teamId].teamId = teamId
                 scheduler.apiSchedulers[teamId].reloadUserSession({'credentials': scheduler.apiSchedulers[teamId].loadCredentials()})
     for tid in scheduler.apiSchedulers:
@@ -92,7 +92,7 @@ def mainloop(window):
     user_agent = window.evaluate_js('navigator.userAgent')
     if user_agent.find('OysapeDesktop') < 0:
         # Add OysapeDesktop to the default user agent, so that the React JS can work on the right user agent. Then the Codeium Editor will work properly
-        apiInstances[webview.token].clientUserAgent = f'{user_agent} OysapeDesktop/3.7.12'
+        apiInstances[webview.token].clientUserAgent = f'{user_agent} OysapeDesktop/3.8.5'
         # Change user agent for webview. So that the webview(javascript) can get the right user agent, and know if it's OysapeDesktop or not
         script = f'''
         Object.defineProperty(navigator, 'userAgent', {{

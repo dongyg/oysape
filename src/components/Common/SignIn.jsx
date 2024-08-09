@@ -4,7 +4,7 @@ import { App, Layout, Button, Image, Alert, } from 'antd';
 import { GithubOutlined, GoogleOutlined, GlobalOutlined, LoadingOutlined, AppleFilled } from "@ant-design/icons";
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { isDesktopVersion, callApi, getCredentials, setTokenToCookie, delTokenFromCookie, isMobileVersion, setDataToCookie } from '../Common/global';
+import { isDesktopVersion, callApi, callNativeApi, getCredentials, setTokenToCookie, delTokenFromCookie, isMobileVersion, setDataToCookie } from '../Common/global';
 
 export default function BodyContainer() {
   const { message } = App.useApp();
@@ -94,6 +94,11 @@ export default function BodyContainer() {
       setLoading(false);
       if(data?.uid) {
         setUserSession(data);
+        if(isMobileVersion) {
+          callNativeApi('updateUserSession', data).then((resp) => {
+          }).catch((error) => {
+          });
+        }
       }else if(data?.errinfo) {
         window.showMessageInWebpage && window.showMessageInWebpage(data.errinfo);
         delTokenFromCookie();

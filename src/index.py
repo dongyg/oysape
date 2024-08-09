@@ -6,7 +6,7 @@ import webview
 from helpers import server, consts, apis
 
 def initialize_app():
-    version = '3.7.12'
+    version = '3.8.5'
     # os_info = distro.name(pretty=True) if platform.system() == 'Linux' else platform.platform()
     # Give a user agent including OysapeDesktop, so that the SignIn.jsx in React JS can indicate this is a desktop version.
     # Otherwise, the SignIn.jsx in React JS will execute reloadUserSession because it is not a desktop version as the beginning.

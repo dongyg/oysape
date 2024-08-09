@@ -2,12 +2,14 @@ import React from 'react'
 import CodeMirror from '@uiw/react-codemirror'
 import { CodeiumEditor } from "@codeium/react-code-editor";
 import { Base64 } from 'js-base64';
-import { App } from 'antd';
+import { App, Dropdown, Tag } from 'antd';
+import { CloseOutlined, SaveOutlined } from '@ant-design/icons';
+import { BsThreeDots } from "react-icons/bs";
 import { solarizedLight, solarizedDark } from '@uiw/codemirror-theme-solarized';
 import { loadLanguage } from '@uiw/codemirror-extensions-langs';
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { callApi, getCodeMirrorLanguages, getMonacoLanguages } from '../Common/global';
+import { callApi, getCodeMirrorLanguages, getMonacoLanguages, isMacOs, isTouchDevice } from '../Common/global';
 import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
 
 import './CodeEditor.css';
@@ -46,7 +48,7 @@ export default function CodeEditor(props) {
   const handleEditorDidMount = React.useCallback((editor, monaco) => {
     inputCode.current = editor;
     window.oypaseTabs = window.oypaseTabs || {};
-    window.oypaseTabs[uniqueKey] = editor;
+    window.oypaseTabs[uniqueKey] = inputCode.current;
     updateStatusBar(editor);
     editor.onDidFocusEditorWidget((e) => {
       updateStatusBar(editor);
@@ -59,6 +61,39 @@ export default function CodeEditor(props) {
     });
   }, []);
 
+  const onContextClick = (e) => {
+    if(e.domEvent) e.domEvent.stopPropagation();
+    if(e.key === 'menuCloseTab') {
+      window.closeThisTab && window.closeThisTab(uniqueKey);
+    }else if(e.key === 'menuOpenQuickCommandPalette') {
+      // Codeium Editor
+      if (window.oypaseTabs[uniqueKey].getValue) {
+        window.oypaseTabs[uniqueKey].focus();
+        window.oypaseTabs[uniqueKey].trigger('', 'editor.action.quickCommand', null);
+      }
+    }else if(e.key === 'menuSaveContent') {
+      if(tabActiveKey === uniqueKey) {
+        if(window.oypaseTabs[uniqueKey].state && window.oypaseTabs[uniqueKey].state && window.oypaseTabs[uniqueKey].state.doc.toString) {
+          // CodeMirror
+          saveFile(props.filename, props.tabTitle, window.oypaseTabs[uniqueKey].state.doc.toString(), props.target);
+        } else if (window.oypaseTabs[uniqueKey].getValue) {
+          // Codeium Editor
+          saveFile(props.filename, props.tabTitle, window.oypaseTabs[uniqueKey].getValue(), props.target);
+        }
+      }
+    }
+  }
+  const contextMenuIconWithDropdown = <Dropdown
+    menu={{items: [
+        { key: 'menuCloseTab', label: <span>Close <Tag>{isMacOs ? '⌘' : 'Ctrl'}+W</Tag></span>, icon: <CloseOutlined />, },
+        { type: 'divider', },
+        { key: 'menuSaveContent', label: <span>Save <Tag>{isMacOs ? '⌘' : 'Ctrl'}+S</Tag></span>, icon: <SaveOutlined />, },
+        editorType!=='monaco' ? null : { type: 'divider', },
+        editorType!=='monaco' ? null : { key: 'menuOpenQuickCommandPalette', label: 'Command Palette', },
+      ], onClick: onContextClick}} trigger={['click']}>
+    <BsThreeDots />
+  </Dropdown>
+
   const onValuesChange = React.useCallback((val, viewUpdate) => {
     setValue(val);
     var hasSomethingNew = false;
@@ -66,12 +101,24 @@ export default function CodeEditor(props) {
       if(item.key === uniqueKey && item.label.indexOf('* ') !== 0) {
         hasSomethingNew = true;
         item.hasSomethingNew = true;
-        item.label = (item.label.indexOf('* ') === 0 ? '' : '* ') + item.label;
+        item.label = (item.label.indexOf('* ') === 0 ? '' : '* ') + props.tabTitle;
+        item.icon = isTouchDevice() ? contextMenuIconWithDropdown : null;
       }
       return item;
     });
     if(hasSomethingNew) setTabItems(newItems);
-  }, [uniqueKey, tabItems, setTabItems])
+  }, [uniqueKey, tabItems, setTabItems, props.tabTitle]);
+
+  React.useEffect(() => {
+    const newItems = tabItems.map((item) => {
+      if(item.key === uniqueKey) {
+        item.label = (item.hasSomethingNew ? '* ' : '') + props.tabTitle;
+        item.icon = isTouchDevice() ? contextMenuIconWithDropdown : null;
+      }
+      return item;
+    });
+    setTabItems(newItems);
+  }, [editorType]);
 
   React.useEffect(() => {
     // console.log(props);
@@ -96,6 +143,7 @@ export default function CodeEditor(props) {
           setTabItems(tabItems.map((item) => {
             if(item.key === uniqueKey) {
               item.label = props.tabTitle;
+              item.icon = isTouchDevice() ? contextMenuIconWithDropdown : null;
             }
             return item;
           }));
@@ -111,6 +159,7 @@ export default function CodeEditor(props) {
           setTabItems(tabItems.map((item) => {
             if(item.key === uniqueKey) {
               item.label = props.tabTitle;
+              item.icon = isTouchDevice() ? contextMenuIconWithDropdown : null;
             }
             return item;
           }));
@@ -122,7 +171,7 @@ export default function CodeEditor(props) {
         })
       }
     }
-    window.oypaseTabs = window.oypaseTabs || {}; window.oypaseTabs[uniqueKey] = inputCode.current;
+    // window.oypaseTabs = window.oypaseTabs || {}; window.oypaseTabs[uniqueKey] = inputCode.current;
   }, [setCodeEditCurrentLang, props, uniqueKey, message, setTabItems]); // Donot include tabItems,editorType, to avoid loop reload value
 
   const chooseLang = (lang) => {
@@ -144,6 +193,7 @@ export default function CodeEditor(props) {
           if(item.key === uniqueKey) {
             item.hasSomethingNew = false;
             item.label = title;
+            item.icon = isTouchDevice() ? contextMenuIconWithDropdown : null;
           }
           return item;
         });
@@ -161,6 +211,7 @@ export default function CodeEditor(props) {
             if(item.key === uniqueKey) {
               item.hasSomethingNew = false;
               item.label = title;
+              item.icon = isTouchDevice() ? contextMenuIconWithDropdown : null;
             }
             return item;
           });
@@ -179,7 +230,7 @@ export default function CodeEditor(props) {
   return (
     <>{
       editorType==='monaco' ?
-      <CodeiumEditor ref={inputCode} height={'100%'}
+      <CodeiumEditor height={'100%'}
         theme={customTheme.isDark?'vs-dark':'light'}
         language={langCurr}
         value={value}
@@ -196,13 +247,18 @@ export default function CodeEditor(props) {
           automaticLayout: true,
         }}
       /> :
-      <CodeMirror ref={inputCode}
+      <CodeMirror
         style={{ height: '100%' }}
         theme={customTheme.isDark?solarizedDark:solarizedLight}
         basicSetup={{highlightActiveLine:false}}
         value={value}
         extensions={langExts}
         autoFocus={true}
+        onCreateEditor={(view, state) => {
+          inputCode.current = view;
+          window.oypaseTabs = window.oypaseTabs || {};
+          window.oypaseTabs[uniqueKey] = inputCode.current;
+        }}
         onChange={onValuesChange}
         onStatistics={(data)=>{
           if(tabActiveKey !== uniqueKey) {

@@ -22,7 +22,7 @@ API_ROOT = '/oyapi'
 
 # Variables for local app
 # HOME_ENTRY = 'http://localhost:3000'
-HOME_ENTRY = 'http://127.0.0.1:19790/index.html?v=3.7.12'
+HOME_ENTRY = 'http://127.0.0.1:19790/index.html?v=3.8.5'
 
 
 # Variables for server conmunication

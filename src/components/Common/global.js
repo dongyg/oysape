@@ -65,6 +65,7 @@ export let isMobileVersion = navigator.userAgent.indexOf(OYSAPE_MOBILE_NAME) !==
 export let isTabletOrPhone = navigator.userAgent.indexOf(OYSAPE_MOBILE_NAME) === -1 && (navigator.userAgent.indexOf('iPhone') !== -1 || navigator.userAgent.indexOf('iPad') !== -1 || navigator.userAgent.indexOf('Android') !== -1);
 export let isIos = navigator.userAgent.indexOf('iPhone') !== -1 || navigator.userAgent.indexOf('iPad') !== -1;
 export let isMacOs = navigator.userAgent.indexOf('Macintosh') !== -1 || navigator.userAgent.indexOf('Mac OS') !== -1 || navigator.userAgent.indexOf('macOS') !== -1;
+export let isTouchDevice = () => true ||'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
 window.updateUserAgent = function() {
   isDesktopVersion = navigator.userAgent.indexOf(OYSAPE_DESKTOP_NAME) !== -1;

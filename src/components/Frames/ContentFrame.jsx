@@ -45,7 +45,8 @@ const ContentFrame = () => {
         modal.confirm({
           title: 'Confirm to close',
           icon: <QuestionCircleFilled />,
-          content: '[' + tabTitle + '] will be closed. All unsaved changes will be lost.',
+          okText: 'Discard',
+          content: '[' + tabTitle + '] will be closed. All unsaved changes will be discarded.',
           onOk() {
             removeTab(targetKey);
           },

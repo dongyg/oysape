@@ -9,7 +9,9 @@ const AppRoot = () => {
   const { customTheme, userSession } = useCustomContext();
 
   const showMessageInWebpage = (content, level) => {
-    if(content) message[level||level||'info'](content);
+    // 本来是想提供给 mobile app 调用的, 以便显示一个提示消息, 没有用到
+    const lambda = message[level||'info'];
+    if(content && lambda && typeof lambda === 'function') lambda(content);
   };
   window.showMessageInWebpage = showMessageInWebpage;
 

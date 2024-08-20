@@ -162,10 +162,8 @@ export default function ProfileButton() {
         },
       });
     }else if(key === 'menuTest3') {
-      // callApi('testApi', {}).then((res) => {
-      //   message.info(JSON.stringify(res));
-      // })
-      console.log(JSON.stringify(userSession))
+      // console.log(JSON.stringify(userSession))
+      console.log(typeof message['info']);
     }else{
       // If key is teamId, switch team
       if(userSession && userSession.teams){

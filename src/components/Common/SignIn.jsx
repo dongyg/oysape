@@ -82,9 +82,11 @@ export default function BodyContainer() {
   }
 
   const showMessageInWebpage = (content, level) => {
+    // 本来是想提供给 mobile app 调用的, 以便显示一个提示消息, 没有用到
     setMessageContent(content);
-    if(content) message[level||messageType||'info'](content);
     if(level) setMessageType(level);
+    const lambda = message[level||messageType||'info'];
+    if(content && lambda && typeof lambda === 'function') lambda(content);
     setLoading(false);
   };
   window.showMessageInWebpage = showMessageInWebpage;

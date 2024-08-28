@@ -106,6 +106,7 @@ def execScheduleFunction(functionObj, parameterObj):
     # Create a logdb instance to save the scheduler output
     global apiSchedulers
     if functionObj and callable(functionObj):
+        b1 = False
         try:
             obh = parameterObj.get('obh')
             sch = parameterObj.get('sch')
@@ -115,6 +116,7 @@ def execScheduleFunction(functionObj, parameterObj):
             logdb = tools.SQLiteDB(dbpath)
             logdb.delete("DELETE FROM schedule_logs WHERE obh = ? AND sch = ? AND ts < strftime('%s', 'now', '-30 days')", (obh, sch))
             apiSchedulers[teamId].log_id = logdb.insert('INSERT INTO schedule_logs (ts, obh, sch, out1, out2) VALUES (?, ?, ?, ?, ?)', (int(time.time()), obh, sch, '', ''))
+            b1 = True
             print('Scheduled:', apiSchedulers[teamId].log_id, tools.getDatetimeStrFromTimestamp(time.time()), obh, sch)
             result = functionObj(parameterObj)
             if parameterObj.get('runMode') == 'command':
@@ -128,6 +130,8 @@ def execScheduleFunction(functionObj, parameterObj):
             #     f.write('Scheduled execute: %s %s %s %s\n' % (obh, sch, time.time(), retval))
         except Exception as e:
             traceback.print_exc()
+            if b1:
+                logdb.update("UPDATE schedule_logs SET out1 = COALESCE(out1, '') || ? WHERE id = ?", (str(e), apiSchedulers[teamId].log_id))
 
 def initScheduler(obh, schedule_items):
     from . import apis

@@ -395,7 +395,7 @@ def open_http_server(host='', port=19790, queue=None):
         logging.info(('Websocket server started on port', port))
         server.serve_forever()
     except Exception as e:
-        logging.info(('Websocket server failed to start on port', port, str(e)))
+        logging.error(('Websocket server failed to start on port', port, str(e)))
         if queue is not None:
             queue.put(False)
 
@@ -409,5 +409,5 @@ def start_http_server(host='', port=19790):
         result = result_queue.get(timeout=5)  # 5 seconds timeout
         return result
     except Queue.Empty:
-        logging.info(('Websocket server start timeout on port', port))
+        logging.error(('Websocket server start timeout on port', port))
         return False

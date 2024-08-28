@@ -106,25 +106,28 @@ def execScheduleFunction(functionObj, parameterObj):
     # Create a logdb instance to save the scheduler output
     global apiSchedulers
     if functionObj and callable(functionObj):
-        obh = parameterObj.get('obh')
-        sch = parameterObj.get('sch')
-        teamName = parameterObj.get('teamName')
-        teamId = parameterObj.get('teamId')
-        dbpath = os.path.join(apis.folder_base, 'scheduler.db')
-        logdb = tools.SQLiteDB(dbpath)
-        logdb.delete("DELETE FROM schedule_logs WHERE obh = ? AND sch = ? AND ts < strftime('%s', 'now', '-30 days')", (obh, sch))
-        apiSchedulers[teamId].log_id = logdb.insert('INSERT INTO schedule_logs (ts, obh, sch, out1, out2) VALUES (?, ?, ?, ?, ?)', (int(time.time()), obh, sch, '', ''))
-        print('Scheduled:', apiSchedulers[teamId].log_id, tools.getDatetimeStrFromTimestamp(time.time()), obh, sch)
-        result = functionObj(parameterObj)
-        if parameterObj.get('runMode') == 'command':
-            logdb.update("UPDATE schedule_logs SET out1 = COALESCE(out1, '') || ? WHERE id = ?", (result, apiSchedulers[teamId].log_id))
-            scheduleObj = getScheduleObject(sch)
-            if scheduleObj.get('recipients') and result:
-                out2 = re.search(scheduleObj.get('regex'), result) if scheduleObj.get('regex') else [result]
-                if out2:
-                    apiSchedulers[teamId].sendNotification({'recipients': scheduleObj.get('recipients'), 'message': out2[0], 'mid': apiSchedulers[teamId].log_id, 'title': sch, 'obh': obh})
-        # with open(os.path.join(apis.folder_base, 'scheduler.log'), 'a') as f:
-        #     f.write('Scheduled execute: %s %s %s %s\n' % (obh, sch, time.time(), retval))
+        try:
+            obh = parameterObj.get('obh')
+            sch = parameterObj.get('sch')
+            teamName = parameterObj.get('teamName')
+            teamId = parameterObj.get('teamId')
+            dbpath = os.path.join(apis.folder_base, 'scheduler.db')
+            logdb = tools.SQLiteDB(dbpath)
+            logdb.delete("DELETE FROM schedule_logs WHERE obh = ? AND sch = ? AND ts < strftime('%s', 'now', '-30 days')", (obh, sch))
+            apiSchedulers[teamId].log_id = logdb.insert('INSERT INTO schedule_logs (ts, obh, sch, out1, out2) VALUES (?, ?, ?, ?, ?)', (int(time.time()), obh, sch, '', ''))
+            print('Scheduled:', apiSchedulers[teamId].log_id, tools.getDatetimeStrFromTimestamp(time.time()), obh, sch)
+            result = functionObj(parameterObj)
+            if parameterObj.get('runMode') == 'command':
+                logdb.update("UPDATE schedule_logs SET out1 = COALESCE(out1, '') || ? WHERE id = ?", (result, apiSchedulers[teamId].log_id))
+                scheduleObj = getScheduleObject(sch)
+                if scheduleObj.get('recipients') and result:
+                    out2 = re.search(scheduleObj.get('regex'), result) if scheduleObj.get('regex') else [result]
+                    if out2:
+                        apiSchedulers[teamId].sendNotification({'recipients': scheduleObj.get('recipients'), 'message': out2[0], 'mid': apiSchedulers[teamId].log_id, 'title': sch, 'obh': obh})
+            # with open(os.path.join(apis.folder_base, 'scheduler.log'), 'a') as f:
+            #     f.write('Scheduled execute: %s %s %s %s\n' % (obh, sch, time.time(), retval))
+        except Exception as e:
+            traceback.print_exc()
 
 def initScheduler(obh, schedule_items):
     from . import apis

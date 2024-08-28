@@ -96,8 +96,8 @@ export default function ProfileButton() {
       setEditorType('codemirror5');
     }else if(key === 'menuCodeiumAI') {
       setEditorType('monaco');
-    }else if(key === 'menuManageTeams') {
-      window.openWebpageInTab && window.openWebpageInTab('http://localhost:8080/index.html', 'Webpage Demo');
+    // }else if(key === 'menuManageTeams') {
+    //   window.openWebpageInTab && window.openWebpageInTab('http://localhost:8080/index.html', 'Webpage Demo');
     }else if(key === 'menuReloadTeams') {
       reloadEverything(() => {
         message.success('Reloaded');
@@ -163,7 +163,11 @@ export default function ProfileButton() {
       });
     }else if(key === 'menuTest3') {
       // console.log(JSON.stringify(userSession))
-      console.log(typeof message['info']);
+      // window.openWebpageInTab && window.openWebpageInTab('https://aifetel.cc', 'aifetel.cc');
+      // window.openWebpageInTab && window.openWebpageInTab('https://codeium.com/live/general', 'Codeium');
+      callApi('testApi', {}).then((res) => {
+        console.log('res', res);
+      })
     }else{
       // If key is teamId, switch team
       if(userSession && userSession.teams){

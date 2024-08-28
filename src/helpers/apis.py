@@ -182,6 +182,8 @@ class ApiOysape(ApiOauth):
 
     def testApi(self, params):
         # print('ApiOysape.testApi', params)
+        # import webview
+        # window = webview.create_window('Oysape', 'https://codeium.com/live/general', js_api=apiInstances[webview.token], width=480, height=800)
         return {'errinfo': 'test called'}
 
     def hasPermission(self, params):

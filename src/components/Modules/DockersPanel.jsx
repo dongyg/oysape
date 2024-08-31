@@ -1,23 +1,14 @@
 import React, {useState} from 'react';
 
 import { App, Dropdown, Select, Tree, Button, Tooltip, Space } from 'antd';
-import * as AntIcons from '@ant-design/icons';
 
 import { useCustomContext } from '../Contexts/CustomContext'
 import { callApi, getUniqueKey } from '../Common/global';
+import AntIcon from '../Common/AntIcon';
 import CommandInputModal from './TextInputModal';
 import Terminal from '../Modules/UITerminal1';
 
 const { DirectoryTree } = Tree; // 把 Tree 赋值给 DirectoryTree, 然后使用 DirectoryTree 就是出现整行选中效果, 否则就不出现整行选中效果
-
-const AntIcon = ({ name, ...props }) => {
-  const IconComponent = AntIcons[name];
-  if (!IconComponent) { // 如果找不到对应的图标，则返回 null 或默认图标
-    return null;
-    // 或者返回一个默认的图标，例如：return <AntIcons.QuestionCircleOutlined {...props} />;
-  }
-  return <IconComponent {...props} />;
-};
 
 export default function ProjectsPanel() {
   const { message, modal } = App.useApp();

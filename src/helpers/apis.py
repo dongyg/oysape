@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os, traceback, json, json, time, base64, fnmatch, platform, hmac, hashlib, logging
+import os, traceback, json, json, time, base64, fnmatch, platform, hmac, hashlib, logging, webbrowser
 from . import auth, tools, consts, obhs, scheduler
 
 BUF_SIZE = 1024
@@ -21,7 +21,7 @@ def getApiObjectByTeam(tname):
         if file.endswith('.json'):
             teamId = os.path.splitext(file)[0]
             if scheduler.apiSchedulers.get(teamId) == None:
-                scheduler.apiSchedulers[teamId] = ApiScheduler(clientId='scheduler_for_'+teamId, clientUserAgent='OysapeScheduler/3.8.5')
+                scheduler.apiSchedulers[teamId] = ApiScheduler(clientId='scheduler_for_'+teamId, clientUserAgent='OysapeScheduler/3.8.12')
                 scheduler.apiSchedulers[teamId].teamId = teamId
                 scheduler.apiSchedulers[teamId].reloadUserSession({'credentials': scheduler.apiSchedulers[teamId].loadCredentials()})
     for tid in scheduler.apiSchedulers:
@@ -80,7 +80,7 @@ def merge_credentials(c1, c2):
 def loadEntrypointWindow(window=None, apiObject=None):
     import webview
     if not window:
-        window = webview.create_window('Oysape', consts.HOME_ENTRY, js_api=apiObject, width=1280, height=800, confirm_close=True)
+        window = webview.create_window('Oysape'+(' - Debug' if consts.IS_DEBUG else ''), consts.HOME_ENTRY, js_api=apiObject, width=1280, height=800, confirm_close=True)
     else:
         window.load_url(consts.HOME_ENTRY)
     return window
@@ -92,7 +92,7 @@ def mainloop(window):
     user_agent = window.evaluate_js('navigator.userAgent')
     if user_agent.find('OysapeDesktop') < 0:
         # Add OysapeDesktop to the default user agent, so that the React JS can work on the right user agent. Then the Codeium Editor will work properly
-        apiInstances[webview.token].clientUserAgent = f'{user_agent} OysapeDesktop/3.8.5'
+        apiInstances[webview.token].clientUserAgent = f'{user_agent} OysapeDesktop/3.8.12'
         # Change user agent for webview. So that the webview(javascript) can get the right user agent, and know if it's OysapeDesktop or not
         script = f'''
         Object.defineProperty(navigator, 'userAgent', {{
@@ -246,6 +246,19 @@ class ApiOysape(ApiOauth):
             # No token. Return empty session. The frontend will show the sign in buttons and stop the loading.
             return {}
 
+    def downloadNewVersion(self, params={}):
+        if not params.get('version'): return {"errinfo": "No version"}
+        url = 'https://oysape.aifetel.cc/releases/%s/Oysape-windows-standalone.zip' % params.get('version')
+        if self.clientUserAgent.find('Mac OS')>0:
+            url = 'https://oysape.aifetel.cc/releases/%s/Oysape-mac-universal.zip' % params.get('version')
+        elif self.clientUserAgent.find('Linux')>0:
+            if self.clientUserAgent.find('aarch64')>0:
+                url = 'https://oysape.aifetel.cc/releases/%s/Oysape-linux-standalone-aarch64.zip' % params.get('version')
+            elif self.clientUserAgent.find('x86_64')>0:
+                url = 'https://oysape.aifetel.cc/releases/%s/Oysape-linux-standalone-x86_64.zip' % params.get('version')
+        webbrowser.open_new(url)
+        return {'url': url}
+
     def switchToTeam(self, params):
         if not params.get('tid'): return {"errinfo": "No team"}
         credWebhost = self.loadCredentials() if not self.isDesktopVersion() else {}
@@ -262,6 +275,13 @@ class ApiOysape(ApiOauth):
             self.attach_credential_for_server(credWebhost, self.userSession["team0"])
             return self.userSession
         return retval
+
+    def callPromotion(self, params):
+        if not params.get('key'): return {"errinfo": "Not a promotion"}
+        if not params.get('key').startswith('Promotion'): return {"errinfo": "Not a promotion"}
+        if params.get('url'):
+            retval = tools.callServerApiPost(params.get('url'), {}, self)
+            return retval
 
     def saveTeamDataToServer(self, data, needVerify=False):
         for site in (self.userSession.get('sites') or []):
@@ -1363,7 +1383,6 @@ class ApiDesktop(ApiOverHttp):
         return {'errinfo': 'Server not found'}
 
     def openWebHost(self, params={}):
-        import webbrowser
         obh = params.get('obh')
         webbrowser.open_new(obh)
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import sched
+import sched, asyncio
 import threading, os, json, traceback, logging, re
 import time
 
@@ -59,6 +59,7 @@ class ScheduledTaskRunner:
         self.thread = threading.Thread(target=self.run, daemon=True)
         self.lock = threading.Lock()
         self.running = False
+        self.loop = asyncio.new_event_loop()
 
     def start(self):
         """Start scheduler thread"""
@@ -67,8 +68,10 @@ class ScheduledTaskRunner:
 
     def run(self):
         """Run scheduler"""
+        asyncio.set_event_loop(self.loop)
         while self.running:
             self.scheduler.run(blocking=False)
+            self.loop.run_until_complete(asyncio.sleep(0.1))
 
     def stop(self):
         """Stop scheduler"""
@@ -86,18 +89,26 @@ class ScheduledTaskRunner:
 
     def schedule_interval_task(self, start_time, interval, end_time, action, argument=(), kwargs={}):
         """Add interval task to scheduler"""
+        async def async_wrapper(*args, **kwargs):
+            """Wrapper to run synchronous function in an asynchronous context"""
+            return await self.loop.run_in_executor(None, action, *args, **kwargs)
+
         def interval_task(*args, **kw):
-            next_time = time.time() + interval  # Calculate next time to run
-            action(*argument, **kwargs)  # Execute the task
+            now1 = time.time()
+            # action(*argument, **kwargs)  # Execute the task
+            future = asyncio.run_coroutine_threadsafe(async_wrapper(*argument, **kwargs), self.loop)
+            next_time = now1 + interval  # Calculate next time to run
+            while next_time <= now1:
+                next_time += interval
             with self.lock:
                 if not end_time or next_time < end_time:
                     # Schedule next task, passing along args and kw which are not used here but preserved
                     self.scheduler.enterabs(next_time, 1, interval_task, argument, kwargs)
 
-        current_time = time.time()
-        if current_time > start_time:
+        now2 = time.time()
+        if now2 > start_time:
             # If current time is already past the initial start time, calculate the next valid start time
-            start_time += ((current_time - start_time) // interval + 1) * interval
+            start_time += ((now2 - start_time) // interval + 1) * interval
         with self.lock:
             # Schedule first task, passing initial argument and kwargs
             self.scheduler.enterabs(start_time, 1, interval_task, argument, kwargs)
@@ -152,7 +163,7 @@ def initScheduler(obh, schedule_items):
         teamName = item['tname']
         teamId = item['tid']
         if not teamId in apiSchedulers:
-            apiSchedulers[teamId] = apis.ApiScheduler(clientId='scheduler_for_'+teamId, clientUserAgent='OysapeScheduler/3.8.5')
+            apiSchedulers[teamId] = apis.ApiScheduler(clientId='scheduler_for_'+teamId, clientUserAgent='OysapeScheduler/3.8.12')
             apiSchedulers[teamId].teamId = teamId
             apiSchedulers[teamId].teamName = teamName
         # Load credentials for this webhost

@@ -1,15 +1,17 @@
-import React, {useEffect, useRef, useState} from 'react';
-import { App, Dropdown, Space, Switch, Avatar, theme } from 'antd';
+import React, {useEffect, useRef, useState, useCallback} from 'react';
+import { App, Dropdown, Space, Switch, Avatar, theme, notification, Button } from 'antd';
 import { CheckOutlined, ReloadOutlined, SettingOutlined, LogoutOutlined, QuestionCircleFilled, UserOutlined, KeyOutlined, AppleFilled } from "@ant-design/icons";
 
 import { useCustomContext } from '../Contexts/CustomContext'
 import { callApi, getCredentials, delTokenFromCookie, isDesktopVersion, isMobileVersion } from './global';
 import CredentialsModal from '../Server/CredentialsModal';
+import AntIcon from '../Common/AntIcon';
 
 const { useToken } = theme;
 
 export default function ProfileButton() {
   const { message, modal } = App.useApp();
+  const [api, contextHolder] = notification.useNotification();
   const { customTheme, toggleCustomTheme, userSession, setUserSession, editorType, setEditorType } = useCustomContext();
   const [visibleCredentialsModal, setVisibleCredentialsModal] = useState(false);
   const { token } = useToken();
@@ -165,9 +167,10 @@ export default function ProfileButton() {
       // console.log(JSON.stringify(userSession))
       // window.openWebpageInTab && window.openWebpageInTab('https://aifetel.cc', 'aifetel.cc');
       // window.openWebpageInTab && window.openWebpageInTab('https://codeium.com/live/general', 'Codeium');
-      callApi('testApi', {}).then((res) => {
-        console.log('res', res);
-      })
+      // callApi('testApi', {}).then((res) => {
+      //   console.log('res', res);
+      // })
+      openRemoteNotification(userSession.notifications);
     }else{
       // If key is teamId, switch team
       if(userSession && userSession.teams){
@@ -184,6 +187,55 @@ export default function ProfileButton() {
     }
   };
 
+  const openRemoteNotification = useCallback((notis) => {
+    for(let noti of (notis||[])) {
+      if(noti && noti.client && ((isDesktopVersion && noti.client.includes('desktop')) || (isMobileVersion && noti.client.includes('mobile')) || (!isDesktopVersion && !isMobileVersion && noti.client.includes('webhost')))) {
+        const key = noti.key || ('notification_' + Math.random());
+        let option = {
+          key: key,
+          message: (noti&&noti.title)||'test',
+          description: <div dangerouslySetInnerHTML={{ __html: ((noti&&noti.content))||'test' }} />,
+          icon: noti&&noti.icon ? <AntIcon name={noti.icon} /> : null,
+          placement: 'bottomRight',
+          duration: noti.hasOwnProperty('duration') ? noti.duration : 3,
+        }
+        if(noti.btnText) {
+          option.btn = <Space>
+            <Button type="primary" onClick={() => {
+              if(key==='NewVersionAvailable' && noti.version){
+                callApi('downloadNewVersion', {version: noti.version}).then((res) => {
+                  console.log(res);
+                });
+              }else if(key.startsWith('Promotion')){
+                callApi('callPromotion', noti).then((res) => {
+                  if(res?.errinfo) {
+                    message.error(res.errinfo);
+                  } else if(res.client && res.title) {
+                    openRemoteNotification([res]);
+                  }
+                })
+              }
+              api.destroy(key);
+            }}>{noti.btnText}</Button>
+          </Space>
+        } else {
+          option.onClick = () => {
+            if(noti.intab) {
+              window.openWebpageInTab && window.openWebpageInTab(noti.intab, noti.title||noti.intab);
+            }else if(noti.url) {
+              callApi('openUrlInBrowser', {url: noti.url}).then((res) => {
+              });
+            }
+            api.destroy(key);
+          }
+        }
+        setTimeout(() => {
+          api[(noti.type&&['success', 'info', 'warning', 'error'].includes(noti.type)?noti.type:'info')||'info'](option);
+        }, noti.delay||(Math.random()*10000));
+      }
+    }
+  }, [api, message]);
+
   const handleCredentialsCancel = () => {
     setVisibleCredentialsModal(false);
   }
@@ -191,6 +243,10 @@ export default function ProfileButton() {
   const handleCredentialsChoose = (data) => {
     console.log('data', data);
   }
+
+  useEffect(() => {
+    openRemoteNotification(userSession.notifications);
+  }, [userSession.notifications, openRemoteNotification]);
 
   useEffect(() => {
     const handleBeforeUnload = (event) => {
@@ -205,10 +261,11 @@ export default function ProfileButton() {
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [userSession]);
+  }, []);
 
   return (
     <>
+      {contextHolder}
       <Dropdown menu={{ items: menuItems, onClick: onClickMenu }} placement="topRight" trigger={['click']}
         dropdownRender={(menu) => (
           <div style={contentStyle}>

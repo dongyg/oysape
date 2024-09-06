@@ -84,7 +84,7 @@ export default function ProfileButton() {
       label: getSignInTitle(),
       children: userSession ? [
         { key: 'menuReloadTeams', label: 'Reload everything', icon: <ReloadOutlined />, },
-        { key: 'menuAccount', label: ('My Account'), icon: <SettingOutlined />, },
+        { key: 'menuAccount', label: <>My {isMobileVersion?'Dashboard':'Account'}</>, icon: <SettingOutlined />, },
         { key: 'menuCredentials', label: ('My Credentials'), icon: <KeyOutlined />, },
         { type: 'divider', },
         { key: 'menuSignOut', label: ('Sign Out'), icon: <LogoutOutlined />, },
@@ -197,7 +197,7 @@ export default function ProfileButton() {
           description: <div dangerouslySetInnerHTML={{ __html: ((noti&&noti.content))||'test' }} />,
           icon: noti&&noti.icon ? <AntIcon name={noti.icon} /> : null,
           placement: 'bottomRight',
-          duration: noti.hasOwnProperty('duration') ? noti.duration : 3,
+          duration: noti.hasOwnProperty('duration') ? noti.duration : 11,
         }
         if(noti.btnText) {
           option.btn = <Space>

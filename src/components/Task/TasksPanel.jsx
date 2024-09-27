@@ -44,13 +44,13 @@ export default function TasksPanel() {
         }else if(data && data.tasks) {
           setUserSession({...userSession, tasks: data.tasks});
         }
-      })
+      }).catch((err) => { message.error(err.message); })
     }else if(key === 'menuExportTask') {
       callApi('exportFrom', {what: 'tasks'}).then((data) => {
         if(data && data.errinfo) {
           message.error(data.errinfo);
         }
-      })
+      }).catch((err) => { message.error(err.message); })
     }else if(key === 'menuEmptyTask') {
       modal.confirm({
         title: 'Confirm to delete',
@@ -63,7 +63,7 @@ export default function TasksPanel() {
             }else if(data && data.tasks) {
               setUserSession({...userSession, tasks: data.tasks});
             }
-          })
+          }).catch((err) => { message.error(err.message); })
         },
         onCancel() {
           // console.log('Cancel');

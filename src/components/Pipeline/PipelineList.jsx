@@ -134,7 +134,7 @@ const PipelineList = () => {
             setUserSession({...userSession, pipelines: data.pipelines});
             setShowPipelines(showPipelines.filter((pipeline) => pipeline.key !== pipelineKey));
           }
-        })
+        }).catch((err) => { message.error(err.message); })
       },
       onCancel() {
         // console.log('Cancel');

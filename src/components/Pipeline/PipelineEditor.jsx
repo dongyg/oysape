@@ -74,7 +74,7 @@ export default function PipelineEditor(props) {
         message.success('Pipeline ['+form.getFieldValue('name')+'] saved');
         setFooterStatusText('Pipeline ['+form.getFieldValue('name')+'] saved');
       }
-    })
+    }).catch((err) => { message.error(err.message); })
   }
   const onRunIt = () => {
     if(form.getFieldValue('name')) {

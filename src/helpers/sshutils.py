@@ -554,7 +554,7 @@ class SSHClient:
             ll.sort(key=lambda x: x.filename.lower())
             for entry in ll:
                 remote_file_path = os.path.join(folder, entry.filename)
-                files.append({'title': entry.filename, 'key': tools.get_key(remote_file_path), 'path':remote_file_path, 'isLeaf': not stat.S_ISDIR(entry.st_mode)})
+                files.append({'title': entry.filename, 'key': tools.get_key(self.serverKey+':'+remote_file_path), 'path':remote_file_path, 'isLeaf': not stat.S_ISDIR(entry.st_mode), 'target': self.serverKey})
             sftp.close()
             return {'fileList': files}
         except Exception as e:
@@ -581,7 +581,7 @@ class SSHClient:
             traceback.print_exc()
             return {'errinfo': str(e)}
 
-    def save_remote_file(self, thisPath, content):
+    def save_remote_file(self, thisPath, content, sudo=False):
         if not self.client: return {'errinfo': 'No server connection'}
         try:
             sftp = self.client.open_sftp()
@@ -589,21 +589,42 @@ class SSHClient:
                 sftp.stat(os.path.dirname(thisPath))
             except IOError:
                 sftp.mkdir(os.path.dirname(thisPath))
-            with sftp.open(thisPath, "w") as remote_file:
+            writePath = ('./'+tools.get_key(thisPath)) if sudo else thisPath
+            with sftp.open(writePath, "w") as remote_file:
                 remote_file.write(content)
-            sftp.close()
-            return {}
+            if sudo:
+                command = f"sudo mv {writePath} {thisPath}"
+                stdin, stdout, stderr = self.client.exec_command(command)
+                # output = stdout.read().decode()
+                error = stderr.read().decode()
+                if error:
+                    return {'errinfo': error}
+        except PermissionError:
+            return {'errinfo': 'Permission denied'}
         except Exception as e:
             print(self.hostname, thisPath, flush=True)
             traceback.print_exc()
             return {'errinfo': str(e)}
+        finally:
+            sftp.close()
+        return {}
 
-    def create_remote_file(self, remote_file_path):
+    def create_remote_file(self, remote_file_path, sudo=False):
         if not self.client: return {'errinfo': 'No server connection'}
         try:
             sftp = self.client.open_sftp()
-            with sftp.open(remote_file_path, 'w') as f:
+            writePath = ('./'+tools.get_key(remote_file_path)) if sudo else remote_file_path
+            with sftp.open(writePath, 'w') as f:
                 f.write('')
+            if sudo:
+                command = f"sudo mv {writePath} {remote_file_path}"
+                stdin, stdout, stderr = self.client.exec_command(command)
+                # output = stdout.read().decode()
+                error = stderr.read().decode()
+                if error:
+                    return {'errinfo': error}
+        except PermissionError:
+            return {'errinfo': 'Permission denied'}
         except Exception as e:
             return {'errinfo': str(e)}
         finally:

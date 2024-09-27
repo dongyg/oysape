@@ -42,13 +42,13 @@ export default function PipelinesPanel() {
         }else if(data && data.pipelines) {
           setUserSession({...userSession, pipelines: data.pipelines});
         }
-      })
+      }).catch((err) => { message.error(err.message); })
     }else if(key === 'menuExportPipeline') {
       callApi('exportFrom', {what: 'pipelines'}).then((data) => {
         if(data && data.errinfo) {
           message.error(data.errinfo);
         }
-      })
+      }).catch((err) => { message.error(err.message); })
     }else if(key === 'menuEmptyPipeline') {
       modal.confirm({
         title: 'Confirm to delete',
@@ -61,7 +61,7 @@ export default function PipelinesPanel() {
             }else if(data && data.pipelines) {
               setUserSession({...userSession, pipelines: data.pipelines});
             }
-          })
+          }).catch((err) => { message.error(err.message); })
         },
         onCancel() {
           // console.log('Cancel');

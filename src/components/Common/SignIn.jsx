@@ -26,6 +26,8 @@ export default function BodyContainer() {
     showMessageInWebpage(''); // Don't show loading after clicking sign in. Because the user might want to don't sign in and choose another way immediately
     callApi('signInWithGithub', {obh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
       callWaitForSigninResult(data);
+    }).catch((err) => {
+      message.error(err.message);
     });
   }
   const handleSigninWithGoogle = () => {
@@ -33,6 +35,8 @@ export default function BodyContainer() {
     showMessageInWebpage(''); // Don't show loading after clicking sign in. Because the user might want to don't sign in and choose another way immediately
     callApi('signInWithGoogle', {obh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
       callWaitForSigninResult(data);
+    }).catch((err) => {
+      message.error(err.message);
     });
   }
   const handleSigninWithApple = () => {
@@ -40,6 +44,8 @@ export default function BodyContainer() {
     showMessageInWebpage(''); // Don't show loading after clicking sign in. Because the user might want to don't sign in and choose another way immediately
     callApi('signInWithApple', {obh: (window.OYSAPE_BACKEND_HOST||'')}).then((data) => {
       callWaitForSigninResult(data);
+    }).catch((err) => {
+      message.error(err.message);
     });
   }
   const callWaitForSigninResult = (waitData) => {
@@ -62,6 +68,8 @@ export default function BodyContainer() {
               clearInterval(waitForSigninResultTimer);
               showMessageInWebpage(loginData.errinfo, 'error');
             }
+          }).catch((err) => {
+            message.error(err.message);
           });
           secondPassed += 1;
           if (secondPassed >= 60) {
@@ -112,6 +120,7 @@ export default function BodyContainer() {
         // delTokenFromCookie();
       }
     }).catch((err) => {
+      message.error(err.message);
       setLoading(false);
     });
   };
@@ -128,6 +137,8 @@ export default function BodyContainer() {
           clearInterval(waitForPywebivewTimer);
           callApi('get_token').then((data) => {
             runMeFirst();
+          }).catch((err) => {
+            message.error(err.message);
           });
         } else {
           clearInterval(waitForPywebivewTimer);
@@ -157,7 +168,7 @@ export default function BodyContainer() {
     } else {
       runMeFirst();
     }
-  }, []);
+  }, [message]);
 
   return (
     <>

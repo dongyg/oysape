@@ -202,7 +202,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
           setUserSession({...userSession, sites: data.sites});
           setWebHostObject( data.sites.find((item) => item.key === obh) );
         }
-      })
+      }).catch((err) => { message.error(err.message); })
     } catch (errorInfo) {
       console.log('Failed:', errorInfo);
       setInstalling(false);
@@ -225,7 +225,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
             setUserSession({...userSession, sites: data.sites, teams: data.teams});
             setWebHostObject( data.sites.find((item) => item.key === obh) );
           }
-        })
+        }).catch((err) => { message.error(err.message); })
       },
       onCancel() {
         // console.log('Cancel');
@@ -246,7 +246,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
             setUserSession({...userSession, sites: data.sites, teams: data.teams});
             setWebHostObject( data.sites.find((item) => item.key === obh) );
           }
-        })
+        }).catch((err) => { message.error(err.message); })
       },
       onCancel() {
         // console.log('Cancel');
@@ -282,7 +282,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
         setUserSession({...userSession, teams: data.teams});
         message.success('Applied successfully');
       }
-    })
+    }).catch((err) => { message.error(err.message); })
   }
 
   const handleScheduleCancel = () => {
@@ -314,7 +314,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
       }else if(res && res.errinfo) {
         message.error(res.errinfo);
       }
-    })
+    }).catch((err) => { message.error(err.message); })
   }
 
   useEffect(() => {
@@ -336,7 +336,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
           } else {
             message.error('Failed to load webhost credentials');
           }
-        })
+        }).catch((err) => { message.error(err.message); })
       }
     }
 
@@ -406,7 +406,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                     vertical: 'visible',
                     horizontal: 'visible',
                   },
-                  automaticLayout: false,
+                  automaticLayout: true,
                 }}
                 onMount={(editor, monaco) => {
                   editor.onDidChangeModelDecorations(() => {
@@ -505,7 +505,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
               if(data && data.errinfo) {
                 message.error(data.errinfo);
               }
-            })
+            }).catch((err) => { message.error(err.message); })
           }}>Open in Browser</Button> : null
         }
         {webhostObject.target&&!webhostObject.verified ?
@@ -598,7 +598,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                                   setUserSession({...userSession, sites: data.sites});
                                   setWebHostObject( data.sites.find((item) => item.key === webhostObject.key) );
                                 }
-                              })
+                              }).catch((err) => { message.error(err.message); })
                             },
                             onCancel() {},
                           })
@@ -619,7 +619,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                                     setUserSession({...userSession, sites: data.sites});
                                     setWebHostObject( data.sites.find((item) => item.key === webhostObject.key) );
                                   }
-                                })
+                                }).catch((err) => { message.error(err.message); })
                               },
                               onCancel() {},
                             })
@@ -642,7 +642,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                                     setUserSession({...userSession, sites: data.sites});
                                     setWebHostObject( data.sites.find((item) => item.key === webhostObject.key) );
                                   }
-                                })
+                                }).catch((err) => { message.error(err.message); })
                               },
                               onCancel() {},
                             })
@@ -696,7 +696,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                                     setUserSession({...userSession, sites: data.sites});
                                     setWebHostObject( data.sites.find((item) => item.key === webhostObject.key) );
                                   }
-                                })
+                                }).catch((err) => { message.error(err.message); })
                               },
                               onCancel() {},
                             })
@@ -716,7 +716,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                                     setUserSession({...userSession, sites: data.sites});
                                     setWebHostObject( data.sites.find((item) => item.key === webhostObject.key) );
                                   }
-                                })
+                                }).catch((err) => { message.error(err.message); })
                               },
                               onCancel() {},
                             })
@@ -745,7 +745,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                 <Link component={Typography.Link} onClick={
                   () => {
                     if(isDesktopVersion){ // Won't have the webhost management in other versions
-                      callApi('openUrlInBrowser', {url: 'https://docs.github.com/en/webhooks'})
+                      callApi('openUrlInBrowser', {url: 'https://docs.github.com/en/webhooks'}).catch((err) => { message.error(err.message); })
                     }
                   }} >GitHub Webhooks documentation</Link>
                 <Paragraph style={{ marginTop: '20px' }}>
@@ -762,7 +762,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                 <Link component={Typography.Link} onClick={
                   () => {
                     if(isDesktopVersion){ // Won't have the webhost management in other versions
-                      callApi('openUrlInBrowser', {url: 'https://support.atlassian.com/bitbucket-cloud/docs/manage-webhooks/'})
+                      callApi('openUrlInBrowser', {url: 'https://support.atlassian.com/bitbucket-cloud/docs/manage-webhooks/'}).catch((err) => { message.error(err.message); })
                     }
                   }} >Bitbucket Webhooks documentation</Link>
                 <Paragraph style={{ marginTop: '20px' }}>

@@ -177,3 +177,7 @@
 .colResizeCursor {
   cursor: col-resize;
 }
+
+/* .no-switcher .ant-tree-switcher {
+  display: none;
+} */

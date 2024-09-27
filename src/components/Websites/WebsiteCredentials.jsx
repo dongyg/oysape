@@ -1,23 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { App, Modal, Table, Button, Form, Radio, Input, Space, Popconfirm, Row, Col } from 'antd';
 import { EditOutlined, DeleteOutlined, QuestionCircleFilled, FolderOpenOutlined, PlusOutlined } from "@ant-design/icons";
 
+import { useCustomContext } from '../Contexts/CustomContext'
 import { callApi } from '../Common/global';
 
-const WebsiteCredentials = ({ obh, visible, onCancel, onChoose, initialMode, credentialListing, setCredentialListing }) => {
+const WebsiteCredentials = ({ obh, visible, initialMode, onCancel, onChoose, onRemove=() => {}, initTitle = 'Website Credentials' }) => {
   const { message } = App.useApp();
+  const { userSession, setUserSession } = useCustomContext();
   const [mode, setMode] = useState(initialMode);
+  const [credentials, setCredentials] = useState();
   const [editingCredential, setEditingCredential] = useState(null);
   const [form] = Form.useForm();
+
+  const loadCredentials = useCallback(() => {
+    setCredentials((userSession.credentials||{}).credentialListing||[]);
+  }, [userSession.credentials]);
+
+  useEffect(() => {
+    loadCredentials();
+  }, [loadCredentials]);
 
   const saveCredentialsToWebhost = (newCredentials) => {
     callApi('set_credentials', { obh: obh, credentialListing: newCredentials }).then((data) => {
       if(data && data.errinfo) {
         message.error(data.errinfo);
       } else {
-        setCredentialListing(newCredentials);
+        setCredentials(newCredentials);
+        setUserSession({...userSession, credentials: {credentialListing: newCredentials, credentialMapping: (userSession.credentials.credentialMapping||{})}});
       }
-    })
+    }).catch((err) => { message.error(err.message); })
   };
 
   const handleAdd = () => {
@@ -28,24 +40,25 @@ const WebsiteCredentials = ({ obh, visible, onCancel, onChoose, initialMode, cre
 
   const handleEdit = (record) => {
     setEditingCredential(record);
+    form.resetFields();
     form.setFieldsValue(record);
     setMode('edit');
   };
 
   const handleDelete = (key) => {
-    const newCredentials = credentialListing.filter(cred => cred.key !== key);
+    const newCredentials = credentials.filter(cred => cred.key !== key);
     saveCredentialsToWebhost(newCredentials);
   };
 
   const handleSave = () => {
     form.validateFields().then(values => {
-      const aliasExists = (mode === 'new') ? credentialListing.some(cred => cred.key === values.alias) : credentialListing.some(cred => cred.key === values.alias && cred.key !== editingCredential.key);
+      const aliasExists = (mode === 'new') ? credentials.some(cred => cred.key === values.alias) : credentials.some(cred => cred.key === values.alias && cred.key !== editingCredential.key);
       if (aliasExists) {
         form.setFields([{ name: 'alias', errors: ['Alias already exists'], }]);
         return;
       }
       values.key = values.alias;
-      const newCredentials = [...credentialListing];
+      const newCredentials = [...credentials];
       if (mode === 'new') {
         newCredentials.push(values);
       } else if (mode === 'edit') {
@@ -60,6 +73,11 @@ const WebsiteCredentials = ({ obh, visible, onCancel, onChoose, initialMode, cre
 
   const handleChoose = (record) => {
     onChoose(record);
+    onCancel();
+  };
+
+  const handleRemove = () => {
+    onRemove();
     onCancel();
   };
 
@@ -106,7 +124,7 @@ const WebsiteCredentials = ({ obh, visible, onCancel, onChoose, initialMode, cre
       }else if(data && data.errinfo) {
         message.error(data.errinfo);
       }
-    })
+    }).catch((err) => { message.error(err.message); })
   }
 
   const renderContent = () => {
@@ -115,8 +133,9 @@ const WebsiteCredentials = ({ obh, visible, onCancel, onChoose, initialMode, cre
       case 'choose':
         return (
           <>
-            <Button type="primary" onClick={handleAdd} style={{ marginBottom: 16 }} icon={<PlusOutlined/>}>Add</Button>
-            <Table size='small' columns={columns} dataSource={credentialListing} rowKey="key" />
+            <Button type="primary" onClick={handleAdd} style={{ marginBottom: 16 }} icon={<PlusOutlined/>}>Add</Button>&nbsp;
+            {mode === 'choose' && <Button danger onClick={handleRemove} style={{ marginBottom: 16 }} icon={<DeleteOutlined/>}>Remove</Button> }
+            <Table size='small' columns={columns} dataSource={credentials} rowKey="key" />
           </>
         );
       case 'new':
@@ -176,7 +195,7 @@ const WebsiteCredentials = ({ obh, visible, onCancel, onChoose, initialMode, cre
   };
 
   return (
-    <Modal open={visible} title='Website Credentials' onCancel={onCancel} footer={null} afterOpenChange={afterOpenChange}>
+    <Modal open={visible} title={initTitle} onCancel={onCancel} footer={null} afterOpenChange={afterOpenChange}>
       {renderContent()}
     </Modal>
   );

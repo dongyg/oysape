@@ -4,8 +4,9 @@ import { CheckOutlined, ReloadOutlined, SettingOutlined, LogoutOutlined, Questio
 
 import { useCustomContext } from '../Contexts/CustomContext'
 import { callApi, getCredentials, delTokenFromCookie, isDesktopVersion, isMobileVersion } from './global';
-import CredentialsModal from '../Server/CredentialsModal';
 import AntIcon from '../Common/AntIcon';
+// import CredentialsModal from '../Server/CredentialsModal';
+import WebsiteCredentials from '../Websites/WebsiteCredentials';
 
 const { useToken } = theme;
 
@@ -164,13 +165,14 @@ export default function ProfileButton() {
         },
       });
     }else if(key === 'menuTest3') {
-      // console.log(JSON.stringify(userSession))
+      console.log(JSON.stringify(userSession.credentials, null, 4));
+      console.log(userSession.team0);
       // window.openWebpageInTab && window.openWebpageInTab('https://aifetel.cc', 'aifetel.cc');
       // window.openWebpageInTab && window.openWebpageInTab('https://codeium.com/live/general', 'Codeium');
       // callApi('testApi', {}).then((res) => {
       //   console.log('res', res);
       // })
-      openRemoteNotification(userSession.notifications);
+      // openRemoteNotification(userSession.notifications);
     }else{
       // If key is teamId, switch team
       if(userSession && userSession.teams){
@@ -240,10 +242,6 @@ export default function ProfileButton() {
     setVisibleCredentialsModal(false);
   }
 
-  const handleCredentialsChoose = (data) => {
-    console.log('data', data);
-  }
-
   useEffect(() => {
     openRemoteNotification(userSession.notifications);
   }, [userSession.notifications, openRemoteNotification]);
@@ -278,7 +276,8 @@ export default function ProfileButton() {
       >
         { getAvatar() }
       </Dropdown>
-      <CredentialsModal visible={visibleCredentialsModal} onCancel={handleCredentialsCancel} onChoose={handleCredentialsChoose} initialMode="list" />
+      {/* <CredentialsModal visible={visibleCredentialsModal} onCancel={handleCredentialsCancel} onChoose={handleCredentialsChoose} initialMode="list" /> */}
+      <WebsiteCredentials obh={'localhost'} visible={visibleCredentialsModal} initialMode="list" onCancel={handleCredentialsCancel} initTitle={'My Credentials'} />
     </>
-)
+  );
 }

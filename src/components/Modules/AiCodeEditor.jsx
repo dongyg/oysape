@@ -11,7 +11,7 @@ import './CodeEditor.css';
 
 export default function CodeEditor(props) {
   const { message } = App.useApp();
-  const { customTheme, tabActiveKey, tabItems, setTabItems, setCodeEditRowColText, setCodeEditCurrentLang, setFooterStatusText, setFolderFiles, editorType } = useCustomContext();
+  const { customTheme, tabActiveKey, tabItems, setTabItems, setCodeEditRowColText, setCodeEditCurrentLang, setFooterStatusText, setFolderFiles } = useCustomContext();
   const [value, setValue] = React.useState('');
   const [langCurr, setLangCurr] = React.useState(null);
   const inputCode = React.useRef(null);
@@ -72,6 +72,8 @@ export default function CodeEditor(props) {
             const fileBody = Base64.decode(resp.content);
             setValue(fileBody);
           }
+        }).catch((err) => {
+          message.error(err.message);
         })
       } else {
         callApi('read_file', {path:props.filename}).then((data)=>{
@@ -80,6 +82,8 @@ export default function CodeEditor(props) {
           }else if(data && data.errinfo) {
             message.error(data.errinfo);
           }
+        }).catch((err) => {
+          message.error(err.message);
         })
       }
     }
@@ -111,6 +115,8 @@ export default function CodeEditor(props) {
         if(resp && resp.folderFiles) {
           setFolderFiles(resp.folderFiles);
         }
+      }).catch((err) => {
+        message.error(err.message);
       })
     } else {
       callApi(target?'save_remote_file':'save_file', {path:path, content:content, target:target}).then((data)=>{
@@ -128,6 +134,8 @@ export default function CodeEditor(props) {
           setFooterStatusText('Saved. '+(target?target+':':'')+path);
           message.success('Saved');
         }
+      }).catch((err) => {
+        message.error(err.message);
       });
     }
   }

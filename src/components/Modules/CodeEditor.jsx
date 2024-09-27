@@ -15,7 +15,7 @@ import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
 import './CodeEditor.css';
 
 export default function CodeEditor(props) {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const { customTheme, tabActiveKey, tabItems, setTabItems, setCodeEditRowColText, setCodeEditCurrentLang, setFooterStatusText, setFolderFiles, editorType } = useCustomContext();
   const [value, setValue] = React.useState('');
   const [langExts, setLangExts] = React.useState([]);
@@ -45,7 +45,7 @@ export default function CodeEditor(props) {
     setCodeEditCurrentLang(langCurrRef.current);
   }
 
-  const handleEditorDidMount = React.useCallback((editor, monaco) => {
+  const handleEditorDidMount = (editor, monaco) => {
     inputCode.current = editor;
     window.oypaseTabs = window.oypaseTabs || {};
     window.oypaseTabs[uniqueKey] = inputCode.current;
@@ -59,7 +59,7 @@ export default function CodeEditor(props) {
     editor.onDidChangeCursorSelection((e) => {
       updateStatusBar(editor);
     });
-  }, []);
+  }
 
   const onContextClick = (e) => {
     if(e.domEvent) e.domEvent.stopPropagation();
@@ -94,7 +94,7 @@ export default function CodeEditor(props) {
     <BsThreeDots />
   </Dropdown>
 
-  const onValuesChange = React.useCallback((val, viewUpdate) => {
+  const onValuesChange = (val, viewUpdate) => {
     setValue(val);
     var hasSomethingNew = false;
     const newItems = tabItems.map((item) => {
@@ -107,7 +107,7 @@ export default function CodeEditor(props) {
       return item;
     });
     if(hasSomethingNew) setTabItems(newItems);
-  }, [uniqueKey, tabItems, setTabItems, props.tabTitle]);
+  }
 
   React.useEffect(() => {
     const newItems = tabItems.map((item) => {
@@ -118,7 +118,7 @@ export default function CodeEditor(props) {
       return item;
     });
     setTabItems(newItems);
-  }, [editorType]);
+  }, [editorType]); // Change dropdown icon on tab. Don't include tabItems ... to avoid infinite loop
 
   React.useEffect(() => {
     // console.log(props);
@@ -153,6 +153,8 @@ export default function CodeEditor(props) {
             const fileBody = Base64.decode(resp.content);
             setValue(fileBody);
           }
+        }).catch((err) => {
+          message.error(err.message);
         })
       } else {
         callApi('read_file', {path:props.filename}).then((data)=>{
@@ -168,6 +170,8 @@ export default function CodeEditor(props) {
           }else if(data && data.errinfo) {
             message.error(data.errinfo);
           }
+        }).catch((err) => {
+          message.error(err.message);
         })
       }
     }
@@ -201,11 +205,30 @@ export default function CodeEditor(props) {
         if(resp && resp.folderFiles) {
           setFolderFiles(resp.folderFiles);
         }
+      }).catch((err) => {
+        message.error(err.message);
       })
     } else {
-      callApi(target?'save_remote_file':'save_file', {path:path, content:content, target:target}).then((data)=>{
+      let sudo = false;
+      let handleResponse = (data) => {
         if(data && data.errinfo){
-          message.error(data.errinfo);
+          if(!sudo && data.errinfo.indexOf('Permission denied')>=0) {
+            modal.confirm({
+              title: 'Permission denied',
+              content: 'Do you want to try with sudo?',
+              onOk() {
+                sudo = true;
+                callApi(target?'save_remote_file':'save_file', {path:path, content:content, target:target, sudo:sudo}).then((r2)=>{
+                  handleResponse(r2);
+                }).catch((err) => {
+                  message.error(err.message);
+                });
+              },
+              onCancel() {},
+            })
+          }else{
+            message.error(data.errinfo);
+          }
         } else  {
           const newItems = tabItems.map((item) => {
             if(item.key === uniqueKey) {
@@ -219,6 +242,11 @@ export default function CodeEditor(props) {
           setFooterStatusText('Saved. '+(target?target+':':'')+path);
           message.success('Saved');
         }
+      }
+      callApi(target?'save_remote_file':'save_file', {path:path, content:content, target:target, sudo:sudo}).then((data)=>{
+        handleResponse(data);
+      }).catch((err) => {
+        message.error(err.message);
       });
     }
   }

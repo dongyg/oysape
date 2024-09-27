@@ -134,7 +134,7 @@ const TaskList = () => {
             setUserSession({...userSession, tasks: data.tasks});
             setShowTasks(showTasks.filter((task) => task.key !== taskKey));
           }
-        })
+        }).catch((err) => { message.error(err.message); })
       },
       onCancel() {
         // console.log('Cancel');

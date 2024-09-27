@@ -83,7 +83,7 @@ export default function ServerEditor(props) {
         message.success('Server ['+form.getFieldValue('name')+'] saved');
         setFooterStatusText('Server ['+form.getFieldValue('name')+'] saved');
       }
-    })
+    }).catch((err) => { message.error(err.message); })
   }
   const onRunIt = () => {
     if(form.getFieldValue('name')) {

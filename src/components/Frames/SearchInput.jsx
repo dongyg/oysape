@@ -4,14 +4,15 @@ import { SearchOutlined, LoadingOutlined } from "@ant-design/icons";
 import { BsCommand, BsArrowReturnLeft } from "react-icons/bs";
 import { PiControl } from "react-icons/pi";
 
-import { callApi, getCredentials, saveCredentialMapping } from '../Common/global';
+import { callApi, getCredentials } from '../Common/global';
 import { useCustomContext } from '../Contexts/CustomContext'
 import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
 import { getShowTitle, getPathAndName, flatFileTree, parseTaskString0, getUniqueKey, calculateMD5 } from '../Common/global';
 import CodeEditor from '../Modules/CodeEditor';
 import Terminal from '../Modules/UITerminal1';
 import IframeComponent from './IframeComponent';
-import CredentialsModal from '../Server/CredentialsModal';
+// import CredentialsModal from '../Server/CredentialsModal';
+import WebsiteCredentials from '../Websites/WebsiteCredentials';
 
 import './SearchInput.css';
 
@@ -68,6 +69,8 @@ const SearchInput = () => {
             message.success('Switched to ' + userSession.teams[key].tname);
             setUserSession(res);
             window.reloadFolderFiles && window.reloadFolderFiles();
+          }).catch((err) => {
+            message.error(err.message);
           });
         } else {
           // Team not found
@@ -228,7 +231,7 @@ const SearchInput = () => {
       callMe();
     }
   }
-  const openServerTerminal = (serverKey, taskKey) => {
+  const openServerTerminal = (serverKey, taskKey, command) => {
     const callMe = () => {
       const newIdx = tabItems.filter((item) => item.serverKey === serverKey).length + 1;
       const uniqueKey = getUniqueKey();
@@ -236,7 +239,7 @@ const SearchInput = () => {
         key: uniqueKey,
         serverKey: serverKey,
         label: serverKey+'('+newIdx+')',
-        children: <Terminal uniqueKey={uniqueKey} serverKey={serverKey} taskKey={taskKey} />,
+        children: <Terminal uniqueKey={uniqueKey} serverKey={serverKey} taskKey={taskKey} withCommand={command} />,
       }]);
       setTabActiveKey(uniqueKey);
     }
@@ -379,6 +382,8 @@ const SearchInput = () => {
       }else if(absPath && absPath.errinfo) {
         message.error(absPath.errinfo);
       }
+    }).catch((err) => {
+      message.error(err.message);
     })
   }
 
@@ -389,7 +394,7 @@ const SearchInput = () => {
   const handleCredentialsChoose = (data) => {
     callApi('set_credential_for_server', {credential: data, serverKey: passForServer}).then((res) => {
       if(res&&res.email) {
-        saveCredentialMapping(userSession.team0, passForServer, data['alias']);
+        // saveCredentialMapping(userSession.team0, passForServer, data['alias']);
         setUserSession(res);
         if(callbackExecuteInput.current) {
           callbackExecuteInput.current();
@@ -397,6 +402,8 @@ const SearchInput = () => {
       }else if (res && res.errinfo) {
         message.error(res.errinfo);
       }
+    }).catch((err) => {
+      message.error(err.message);
     })
   }
 
@@ -453,7 +460,8 @@ const SearchInput = () => {
           }>{!dropMenuShowed?(window.oypaseTabs&&window.oypaseTabs.workspace&&window.oypaseTabs.workspace._core.browser.isMac?<BsCommand/>:<PiControl/>):null}<BsArrowReturnLeft /></div> }}
         />
       </AutoComplete>
-      <CredentialsModal visible={visibleCredentialsModal} onCancel={handleCredentialsCancel} onChoose={handleCredentialsChoose} onRemove={() => {}} initialMode="choose" initTitle={'Choose Credential'+(passForServer?' for '+passForServer:'')} />
+      {/* <CredentialsModal visible={visibleCredentialsModal} onCancel={handleCredentialsCancel} onChoose={handleCredentialsChoose} onRemove={() => {}} initialMode="choose" initTitle={'Choose Credential'+(passForServer?' for '+passForServer:'')} /> */}
+      <WebsiteCredentials obh={'localhost'} visible={visibleCredentialsModal} initialMode="choose" onCancel={handleCredentialsCancel} onChoose={handleCredentialsChoose} onRemove={() => {}} initTitle={'Choose Credential'+(passForServer?' for '+passForServer:'')} />
     </div>
   )
 };

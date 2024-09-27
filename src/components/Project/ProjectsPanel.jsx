@@ -22,7 +22,7 @@ export default function ProjectsPanel() {
       }else if(data && data.folderFiles) {
         setFolderFiles(data.folderFiles);
       }
-    })
+    }).catch((err) => { message.error(err.message); })
   }
   const editGlobalExcludes = () => {
     callApi('getGlobalExcludes', {}).then((listExcludes)=>{
@@ -39,7 +39,7 @@ export default function ProjectsPanel() {
       }
       setTabActiveKey(uniqueKey);
       hideSidebarIfNeed();
-    });
+    }).catch((err) => { message.error(err.message); });
   }
 
   const menuItems = [

@@ -44,13 +44,13 @@ export default function ServersPanel() {
         }else if(data.servers) {
           setUserSession({...userSession, servers: data.servers});
         }
-      })
+      }).catch((err) => { message.error(err.message); })
     }else if(key === 'menuExportServer') {
       callApi('exportFrom', {what: 'servers'}).then((data) => {
         if(data && data.errinfo) {
           message.error(data.errinfo);
         }
-      })
+      }).catch((err) => { message.error(err.message); })
     }else if(key === 'menuEmptyServer') {
       modal.confirm({
         title: 'Confirm to delete',
@@ -63,7 +63,7 @@ export default function ServersPanel() {
             }else if(data && data.servers) {
               setUserSession({...userSession, servers: data.servers});
             }
-          })
+          }).catch((err) => { message.error(err.message); })
         },
         onCancel() {
           // console.log('Cancel');

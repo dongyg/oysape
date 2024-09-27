@@ -1,11 +1,11 @@
 import React, {useCallback} from 'react'
 import { App, Tree, Dropdown } from 'antd';
-import { DownOutlined, QuestionCircleFilled } from '@ant-design/icons';
+import { QuestionCircleFilled } from '@ant-design/icons';
 
 import { useCustomContext } from '../Contexts/CustomContext'
+import { callApi, isTabletOrPhone } from '../Common/global';
 
 import './ProjectFileTree.css';
-import { callApi } from '../Common/global';
 
 const { DirectoryTree } = Tree; // 把 Tree 赋值给 DirectoryTree, 然后使用 DirectoryTree 就是出现整行选中效果, 否则就不出现整行选中效果
 
@@ -50,7 +50,7 @@ export default function ProjectFileTree() {
             }else if(data && data.folderFiles) {
               setFolderFiles(data.folderFiles);
             }
-          })
+          }).catch((err) => { message.error(err.message); })
         },
         onCancel() {
           // console.log('Cancel');
@@ -68,7 +68,7 @@ export default function ProjectFileTree() {
             }else if(data && data.folderFiles) {
               setFolderFiles(data.folderFiles);
             }
-          })
+          }).catch((err) => { message.error(err.message); })
         },
         onCancel() {
           // console.log('Cancel');
@@ -91,7 +91,7 @@ export default function ProjectFileTree() {
       }else if(data && data.folderFiles) {
         setFolderFiles(data.folderFiles);
       }
-    })
+    }).catch((err) => { message.error(err.message); })
   }
 
   const reloadFolderFiles = useCallback(() => {
@@ -105,7 +105,8 @@ export default function ProjectFileTree() {
   return (
     <>
       <Dropdown menu={{items: contextMenuItems, onClick: onClickMenu}} trigger={['contextMenu']}>
-        <DirectoryTree ref={filetree} treeData={folderFiles} switcherIcon={<DownOutlined />} className={customTheme.className}
+        <DirectoryTree ref={filetree} treeData={folderFiles} switcherIcon={null} className={['no-switcher',customTheme.className]}
+          expandAction={isTabletOrPhone?"click":"doubleClick"}
           onSelect={(selectedKeys, info) => {
             if(Date.now() - time1.current < 500 && path1.current === info.node.path) {
               time1.current = Date.now();

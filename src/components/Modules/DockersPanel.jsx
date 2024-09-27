@@ -3,16 +3,15 @@ import React, {useState} from 'react';
 import { App, Dropdown, Select, Tree, Button, Tooltip, Space } from 'antd';
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { callApi, getUniqueKey } from '../Common/global';
+import { callApi, } from '../Common/global';
 import AntIcon from '../Common/AntIcon';
 import CommandInputModal from './TextInputModal';
-import Terminal from '../Modules/UITerminal1';
 
 const { DirectoryTree } = Tree; // 把 Tree 赋值给 DirectoryTree, 然后使用 DirectoryTree 就是出现整行选中效果, 否则就不出现整行选中效果
 
 export default function ProjectsPanel() {
   const { message, modal } = App.useApp();
-  const { hideSidebarIfNeed, customTheme, setTabActiveKey, tabItems, setTabItems, userSession } = useCustomContext();
+  const { hideSidebarIfNeed, customTheme, setTabActiveKey, userSession } = useCustomContext();
   const [dockerTarget, setDockerTarget] = useState('');
   const [dockerTree, setDockerTree] = useState({});
   const [contextMenuItems, setContextMenuItems] = React.useState([]);
@@ -38,17 +37,17 @@ export default function ProjectsPanel() {
     }
   }
 
-  const openTerminalWithCommand = (serverKey, command) => {
-    const newIdx = tabItems.filter((item) => item.serverKey === serverKey).length + 1;
-    const uniqueKey = getUniqueKey();
-    setTabItems([...tabItems || [], {
-      key: uniqueKey,
-      serverKey: serverKey,
-      label: serverKey+'('+newIdx+')',
-      children: <Terminal uniqueKey={uniqueKey} serverKey={serverKey} withCommand={command} />,
-    }]);
-    setTabActiveKey(uniqueKey);
-  };
+  // const openTerminalWithCommand = (serverKey, command) => {
+  //   const newIdx = tabItems.filter((item) => item.serverKey === serverKey).length + 1;
+  //   const uniqueKey = getUniqueKey();
+  //   setTabItems([...tabItems || [], {
+  //     key: uniqueKey,
+  //     serverKey: serverKey,
+  //     label: serverKey+'('+newIdx+')',
+  //     children: <Terminal uniqueKey={uniqueKey} serverKey={serverKey} withCommand={command} />,
+  //   }]);
+  //   setTabActiveKey(uniqueKey);
+  // };
 
   const onClickMenu = (menuItem) => {
     if(!node1.current) return;
@@ -66,13 +65,15 @@ export default function ProjectsPanel() {
       const execThis = () => {
         const commandString = fullItem.command.replace(/{theName}/g, node1.current.theName);
         if(fullItem.terminal){
-          openTerminalWithCommand(dockerTarget, commandString);
+          window.openServerTerminal && window.openServerTerminal(dockerTarget, null, commandString);
           if(fullItem.hideSide) hideSidebarIfNeed();
         } else {
           setTabActiveKey('workspace');
           callApi('dockerExecCommand', {'target': dockerTarget, 'command': commandString}).then((resp) => {
             if(parentNode&&fullItem.refresh) reloadThisFolder(parentNode);
             if(fullItem.hideSide) hideSidebarIfNeed();
+          }).catch((err) => {
+            message.error(err.message);
           });
         }
       }
@@ -106,6 +107,8 @@ export default function ProjectsPanel() {
       } else if(resp && resp.version && resp.featureList) {
         setDockerTree({...dockerTree, [serverKey]: resp.featureList});
       }
+    }).catch((err) => {
+      message.error(err.message);
     })
   }
 
@@ -118,6 +121,8 @@ export default function ProjectsPanel() {
       } else if(resp && resp.children) {
         setDockerTree({...dockerTree, [dockerTarget]: updateTreeData(dockerTree[dockerTarget], anode.key, resp.children, false)});
       }
+    }).catch((err) => {
+      message.error(err.message);
     });
   }
 
@@ -136,12 +141,16 @@ export default function ProjectsPanel() {
     setDockerCommandInputVisible(false);
     callApi('dockerSetDockerCommand', {'target': dockerTarget, 'command': value}).then((resp) => {
       reloadDockerServer(dockerTarget);
+    }).catch((err) => {
+      message.error(err.message);
     });
   }
   const handleDockerComposeOk = (value) => {
     setDockerComposeInputVisible(false);
     callApi('dockerSetComposeCommand', {'target': dockerTarget, 'command': value}).then((resp) => {
       reloadDockerServer(dockerTarget);
+    }).catch((err) => {
+      message.error(err.message);
     });
   }
 

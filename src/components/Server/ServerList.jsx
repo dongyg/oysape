@@ -5,8 +5,9 @@ import { FiTerminal } from "react-icons/fi";
 import { BsTerminal } from "react-icons/bs";
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { getUniqueKey, callApi, saveCredentialMapping, isDesktopVersion, getCredentials } from '../Common/global';
-import CredentialsModal from '../Server/CredentialsModal';
+import { getUniqueKey, callApi, getCredentials } from '../Common/global';
+// import CredentialsModal from '../Server/CredentialsModal';
+import WebsiteCredentials from '../Websites/WebsiteCredentials';
 import ServerEditor from './ServerEditor';
 
 const ServerList = () => {
@@ -147,7 +148,7 @@ const ServerList = () => {
             setUserSession({...userSession, servers: data.servers});
             setShowServers(showServers.filter((server) => server.key !== serverKey));
           }
-        })
+        }).catch((err) => { message.error(err.message); })
       },
       onCancel() {
         // console.log('Cancel');
@@ -167,26 +168,26 @@ const ServerList = () => {
   }
 
   const handleCredentialsChoose = (data) => {
+    console.log(data);
     callApi('set_credential_for_server', {credential: data, serverKey: selectedRowKeys[0]}).then((res) => {
       if(res&&res.email) {
-        saveCredentialMapping(userSession.team0, selectedRowKeys[0], data['alias']);
+        // saveCredentialMapping(userSession.team0, selectedRowKeys[0], data['alias']);
         setUserSession(res);
       }else if (res && res.errinfo) {
         message.error(res.errinfo);
       }
-    })
+    }).catch((err) => { message.error(err.message); })
   }
 
   const handleCredentialsRemove = () => {
     callApi('set_credential_for_server', {credential: null, serverKey: selectedRowKeys[0]}).then((res) => {
       if(res&&res.email) {
-        saveCredentialMapping(userSession.team0, selectedRowKeys[0], null);
+        // saveCredentialMapping(userSession.team0, selectedRowKeys[0], null);
         setUserSession(res);
       }else if (res && res.errinfo) {
         message.error(res.errinfo);
       }
-    })
-
+    }).catch((err) => { message.error(err.message); })
   }
 
   useEffect(() => {
@@ -228,7 +229,8 @@ const ServerList = () => {
           </Space>
         }}
       />
-      <CredentialsModal visible={visibleCredentialsModal} onCancel={handleCredentialsCancel} onChoose={handleCredentialsChoose} onRemove={handleCredentialsRemove} initialMode="choose" initTitle={'Choose Credential for '+selectedRowKeys[0]} />
+      {/* <CredentialsModal visible={visibleCredentialsModal} onCancel={handleCredentialsCancel} onChoose={handleCredentialsChoose} onRemove={handleCredentialsRemove} initialMode="choose" initTitle={'Choose Credential for '+selectedRowKeys[0]} /> */}
+      <WebsiteCredentials obh={'localhost'} visible={visibleCredentialsModal} initialMode="choose" onCancel={handleCredentialsCancel} onChoose={handleCredentialsChoose} onRemove={handleCredentialsRemove} initTitle={'Choose Credential for '+selectedRowKeys[0]} />
     </>
   )
 }

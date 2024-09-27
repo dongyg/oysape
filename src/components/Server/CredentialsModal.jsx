@@ -5,6 +5,7 @@ import { EditOutlined, DeleteOutlined, QuestionCircleFilled, FolderOpenOutlined,
 import { useCustomContext } from '../Contexts/CustomContext'
 import { callApi, getCredentials, saveCredentialListing } from '../Common/global';
 
+// 2024-09-26. Deprecated. Use WebsiteCredentials for Local and Webhost credentials settings.
 const CredentialsModal = ({ visible, onCancel, onChoose, onRemove=() => {}, initialMode = 'list', initTitle = 'My Credentials' }) => {
   const { message } = App.useApp();
   const { userSession } = useCustomContext();
@@ -34,12 +35,14 @@ const CredentialsModal = ({ visible, onCancel, onChoose, onRemove=() => {}, init
 
   const handleEdit = (record) => {
     setEditingCredential(record);
+    form.resetFields();
     form.setFieldsValue(record);
     setMode('edit');
   };
 
   const handleDelete = (key) => {
     const newCredentials = credentials.filter(cred => cred.key !== key);
+    setCredentials(newCredentials);
     saveCredentialsToCookie(newCredentials);
   };
 
@@ -120,7 +123,7 @@ const CredentialsModal = ({ visible, onCancel, onChoose, onRemove=() => {}, init
       }else if(data && data.errinfo) {
         message.error(data.errinfo);
       }
-    })
+    }).catch((err) => { message.error(err.message); })
   }
 
   const renderContent = () => {
@@ -129,7 +132,7 @@ const CredentialsModal = ({ visible, onCancel, onChoose, onRemove=() => {}, init
       case 'choose':
         return (
           <>
-            <Button type="primary" onClick={handleAdd} style={{ marginBottom: 16 }} icon={<PlusOutlined/>}>New</Button>&nbsp;
+            <Button type="primary" onClick={handleAdd} style={{ marginBottom: 16 }} icon={<PlusOutlined/>}>Add</Button>&nbsp;
             {mode === 'choose' && <Button danger onClick={handleRemove} style={{ marginBottom: 16 }} icon={<DeleteOutlined/>}>Remove</Button> }
             <Table size='small' columns={columns} dataSource={credentials} rowKey="key" />
           </>

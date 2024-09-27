@@ -63,7 +63,7 @@ export default function ScheduleLogsPanel() {
               setTotalNumber(totalNumber - data.number);
               setShowedItems([]);
             }
-          })
+          }).catch((err) => { message.error(err.message); })
         },
         onCancel() {
           // console.log('Cancel');
@@ -83,7 +83,7 @@ export default function ScheduleLogsPanel() {
               setTotalNumber(totalNumber - data.number);
               setShowedItems([]);
             }
-          })
+          }).catch((err) => { message.error(err.message); })
         },
         onCancel() {
           // console.log('Cancel');
@@ -132,7 +132,7 @@ export default function ScheduleLogsPanel() {
               setTotalNumber(totalNumber - 1);
               setSelectedRowKeys([]);
             }
-          })
+          }).catch((err) => { message.error(err.message); })
         },
         onCancel() {
           // console.log('Cancel');
@@ -217,6 +217,7 @@ export default function ScheduleLogsPanel() {
     }).catch((error) => {
       setHasMore(false);
       console.log(error);
+      message.error(error.message);
     })
   }
 

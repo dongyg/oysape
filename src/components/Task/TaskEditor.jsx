@@ -107,7 +107,7 @@ export default function TaskEditor(props) {
           setUserSession({...userSession, pipelines: data.pipelines});
         }
       }
-    })
+    }).catch((err) => { message.error(err.message); })
   }
   const onRunIt = () => {
     if(form.getFieldValue('name')) {
@@ -193,7 +193,7 @@ export default function TaskEditor(props) {
                   vertical: 'visible',
                   horizontal: 'visible',
                 },
-                automaticLayout: false,
+                automaticLayout: true,
               }}
               onMount={(editor, monaco) => {
                 editor.onDidChangeModelDecorations(() => {

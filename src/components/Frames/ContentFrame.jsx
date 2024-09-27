@@ -15,13 +15,6 @@ const ContentFrame = () => {
   const { modal, notification } = App.useApp();
   const { customTheme, tabItems, setTabItems, tabActiveKey, setTabActiveKey, userSession } = useCustomContext();
 
-  const defaultPanes = [
-    {label: 'Workspace', key: 'workspace', children: <Workspace uniqueKey='workspace' />},
-    // {label: 'CodeEditor', key: '1', children: <CodeEditor uniqueKey='1' filename='/Users/Shared/Projects/oysape/server/config.py' />},
-    // {label: 'ServerEditor', key: '2', children: <ServerEditor />},
-    // {label: 'Tab 3', key: '3', children: <BlankContent />},
-  ];
-
   const getTabTitle = (key) => {
     const { label } = tabItems.find((pane) => pane.key === key) || '';
     return label;
@@ -75,6 +68,12 @@ const ContentFrame = () => {
   }
 
   useEffect(() => {
+    const defaultPanes = [
+      {label: 'Workspace', key: 'workspace', children: <Workspace uniqueKey='workspace' />},
+      // {label: 'CodeEditor', key: '1', children: <CodeEditor uniqueKey='1' filename='/Users/Shared/Projects/oysape/server/config.py' />},
+      // {label: 'ServerEditor', key: '2', children: <ServerEditor />},
+      // {label: 'Tab 3', key: '3', children: <BlankContent />},
+    ];
     setTabItems(defaultPanes);
     if(userSession.last_login_agent === 'Email' && !userSession.mfa_enabled) {
       setTimeout(() => {

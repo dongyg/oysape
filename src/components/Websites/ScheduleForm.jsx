@@ -167,7 +167,7 @@ const ScheduleForm = (props, ref) => {
             message.success((oldKey ? 'Updated' : 'Added') + ' successfully');
             if(callback) callback(data.sites);
           }
-        })
+        }).catch((err) => { message.error(err.message); })
       } catch (errorInfo) {
         console.log('Failed:', errorInfo);
       }

@@ -79,6 +79,8 @@ export default function WebTerminal(props) {
                         sendData(withCommand+'\r');
                     }, 500);
                 }
+            }).catch((err) => {
+                message.error(err.message);
             });
         }
         return () => {

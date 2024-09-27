@@ -65,7 +65,7 @@ export default function WorkspaceTerminal(props) {
                     message.error(res.errinfo);
                     xtermRef.current.write('\r\n\r\n'+colorizeText(res.errinfo, 'red', customTheme.type==='light' ? 'white' : 'gray'));
                 }
-            }).catch(err => {});
+            }).catch(err => { message.error(err.message) });
         }).catch(err => {});
     }
     const callPipeline = (pipelineObj) => {

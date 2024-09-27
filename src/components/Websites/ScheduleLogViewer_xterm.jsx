@@ -65,7 +65,7 @@ const ScheduleLogViewer = ({ obh, sch, tid, tname }) => {
                 })));
                 setPagination(prev => ({ ...prev, total: data.total, current: page, pageSize }));
             }
-        });
+        }).catch((err) => { message.error(err.message); });
     }, [obh, sch]); // remove pagination from dependencies to avoid re-running
 
     const handleTableChange = useCallback((pagination) => {

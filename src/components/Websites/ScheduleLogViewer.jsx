@@ -25,7 +25,7 @@ const ScheduleLogViewer = ({ obh, sch, tid, tname }) => {
                 setLogs(data.list);
                 setPagination(prev => ({ ...prev, total: data.total, current: page, pageSize }));
             }
-        });
+        }).catch((err) => { message.error(err.message); });
     }, [obh, sch, message, tid, tname]);
 
     const handleTableChange = useCallback((pagination) => {

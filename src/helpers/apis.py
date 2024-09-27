@@ -21,7 +21,7 @@ def getApiObjectByTeam(tname):
         if file.endswith('.json'):
             teamId = os.path.splitext(file)[0]
             if scheduler.apiSchedulers.get(teamId) == None:
-                scheduler.apiSchedulers[teamId] = ApiScheduler(clientId='scheduler_for_'+teamId, clientUserAgent='OysapeScheduler/3.8.12')
+                scheduler.apiSchedulers[teamId] = ApiScheduler(clientId='scheduler_for_'+teamId, clientUserAgent='OysapeScheduler/3.9.20')
                 scheduler.apiSchedulers[teamId].teamId = teamId
                 scheduler.apiSchedulers[teamId].reloadUserSession({'credentials': scheduler.apiSchedulers[teamId].loadCredentials()})
     for tid in scheduler.apiSchedulers:
@@ -58,6 +58,7 @@ def merge_steps(steps):
     return merged_data
 
 def merge_credentials(c1, c2):
+    # Merge credentials c2 into c1
     # Merge credentialListing
     if not c1.get('credentialListing'): c1['credentialListing'] = []
     if not c2.get('credentialListing'): c2['credentialListing'] = []
@@ -92,7 +93,7 @@ def mainloop(window):
     user_agent = window.evaluate_js('navigator.userAgent')
     if user_agent.find('OysapeDesktop') < 0:
         # Add OysapeDesktop to the default user agent, so that the React JS can work on the right user agent. Then the Codeium Editor will work properly
-        apiInstances[webview.token].clientUserAgent = f'{user_agent} OysapeDesktop/3.8.12'
+        apiInstances[webview.token].clientUserAgent = f'{user_agent} OysapeDesktop/3.9.20'
         # Change user agent for webview. So that the webview(javascript) can get the right user agent, and know if it's OysapeDesktop or not
         script = f'''
         Object.defineProperty(navigator, 'userAgent', {{
@@ -203,7 +204,7 @@ class ApiOysape(ApiOauth):
 
     def loadCredentials(self, params={}):
         credentials = {}
-        if not self.isDesktopVersion():
+        if True or not self.isDesktopVersion():
             cerdPath = os.path.join(folder_base,'credentials.json')
             if os.path.isfile(cerdPath):
                 try:
@@ -225,7 +226,7 @@ class ApiOysape(ApiOauth):
             pdata['deviceType'] = params.get('deviceType')
         if params.get('deviceToken'):
             pdata['deviceToken'] = params.get('deviceToken')
-        credWebhost = self.loadCredentials() if not self.isDesktopVersion() else {}
+        credWebhost = self.loadCredentials() # if not self.isDesktopVersion() else {}
         credUser = params.get('credentials') or {}
         merge_credentials(credWebhost, credUser)
         if self.userToken:
@@ -238,6 +239,7 @@ class ApiOysape(ApiOauth):
                 self.listExclude = ee
                 self.userSession['clientId'] = self.clientId
                 self.attach_credential_for_server(credWebhost, self.userSession["team0"])
+                self.userSession['credentials'] = credWebhost
                 return self.userSession
             else:
                 # self.userToken = ''
@@ -261,7 +263,7 @@ class ApiOysape(ApiOauth):
 
     def switchToTeam(self, params):
         if not params.get('tid'): return {"errinfo": "No team"}
-        credWebhost = self.loadCredentials() if not self.isDesktopVersion() else {}
+        credWebhost = self.loadCredentials() # if not self.isDesktopVersion() else {}
         credUser = params.get('credentials') or {}
         merge_credentials(credWebhost, credUser)
         retval = tools.callServerApiPost('/user/team', {'tid': params.get('tid')}, self)
@@ -273,6 +275,7 @@ class ApiOysape(ApiOauth):
             self.listExclude = ee
             self.userSession['clientId'] = self.clientId
             self.attach_credential_for_server(credWebhost, self.userSession["team0"])
+            self.userSession['credentials'] = credWebhost
             return self.userSession
         return retval
 
@@ -307,10 +310,11 @@ class ApiOysape(ApiOauth):
         if not self.hasPermission('writable'): return {"errinfo": "Writable access denied"}
         retval = tools.callServerApiDelete('/user/servers', {'key': params.get('key')}, self)
         self.userSession['servers'] = retval.get('servers') or []
-        credWebhost = self.loadCredentials() if not self.isDesktopVersion() else {}
+        credWebhost = self.loadCredentials() # if not self.isDesktopVersion() else {}
         credUser = params.get('credentials') or {}
         merge_credentials(credWebhost, credUser)
         self.attach_credential_for_server(credWebhost, self.userSession["team0"])
+        self.userSession['credentials'] = credWebhost
         # If current user has webhost set, and those webhosts are verified, Save servers/tasks/pipelines to webhost target
         objs = {
             'tname': self.userSession.get('teams',{}).get(self.userSession.get('team0'),{}).get('tname') or self.userSession.get('team0'),
@@ -405,10 +409,12 @@ class ApiOysape(ApiOauth):
                 objs[what].clear()
                 objs[what].extend(return_list)
                 if what == 'servers':
-                    credWebhost = self.loadCredentials() if not self.isDesktopVersion() else {}
+                    credWebhost = self.loadCredentials() # if not self.isDesktopVersion() else {}
                     credUser = params.get('credentials') or {}
                     merge_credentials(credWebhost, credUser)
                     self.attach_credential_for_server(credWebhost, self.userSession["team0"])
+                    self.userSession['credentials'] = credWebhost
+                    retval['credentials'] = credWebhost
                 # If current user has webhost set, and those webhosts are verified, and the target is in servers. Save servers/tasks/pipelines to webhost target
                 self.saveTeamDataToServer(objs, needVerify=True)
                 return retval
@@ -445,38 +451,105 @@ class ApiOysape(ApiOauth):
         except Exception as e:
             return {"errinfo": str(e)}
 
+    def get_credentials(self, params={}):
+        obh = params.get('obh')
+        filePath = os.path.join('.oysape','credentials.json')
+        # Get credentials from localhost if obh is http://localhost
+        if obh == 'localhost':
+            filePath = os.path.expanduser(os.path.join('~', filePath))
+            if os.path.isfile(filePath):
+                return json.loads(open(filePath, 'r').read())
+            else:
+                return {}
+        # Get webhost's credentials.json
+        for site in (self.userSession.get('sites') or []):
+            if obh == site.get('obh'):
+                serverKey = site.get('target')
+                if serverKey:
+                    retval = self.open_remote_file({'target': serverKey, 'path': filePath})
+                    if retval and retval.get('content'):
+                        return json.loads(base64.b64decode(retval.get('content').encode()).decode())
+                    elif retval and retval.get('errinfo'):
+                        return {}
+                else:
+                    return {}
+        return {'errinfo': 'Server not found'}
+
+    def set_credentials(self, params={}):
+        obh = params.get('obh')
+        team_id = params.get('team_id')
+        filePath = os.path.join('.oysape','credentials.json')
+        # Set credentials to localhost if obh is http://localhost
+        if obh == 'localhost':
+            filePath = os.path.expanduser(os.path.join('~', filePath))
+            oldVal = self.get_credentials({'obh': obh})
+            if not oldVal.get('errinfo'):
+                if params.get('credentialListing'):
+                    oldVal['credentialListing'] = params.get('credentialListing')
+                if params.get('credentialMapping') and params['credentialMapping'].get(team_id):
+                    if not oldVal.get('credentialMapping'):
+                        oldVal['credentialMapping'] = {}
+                    if not oldVal['credentialMapping'].get(team_id):
+                        oldVal['credentialMapping'][team_id] = {}
+                    oldVal['credentialMapping'][team_id].update(params['credentialMapping'][team_id])
+            open(filePath, 'w').write(json.dumps(oldVal))
+            return oldVal
+        # Set webhost's credentials.json
+        for site in (self.userSession.get('sites') or []):
+            if obh == site.get('obh'):
+                serverKey = site.get('target')
+                oldVal = self.get_credentials({'obh': obh})
+                if not oldVal.get('errinfo'):
+                    if params.get('credentialListing'):
+                        oldVal['credentialListing'] = params.get('credentialListing')
+                    if params.get('credentialMapping') and params['credentialMapping'].get(team_id):
+                        if not oldVal.get('credentialMapping'):
+                            oldVal['credentialMapping'] = {}
+                        if not oldVal['credentialMapping'].get(team_id):
+                            oldVal['credentialMapping'][team_id] = {}
+                        oldVal['credentialMapping'][team_id].update(params['credentialMapping'][team_id])
+                retval = self.save_remote_file({'target': serverKey, 'path': filePath, 'content': json.dumps(oldVal)})
+                if retval and retval.get('errinfo'): return retval
+                return oldVal
+        return {'errinfo': 'Server not found'}
+
     def set_credential_for_server(self, params):
         serverKey = params.get('serverKey')
         credential = params.get('credential')
-        if serverKey and self.userSession.get('servers'):
-            for item in self.userSession['servers']:
-                if item.get('key') == serverKey:
-                    if credential:
-                        if credential.get('username'): item['username'] = credential['username']
-                        if credential.get('password'): item['password'] = credential['password']
-                        if credential.get('prikey'): item['prikey'] = credential['prikey']
-                        if credential.get('passphrase'): item['passphrase'] = credential['passphrase']
-                        if credential.get('type'): item['credType'] = credential['type']
-                        if credential.get('alias'): item['credAlias'] = credential['alias']
-                    else:
-                        item.pop('username', None)
-                        item.pop('password', None)
-                        item.pop('prikey', None)
-                        item.pop('passphrase', None)
-                        item.pop('credType', None)
-                        item.pop('credAlias', None)
-                    if not self.isDesktopVersion():
-                        credentials = self.loadCredentials()
-                        self.attach_credential_for_server(credentials, self.userSession["team0"])
-                    self.saveTeamDataToServer({
-                        'tname': self.userSession.get('teams',{}).get(self.userSession.get('team0'),{}).get('tname') or self.userSession.get('team0'),
-                        'servers': self.userSession['servers'],
-                        'tasks': self.userSession['tasks'],
-                        'pipelines': self.userSession['pipelines'],
-                        'folders': self.listFolder,
-                        'excludes': self.listExclude,
-                    }, needVerify=True)
-                    return self.userSession
+        try:
+            if serverKey and self.userSession.get('servers'):
+                for item in self.userSession['servers']:
+                    if item.get('key') == serverKey:
+                        if credential:
+                            if credential.get('username'): item['username'] = credential['username']
+                            if credential.get('password'): item['password'] = credential['password']
+                            if credential.get('prikey'): item['prikey'] = credential['prikey']
+                            if credential.get('passphrase'): item['passphrase'] = credential['passphrase']
+                            if credential.get('type'): item['credType'] = credential['type']
+                            if credential.get('alias'): item['credAlias'] = credential['alias']
+                        else:
+                            item.pop('username', None)
+                            item.pop('password', None)
+                            item.pop('prikey', None)
+                            item.pop('passphrase', None)
+                            item.pop('credType', None)
+                            item.pop('credAlias', None)
+                        if True or not self.isDesktopVersion():
+                            credentials = self.set_credentials({'obh': 'localhost', 'team_id': self.userSession['team0'], 'credentialMapping': {self.userSession['team0']: {serverKey: credential['alias']}}})
+                            self.attach_credential_for_server(credentials, self.userSession["team0"])
+                            self.userSession['credentials'] = credentials
+                        self.saveTeamDataToServer({
+                            'tname': self.userSession.get('teams',{}).get(self.userSession.get('team0'),{}).get('tname') or self.userSession.get('team0'),
+                            'servers': self.userSession['servers'],
+                            'tasks': self.userSession['tasks'],
+                            'pipelines': self.userSession['pipelines'],
+                            'folders': self.listFolder,
+                            'excludes': self.listExclude,
+                        }, needVerify=True)
+                        return self.userSession
+        except Exception as e:
+            traceback.print_exc()
+            return {'errinfo': str(e)}
         return {'errinfo': 'Server not found'}
 
     def attach_credential_for_server(self, params, team_id):
@@ -790,12 +863,13 @@ class ApiSftp(ApiWorkspace):
         serverKey = params.get('target')
         thisPath = params.get('path') or '/'
         content = params.get('content')
+        sudo = params.get('sudo')
         if not serverKey in self.combinedConnections:
             ret1 = self.createCombConnection(serverKey)
             if ret1 and ret1.get('errinfo'): return ret1
         if not serverKey in self.combinedConnections:
             return {'errinfo': 'SSH connection not found'}
-        retval = self.combinedConnections[serverKey].save_remote_file(thisPath, content)
+        retval = self.combinedConnections[serverKey].save_remote_file(thisPath, content, sudo)
         return retval
 
     def download_remote_file(self, params={}):
@@ -863,17 +937,41 @@ class ApiSftp(ApiWorkspace):
 
     def create_remote_file(self, params={}):
         if not self.hasPermission('sftp'): return {'errinfo': 'SFTP access denied'}
-        serverKey = params.get('target')
+        serverKey = params.get('target') or ''
         path = params.get('path')
         filename = params.get('filename')
+        sudo = params.get('sudo')
         if not serverKey in self.combinedConnections:
             ret1 = self.createCombConnection(serverKey)
             if ret1 and ret1.get('errinfo'): return ret1
         if not serverKey in self.combinedConnections:
             return {'errinfo': 'SSH connection not found'}
-        retval = self.combinedConnections[serverKey].create_remote_file(os.path.join(path, filename))
+        retval = self.combinedConnections[serverKey].create_remote_file(os.path.join(path, filename), sudo)
         return retval
 
+    def addSftpProjectItem(self, params={}):
+        if not self.hasPermission('sftp'): return {'errinfo': 'SFTP access denied'}
+        tid = params.get('tid')
+        label = params.get('label')
+        target = params.get('target') or ''
+        folder = params.get('folder') or ''
+        retval = tools.callServerApiPost('/user/sftp/items', {'tid': tid, 'label': label, 'target': target, 'folder': folder}, self)
+        if retval.get('errinfo'): return retval
+        if 'remote_projects' in retval:
+            self.update_session({'remote_projects': retval.get('remote_projects')})
+        return {'remote_projects': self.userSession.get('remote_projects') or []}
+
+    def delSftpProjectItem(self, params={}):
+        if not self.hasPermission('sftp'): return {'errinfo': 'SFTP access denied'}
+        tid = params.get('tid')
+        label = params.get('label')
+        target = params.get('target') or ''
+        folder = params.get('folder') or ''
+        retval = tools.callServerApiDelete('/user/sftp/items', {'tid': tid, 'label': label, 'target': target, 'folder': folder}, self)
+        if retval.get('errinfo'): return retval
+        if 'remote_projects' in retval:
+            self.update_session({'remote_projects': retval.get('remote_projects')})
+        return {'remote_projects': self.userSession.get('remote_projects') or []}
 
 class ApiDockerManager(ApiSftp):
     def dockerGetWholeTree(self, params={}):
@@ -999,6 +1097,7 @@ class ApiScheduler(ApiDockerManager):
         self.listExclude = ee
         self.userSession['clientId'] = self.clientId
         self.attach_credential_for_server(params, self.teamId)
+        self.userSession['credentials'] = params
         return self.userSession
 
     def createCombConnection(self, serverKey):
@@ -1343,44 +1442,6 @@ class ApiDesktop(ApiOverHttp):
             return self.update_session(retval)
         else:
             return retval
-
-    def get_credentials(self, params={}):
-        obh = params.get('obh')
-        # Get webhost's credentials.json
-        for site in (self.userSession.get('sites') or []):
-            if obh == site.get('obh'):
-                serverKey = site.get('target')
-                if serverKey:
-                    retval = self.open_remote_file({'target': serverKey, 'path': os.path.join('.oysape','credentials.json')})
-                    if retval and retval.get('content'):
-                        return json.loads(base64.b64decode(retval.get('content').encode()).decode())
-                    elif retval and retval.get('errinfo'):
-                        return {}
-                else:
-                    return {}
-        return {'errinfo': 'Server not found'}
-
-    def set_credentials(self, params={}):
-        obh = params.get('obh')
-        team_id = params.get('team_id')
-        # Set webhost's credentials.json
-        for site in (self.userSession.get('sites') or []):
-            if obh == site.get('obh'):
-                serverKey = site.get('target')
-                oldVal = self.get_credentials({'obh': obh})
-                if not oldVal.get('errinfo'):
-                    if params.get('credentialListing'):
-                        oldVal['credentialListing'] = params.get('credentialListing')
-                    if params.get('credentialMapping') and params['credentialMapping'].get(team_id):
-                        if not oldVal.get('credentialMapping'):
-                            oldVal['credentialMapping'] = {}
-                        if not oldVal['credentialMapping'].get(team_id):
-                            oldVal['credentialMapping'][team_id] = {}
-                        oldVal['credentialMapping'][team_id].update(params['credentialMapping'][team_id])
-                retval = self.save_remote_file({'target': serverKey, 'path': os.path.join('.oysape','credentials.json'), 'content': json.dumps(oldVal)})
-                if retval and retval.get('errinfo'): return retval
-                return oldVal
-        return {'errinfo': 'Server not found'}
 
     def openWebHost(self, params={}):
         obh = params.get('obh')

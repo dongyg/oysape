@@ -36,10 +36,12 @@ def get_files(apath, recurse=True, exclude=[], ignore=None):
         dirs = [x for x in items if os.path.isdir(os.path.join(apath, x))]
         files = [x for x in items if os.path.isfile(os.path.join(apath, x))]
         for item in dirs:
-            if exclude and ignore and callable(ignore) and not ignore(item,exclude):
+            # print(item, os.path.join(apath, item), not ignore(item,exclude) , not ignore(os.path.join(apath, item),exclude))
+            if exclude and ignore and callable(ignore) and not ignore(item,exclude) and not ignore(os.path.join(apath, item),exclude):
                 result.append({"title":item, "key":tools.get_key(os.path.join(apath, item)), "path":os.path.join(apath, item), "children":get_files(os.path.join(apath, item), recurse, exclude, ignore) if recurse else []})
         for item in files:
-            if exclude and ignore and callable(ignore) and not ignore(item,exclude):
+            # print(item, os.path.join(apath, item), not ignore(item,exclude) , not ignore(os.path.join(apath, item),exclude))
+            if exclude and ignore and callable(ignore) and not ignore(item,exclude) and not ignore(os.path.join(apath, item),exclude):
                 result.append(get_files(os.path.join(apath, item), recurse, exclude, ignore))
         return result
     elif os.path.isfile(apath):
@@ -1235,31 +1237,74 @@ class ApiDesktop(ApiOverHttp):
             return {'errinfo': str(e)}
 
     def getFolderFiles(self, params={}):
-        retval = []
-        exclude = [x for x in self.listExclude if x and x.strip()]
-        exclude = [patten for item in exclude for patten in item.split(' ') if patten]
-        ignore = lambda x,y: any([fnmatch.fnmatch(x, patten) for patten in y])
-        folders = [x for x in self.listFolder if x.get('path')]
-        folders = [{"root":True, "title":os.path.basename(x['path']), "key":tools.get_key(x['path']), "path":x['path'], "children":get_files(x['path'], True, exclude+(x.get('exclude') or []), ignore)} for x in folders if x.get('path') and not ignore(x['path'],exclude)]
-        retval.extend(folders)
-        return retval
+        try:
+            lpname = params.get('lpname', '')
+            retval = {}
+            exclude = [x for x in self.listExclude if x and x.strip()]
+            exclude = [patten for item in exclude for patten in item.split(' ') if patten]
+            ignore = lambda x,y: x==y or any([fnmatch.fnmatch(x, patten) for patten in y])
+            for pitem in self.userSession['local_projects']:
+                retval[pitem.get('label')] = []
+                if (pitem.get('label')==lpname or not lpname) and pitem.get('folders') and pitem.get('folders').get('localhost'):
+                    v1 = pitem.get('folders').get('localhost')
+                    if not v1: continue
+                    # folders = [x for x in self.listFolder if x.get('path')]
+                    # folders = [{"root":True, "title":os.path.basename(x['path']), "key":tools.get_key(x['path']), "path":x['path'], "children":get_files(x['path'], True, exclude+(x.get('exclude') or []), ignore)} for x in folders if x.get('path') and not ignore(x['path'],exclude)]
+                    folders = v1
+                    folders = [{"root":True, "title":os.path.basename(x), "key":tools.get_key(x), "path":x, "children":get_files(x, True, exclude, ignore)} for x in folders if x and not ignore(x,exclude)]
+                    retval[pitem.get('label')].extend(folders)
+            return retval
+        except Exception as e:
+            traceback.print_exc()
+            return {'errinfo': str(e)}
 
-    def addFolder(self, params={}):
+    # Expired. Local file browser changed to local project
+    # def addFolder(self, params={}):
+    #     if self.isDesktopVersion():
+    #         import webview
+    #         foldername = webview.windows[0].create_file_dialog(webview.FOLDER_DIALOG)
+    #         if foldername and foldername[0] and foldername[0] not in [x['path'] for x in self.listFolder]:
+    #             self.listFolder.append({'path':foldername[0]})
+    #             self.importTo({'what': 'folders', 'items': self.listFolder})
+    #         return {'folderFiles':self.getFolderFiles()}
+    #     else:
+    #         return {'errinfo': "Please give a folder to add"}
+
+    # Expired. Local file browser changed to local project
+    # def removeFolder(self, params={}):
+    #     path = params.get('path', '')
+    #     self.listFolder = [x for x in self.listFolder if x.get('path') != path]
+    #     self.importTo({'what': 'folders', 'items': self.listFolder})
+    #     return {'folderFiles':self.getFolderFiles()}
+
+    def addLocalProjectItem(self, params={}):
         if self.isDesktopVersion():
             import webview
             foldername = webview.windows[0].create_file_dialog(webview.FOLDER_DIALOG)
-            if foldername and foldername[0] and foldername[0] not in [x['path'] for x in self.listFolder]:
-                self.listFolder.append({'path':foldername[0]})
-                self.importTo({'what': 'folders', 'items': self.listFolder})
-            return {'folderFiles':self.getFolderFiles()}
+            tid = params.get('tid')
+            label = params.get('label')
+            if foldername and foldername[0]:
+                folder = foldername[0]
+                retval = tools.callServerApiPost('/user/local/items', {'tid': tid, 'label': label, 'target': 'localhost', 'folder': folder}, self)
+                if retval.get('errinfo'): return retval
+                if 'local_projects' in retval:
+                    self.update_session({'local_projects': retval.get('local_projects')})
+            return {'local_projects': self.userSession.get('local_projects') or [], 'folderFiles':self.getFolderFiles({'lpname': label})}
         else:
-            return {'errinfo': "Please give a folder to add"}
+            return {'errinfo': "Only desktop version supported"}
 
-    def removeFolder(self, params={}):
-        path = params.get('path', '')
-        self.listFolder = [x for x in self.listFolder if x.get('path') != path]
-        self.importTo({'what': 'folders', 'items': self.listFolder})
-        return {'folderFiles':self.getFolderFiles()}
+    def delLocalProjectItem(self, params={}):
+        if self.isDesktopVersion():
+            tid = params.get('tid')
+            label = params.get('label')
+            folder = params.get('folder') or ''
+            retval = tools.callServerApiDelete('/user/local/items', {'tid': tid, 'label': label, 'target': 'localhost' if folder else '', 'folder': folder}, self)
+            if retval.get('errinfo'): return retval
+            if 'local_projects' in retval:
+                self.update_session({'local_projects': retval.get('local_projects')})
+            return {'local_projects': self.userSession.get('local_projects') or [], 'folderFiles':self.getFolderFiles({'lpname': label})}
+        else:
+            return {'errinfo': "Only desktop version supported"}
 
     def createNewFile(self, params={}):
         if self.isDesktopVersion():
@@ -1275,16 +1320,20 @@ class ApiDesktop(ApiOverHttp):
             else:
                 return {}
         else:
-            return {'errinfo': "Unavailable unless in desktop version"}
+            return {'errinfo': "Only desktop version supported"}
 
     def addExcludeToFolder(self, params={}):
         path = params.get('path', '')
-        for item in self.listFolder:
-            if path.startswith(item['path']):
-                item['exclude'] = item.get('exclude') or []
-                item['exclude'].append(os.path.basename(path))
-        self.importTo({'what': 'folders', 'items': self.listFolder})
-        return {'folderFiles':self.getFolderFiles()}
+        label = params.get('label')
+        # for item in self.listFolder:
+        #     if path.startswith(item['path']):
+        #         item['exclude'] = item.get('exclude') or []
+        #         item['exclude'].append(os.path.basename(path))
+        # self.importTo({'what': 'folders', 'items': self.listFolder})
+        if path not in self.listExclude:
+            self.listExclude.append(path)
+        self.importTo({'what': 'excludes', 'items': self.listExclude})
+        return {'folderFiles':self.getFolderFiles({'lpname': label})}
 
     def getGlobalExcludes(self, params={}):
         return self.listExclude
@@ -1292,7 +1341,7 @@ class ApiDesktop(ApiOverHttp):
     def updateGlobalExcludes(self, params={}):
         self.listExclude = params.get('excludes') or []
         self.importTo({'what': 'excludes', 'items': self.listExclude})
-        return {'folderFiles':self.getFolderFiles()}
+        return {'folderFiles':self.getFolderFiles({})}
 
     def update_session(self, params):
         self.userSession.update(params)

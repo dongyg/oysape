@@ -11,7 +11,7 @@ import './CodeEditor.css';
 
 export default function CodeEditor(props) {
   const { message } = App.useApp();
-  const { customTheme, tabActiveKey, tabItems, setTabItems, setCodeEditRowColText, setCodeEditCurrentLang, setFooterStatusText, setFolderFiles } = useCustomContext();
+  const { customTheme, tabActiveKey, tabItems, setTabItems, setCodeEditRowColText, setCodeEditCurrentLang, setFooterStatusText, setFolderFiles, currentLocalProject } = useCustomContext();
   const [value, setValue] = React.useState('');
   const [langCurr, setLangCurr] = React.useState(null);
   const inputCode = React.useRef(null);
@@ -113,7 +113,8 @@ export default function CodeEditor(props) {
         });
         setTabItems(newItems);
         if(resp && resp.folderFiles) {
-          setFolderFiles(resp.folderFiles);
+          let lpname = currentLocalProject.replace('LOCALPPROJECT_', '');
+          setFolderFiles(resp.folderFiles[lpname]||[]);
         }
       }).catch((err) => {
         message.error(err.message);

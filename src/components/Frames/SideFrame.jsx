@@ -9,7 +9,7 @@ import { UnorderedListOutlined, DoubleLeftOutlined, DoubleRightOutlined, MenuFol
 import { RxActivityLog } from "react-icons/rx";
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { callApi, isDesktopVersion } from '../Common/global';
+import { isDesktopVersion } from '../Common/global';
 // import ProfileButton from '../Common/ProfileButton'
 import ServersPanel from '../Server/ServersPanel';
 import ProjectsPanel from '../Project/ProjectsPanel';
@@ -25,7 +25,7 @@ import './SideFrame.css';
 const { Sider } = Layout;
 
 export default function SideFrame() {
-  const { customTheme, browserInfo, userSession, currentSideKey, setCurrentSideKey, menuWidth, sideAlign, setSideAlign, sideSplitterMoving, setSideSplitterMoving, sideWidthUse, setSideWidthUse, sideWidthBak, setSideWidthBak, setFolderFiles, hideSidebar, setHideSidebar } = useCustomContext();
+  const { customTheme, browserInfo, userSession, currentSideKey, setCurrentSideKey, menuWidth, sideAlign, setSideAlign, sideSplitterMoving, setSideSplitterMoving, sideWidthUse, setSideWidthUse, sideWidthBak, setSideWidthBak, hideSidebar, setHideSidebar } = useCustomContext();
   const [currentTab, setCurrentTab] = useState('1');
 
   const handleHideSidebar = () => {
@@ -74,13 +74,6 @@ export default function SideFrame() {
     }
     return buttons;
   }
-  React.useEffect(() => {
-    if(isDesktopVersion){
-      setTimeout(() => {
-        callApi('getFolderFiles').then((data) => { setFolderFiles(data); })
-      }, 1000)
-    }
-  },[setFolderFiles]);
 
   return (
     <Sider width={sideWidthUse} style={{ transition: sideSplitterMoving?'none':'', position: sideWidthUse==='100%'?'absolute':'relative', display: hideSidebar?'none':'block' }} className='disableHighlight'>

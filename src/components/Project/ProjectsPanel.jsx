@@ -1,10 +1,12 @@
-import { App, Button, Dropdown } from 'antd';
-import { BsPlusLg, BsThreeDots } from "react-icons/bs";
+import React, {useState} from 'react';
+import { App, Select } from 'antd';
 
 import { useCustomContext } from '../Contexts/CustomContext'
 import { callApi } from '../Common/global';
 
 // import ProjectCollapse from './ProjectCollapse';
+import AntIcon from '../Common/AntIcon';
+import TextInputModal from '../Modules/TextInputModal';
 import ProjectFileTree from './ProjectFileTree';
 import CodeEditor from '../Modules/CodeEditor';
 
@@ -12,17 +14,35 @@ import './ProjectsPanel.css';
 
 export default function ProjectsPanel() {
   const { message } = App.useApp();
-  const { hideSidebarIfNeed, tabItems, setTabItems, setTabActiveKey, setFolderFiles } = useCustomContext();
-  const headerHeight = '56px';
+  const { hideSidebarIfNeed, tabItems, setTabItems, setTabActiveKey, userSession, setUserSession, currentLocalProject, setCurrentLocalProject } = useCustomContext();
+  const headerHeight = 56;
+  const [showProjectInput, setShowProjectInput] = useState(false);
 
-  const addFolder = () => {
-    callApi('addFolder').then((data) => {
-      if(data && data.errinfo) {
-        message.error(data.errinfo);
-      }else if(data && data.folderFiles) {
-        setFolderFiles(data.folderFiles);
+  const chooseProject = (value) => {
+    if(value === 'NEWLOCALPROJECT') {
+      setShowProjectInput(true);
+    }else if(value === 'menuExcludes') {
+      editGlobalExcludes();
+    }else if(value.startsWith('LOCALPPROJECT_')) {
+      console.log('chooseProject', value);
+      setCurrentLocalProject(value);
+    }
+  }
+
+  const createLocalProject = (projectLabel) => {
+    setShowProjectInput(false);
+    callApi('addLocalProjectItem', {tid: userSession.team0, label: projectLabel}).then((resp) => {
+      if(resp && resp.errinfo) {
+        message.error(resp.errinfo);
+      } else {
+        setUserSession({...userSession, local_projects: resp.local_projects||[]});
+        if ((resp.local_projects||[]).find((item)=>item.label===projectLabel)) {
+          chooseProject('LOCALPPROJECT_'+projectLabel, true, resp.local_projects||[]);
+        }
       }
-    }).catch((err) => { message.error(err.message); })
+    }).catch((err) => {
+      message.error(err.message);
+    })
   }
   const editGlobalExcludes = () => {
     callApi('getGlobalExcludes', {}).then((listExcludes)=>{
@@ -42,34 +62,20 @@ export default function ProjectsPanel() {
     }).catch((err) => { message.error(err.message); });
   }
 
-  const menuItems = [
-    { key: 'menuNewFolder', label: ('Add a new folder'), icon: <BsPlusLg />, },
-    { type: 'divider', },
-    { key: 'menuExcludes', label: ( 'Set global excludes' ), },
-  ];
-  const onClickMenu = ({ key }) => {
-    if(key === 'menuNewFolder') {
-      addFolder();
-    }else if(key === 'menuExcludes') {
-      // if(window.openProjectFile) window.openProjectFile('~/.oysape/excludes.json', 'Global Excludes');
-      editGlobalExcludes();
-    }
-  };
-
   return (
     <>
-    <div style={{ height: headerHeight, padding: '12px 16px', display: 'flex', flexWrap: 'nowrap', alignItems: 'flex-start' }}>
-      <span style={{ flex: 'auto', paddingTop: '4px' }}>File Explorer</span>
-      <div>
-        <Dropdown menu={{ items: menuItems, onClick: onClickMenu }} placement="topRight">
-          <Button type='text' icon={<BsThreeDots />}></Button>
-        </Dropdown>
+      <div style={{ height: headerHeight+'px', padding: '12px 16px', display: 'flex', flexWrap: 'nowrap', justifyContent: 'space-between' }}>
+        <span style={{ flex: 'auto', paddingTop: '4px', width: '100px', }}>Projects</span>
+        <Select options={[
+            {value: 'NEWLOCALPROJECT', label: <><AntIcon name="PlusOutlined" />&nbsp;New Project</>},
+            {value: 'menuExcludes', label: <><AntIcon name="SettingOutlined" />&nbsp;Global excludes</>, },
+            userSession.local_projects&&userSession.local_projects.length>0 ? {title: 'Projects', label: 'Projects', options: userSession.local_projects.map((item) => {return {value: 'LOCALPPROJECT_'+item.label, label: item.label}})} : null,
+          ].filter((x) => x)} placeholder="Choose a Project"
+          value={currentLocalProject} onSelect={(value) => chooseProject(value)} style={{ width: '100%'}}>
+        </Select>
       </div>
-    </div>
-    <div style={{ height: 'calc(100% - ' + headerHeight+')', overflow: 'auto' }} className='withScrollContent'>
-      {/* 因为 ProjectCollapse 会是 100% 高度, 所以需要在它外面包一层 div, 并且高度是 100% 去掉上面的 header div 的高度 */}
       <ProjectFileTree />
-    </div>
+      <TextInputModal visible={showProjectInput} defaultValue={""} title={"Create a new project"} onCreate={createLocalProject} onCancel={() => setShowProjectInput(false)} placeholder={"Please input a project name"}></TextInputModal>
     </>
   );
 }

@@ -168,7 +168,6 @@ const ServerList = () => {
   }
 
   const handleCredentialsChoose = (data) => {
-    console.log(data);
     callApi('set_credential_for_server', {credential: data, serverKey: selectedRowKeys[0]}).then((res) => {
       if(res&&res.email) {
         // saveCredentialMapping(userSession.team0, selectedRowKeys[0], data['alias']);

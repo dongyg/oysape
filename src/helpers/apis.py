@@ -537,7 +537,7 @@ class ApiOysape(ApiOauth):
                             item.pop('credType', None)
                             item.pop('credAlias', None)
                         if True or not self.isDesktopVersion():
-                            credentials = self.set_credentials({'obh': 'localhost', 'team_id': self.userSession['team0'], 'credentialMapping': {self.userSession['team0']: {serverKey: credential['alias']}}})
+                            credentials = self.set_credentials({'obh': 'localhost', 'team_id': self.userSession['team0'], 'credentialMapping': {self.userSession['team0']: {serverKey: credential['alias'] if credential else None}}})
                             self.attach_credential_for_server(credentials, self.userSession["team0"])
                             self.userSession['credentials'] = credentials
                         self.saveTeamDataToServer({

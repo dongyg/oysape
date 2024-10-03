@@ -47,7 +47,7 @@ const TaskList = () => {
     {
       title: "Name",
       dataIndex: "name",
-      // ellipsis: true, // 设置为 true 会影响 expandable 有展开时 colspan 带来的显示问题
+      ellipsis: true, // 设置为 true 会影响 expandable 有展开时 colspan 带来的显示问题. 设置 .ant-table-expanded-row .ant-table-cell {display: inline-block; width: 100%;} 就可以解决 colspan 带来的显示问题了
       render: (text, record, index) => {
         return (<Dropdown menu={{items: getContextItems(), onClick: onClickMenu}} trigger={['contextMenu']}>
           <div>
@@ -160,10 +160,10 @@ const TaskList = () => {
       className={editable?'':'hide-selection-column'}
       rowSelection={{
         selectedRowKeys,
-        // hideSelectAll: true,
+        hideSelectAll: true,
         type: multipleSelect&&editable?'checkbox':'radio',
         onChange: onSelectedRowKeysChange,
-        columnWidth: '0px',
+        // columnWidth: '0px',
       }}
       showHeader={false}
       pagination={false}

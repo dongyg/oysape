@@ -100,8 +100,8 @@ export default function BodyContainer() {
   window.showMessageInWebpage = showMessageInWebpage;
 
   const reloadUserSession = (token) => {
+    setLoading(true);
     callApi('reloadUserSession', {credentials: getCredentials(), token}).then((data) => {
-      setLoading(false);
       if(data?.uid) {
         setUserSession(data);
         if(isMobileVersion) {
@@ -109,13 +109,15 @@ export default function BodyContainer() {
           }).catch((error) => {
           });
         }
+        setLoading(false);
       }else if(data?.errinfo) {
         window.showMessageInWebpage && window.showMessageInWebpage(data.errinfo);
         delTokenFromCookie();
       }else{
-        window.showMessageInWebpage && window.showMessageInWebpage('');
         if(isMobileVersion && window.cooData && window.cooData.oywebHost) {
           window.location.href = window.cooData.oywebHost;
+        } else if (isDesktopVersion) {
+          window.showMessageInWebpage && window.showMessageInWebpage('');
         }
         // delTokenFromCookie();
       }

@@ -23,7 +23,7 @@ def initialize_app():
     # os_info = distro.name(pretty=True) if platform.system() == 'Linux' else platform.platform()
     # Give a user agent including OysapeDesktop, so that the SignIn.jsx in React JS can indicate this is a desktop version.
     # Otherwise, the SignIn.jsx in React JS will execute reloadUserSession because it is not a desktop version as the beginning.
-    clientAgent = f'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 OysapeDesktop/{version}'
+    clientAgent = f'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 OysapeDesktop/{version}'
     # clientAgent = f'{os_info} OysapeDesktop/{version}'
 
     parser = argparse.ArgumentParser(description="Oysape Desktop Entry Point")

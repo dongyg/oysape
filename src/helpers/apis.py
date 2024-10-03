@@ -89,24 +89,7 @@ def loadEntrypointWindow(window=None, apiObject=None):
     return window
 
 def mainloop(window):
-    import webview
     window.load_url(consts.HOME_ENTRY)
-    # Get default user agent
-    user_agent = window.evaluate_js('navigator.userAgent')
-    if user_agent.find('OysapeDesktop') < 0:
-        # Add OysapeDesktop to the default user agent, so that the React JS can work on the right user agent. Then the Codeium Editor will work properly
-        apiInstances[webview.token].clientUserAgent = f'{user_agent} OysapeDesktop/3.9.20'
-        # Change user agent for webview. So that the webview(javascript) can get the right user agent, and know if it's OysapeDesktop or not
-        script = f'''
-        Object.defineProperty(navigator, 'userAgent', {{
-            get: function() {{
-                return '{apiInstances[webview.token].clientUserAgent}';
-            }}
-        }});
-        window.updateUserAgent && window.updateUserAgent();
-        '''
-        window.evaluate_js(script)
-    if consts.IS_DEBUG: print(apiInstances[webview.token].clientUserAgent)
 
 
 ################################################################################
@@ -132,6 +115,20 @@ class ApiBase:
                 except Exception as e:
                     return {'errinfo': "Failed: (%s) %s" % (functionName, str(e))}
         return {'errinfo': "Api not found: %s" % functionName}
+
+    def init_app(self, params={}):
+        import webview
+        if params and params.get('userAgent'):
+            self.clientUserAgent = params.get('userAgent') + ' OysapeDesktop/3.9.20'
+            script = f'''
+            Object.defineProperty(navigator, 'userAgent', {{
+                get: function() {{
+                    return '{self.clientUserAgent}';
+                }}
+            }});
+            window.updateUserAgent && window.updateUserAgent();
+            '''
+            webview.windows[0].evaluate_js(script)
 
     def setTheme(self, params):
         self.themeType = (params or {}).get('type', self.themeType)

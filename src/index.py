@@ -36,7 +36,9 @@ def initialize_app():
     if server.start_http_server():
         windowObj = apis.loadEntrypointWindow(apiObject=apis.apiInstances[webview.token])
         # Give private_mode=False to save cookies persistently
-        webview.start(apis.mainloop, windowObj, debug=consts.IS_DEBUG, private_mode=False, user_agent=clientAgent)
+        # webview.start(apis.mainloop, windowObj, debug=consts.IS_DEBUG, private_mode=False, user_agent=clientAgent)
+        # Do not give the user_agent, so the default user agent will be got in mainloop, and OysapeDesktop/{version} will be added to the end of the default user agent
+        webview.start(apis.mainloop, windowObj, debug=consts.IS_DEBUG, private_mode=False)
     else:
         print("Failed to start websocket server.")
         logging.error("Failed to start websocket server.")

@@ -116,9 +116,8 @@ export default function BodyContainer() {
       }else{
         if(isMobileVersion && window.cooData && window.cooData.oywebHost) {
           window.location.href = window.cooData.oywebHost;
-        } else if (isDesktopVersion) {
-          window.showMessageInWebpage && window.showMessageInWebpage('');
         }
+        window.showMessageInWebpage && window.showMessageInWebpage('');
         // delTokenFromCookie();
       }
     }).catch((err) => {

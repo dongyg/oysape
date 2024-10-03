@@ -67,6 +67,7 @@ const TaskList = () => {
   const onClickTag = (event) => {
     setSearchKeyword(event.target.innerText);
     filterTasks(event.target.innerText);
+    event.stopPropagation();
   }
   const onSearchKeywordChange = (event) => {
     setSearchKeyword(event.target.value);

@@ -66,6 +66,7 @@ const PipelineList = () => {
   const onClickTag = (event) => {
     setSearchKeyword(event.target.innerText);
     filterPipelines(event.target.innerText);
+    event.stopPropagation();
   }
   const onSearchKeywordChange = (event) => {
     setSearchKeyword(event.target.value);

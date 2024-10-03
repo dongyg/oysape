@@ -34,7 +34,6 @@ export default function ProjectFileTree() {
   const miDelLocalProject = {label: 'Delete project', key: 'tree_menu_del_local_project', icon: <AntIcon name="MinusCircleOutlined" />, }
 
   const onClickMenu = ({ key }) => {
-    console.log(key);
     // if(!node1.current) return;
     if(key === 'tree_menu_newfile') {
       createNewFile(node1.current.path);
@@ -54,7 +53,6 @@ export default function ProjectFileTree() {
         content: 'Will be removed from this project.',
         onOk() {
           callApi('delLocalProjectItem', {tid: userSession.team0, label: lpname, folder: node1.current.path}).then((resp) => {
-            console.log(resp);
             if(resp && resp.errinfo) {
               message.error(resp.errinfo);
             }else if(resp && resp.local_projects) {
@@ -125,7 +123,6 @@ export default function ProjectFileTree() {
   const addLocalProjectFolder = () => {
     let lpname = currentLocalProject.replace('LOCALPPROJECT_', '');
     callApi('addLocalProjectItem', {tid: userSession.team0, label: lpname}).then((resp) => {
-      console.log(resp);
       if(resp && resp.errinfo) {
         message.error(resp.errinfo);
       } else {
@@ -164,9 +161,7 @@ export default function ProjectFileTree() {
   const reloadFolderFiles = useCallback(() => {
     if(!currentLocalProject) return;
     let lpname = currentLocalProject.replace('LOCALPPROJECT_', '');
-    console.log('reloadFolderFiles', lpname);
     callApi('getFolderFiles', {lpname: lpname, refresh: true}).then((data) => {
-      console.log('getFolderFiles', data)
       if(data && data.errinfo) {
         message.error(data.errinfo);
       } else if(data && data[lpname]) {
@@ -177,7 +172,6 @@ export default function ProjectFileTree() {
   window.reloadFolderFiles = reloadFolderFiles;
 
   const setContextMenus = (anode) => {
-    console.log('setContextMenus', anode);
     if(anode && !anode.isLeaf) {
       var items = [miNewFile, miDivider, miCopyPath, miCopyAbsolutePath];
       // items.push(miDivider, anode.expanded ? miCollapse : miExpand);

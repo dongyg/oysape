@@ -84,6 +84,7 @@ const ServerList = () => {
   const onClickTag = (event) => {
     setSearchKeyword(event.target.innerText);
     filterServers(event.target.innerText);
+    event.stopPropagation();
   }
   const onSearchKeywordChange = (event) => {
     setSearchKeyword(event.target.value);

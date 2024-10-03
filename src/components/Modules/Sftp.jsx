@@ -332,7 +332,6 @@ export default function Sftp(props) {
   }
 
   const setContextMenus = (anode) => {
-    console.log(anode);
     if(anode) {
       if(anode.isLeaf) {
         if(anode.key.indexOf('_error')>=0 || anode.failed) {

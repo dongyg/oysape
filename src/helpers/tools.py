@@ -131,6 +131,24 @@ def getDatetimeStrFromTimestamp(t=None):
 
 
 ################################################################################
+def get_custom_user_agent(version='3.9.20'):
+    import platform
+    system = platform.system()
+    release = platform.release()
+    machine = platform.machine()
+    if system == "Darwin":
+        os_name = f"Macintosh; Intel Mac OS X {release.replace('.', '_')}; {machine}"
+    elif system == "Windows":
+        os_name = f"Windows NT {release}; {machine}"
+    elif system == "Linux":
+        os_name = f"Linux {release}; {machine}"
+    else:
+        os_name = f"{system} {release}; {machine}"
+    user_agent = f"Mozilla/5.0 ({os_name}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 OysapeDesktop/{version}"
+    return user_agent
+
+
+################################################################################
 def send_get_request(url, data, headers=None):
     if consts.IS_DEBUG: print('GET', url)
     try:

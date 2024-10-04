@@ -3,7 +3,7 @@
 
 import argparse, logging
 import webview
-from helpers import server, consts, apis
+from helpers import server, consts, apis, tools
 
 # HTML 内容作为字符串
 html_content = """
@@ -23,8 +23,11 @@ def initialize_app():
     # os_info = distro.name(pretty=True) if platform.system() == 'Linux' else platform.platform()
     # Give a user agent including OysapeDesktop, so that the SignIn.jsx in React JS can indicate this is a desktop version.
     # Otherwise, the SignIn.jsx in React JS will execute reloadUserSession because it is not a desktop version as the beginning.
-    clientAgent = f'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 OysapeDesktop/{version}'
+    # clientAgent = f'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 OysapeDesktop/{version}'
     # clientAgent = f'{os_info} OysapeDesktop/{version}'
+
+    # Give the user agnet string depending on the OS
+    clientAgent = tools.get_custom_user_agent(version)
 
     parser = argparse.ArgumentParser(description="Oysape Desktop Entry Point")
     parser.add_argument('--debug', type=bool, help="Debug mode", default=False)
@@ -36,9 +39,7 @@ def initialize_app():
     if server.start_http_server():
         windowObj = apis.loadEntrypointWindow(apiObject=apis.apiInstances[webview.token])
         # Give private_mode=False to save cookies persistently
-        # webview.start(apis.mainloop, windowObj, debug=consts.IS_DEBUG, private_mode=False, user_agent=clientAgent)
-        # Do not give the user_agent, so the default user agent will be got in mainloop, and OysapeDesktop/{version} will be added to the end of the default user agent
-        webview.start(apis.mainloop, windowObj, debug=consts.IS_DEBUG, private_mode=False)
+        webview.start(apis.mainloop, windowObj, debug=consts.IS_DEBUG, private_mode=False, user_agent=clientAgent)
     else:
         print("Failed to start websocket server.")
         logging.error("Failed to start websocket server.")

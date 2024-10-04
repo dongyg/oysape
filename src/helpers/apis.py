@@ -90,6 +90,8 @@ def loadEntrypointWindow(window=None, apiObject=None):
 
 def mainloop(window):
     window.load_url(consts.HOME_ENTRY)
+    ua = window.evaluate_js('navigator.userAgent')
+    print(ua)
 
 
 ################################################################################
@@ -115,20 +117,6 @@ class ApiBase:
                 except Exception as e:
                     return {'errinfo': "Failed: (%s) %s" % (functionName, str(e))}
         return {'errinfo': "Api not found: %s" % functionName}
-
-    def init_app(self, params={}):
-        import webview
-        if params and params.get('userAgent'):
-            self.clientUserAgent = params.get('userAgent') + ' OysapeDesktop/3.9.20'
-            script = f'''
-            Object.defineProperty(navigator, 'userAgent', {{
-                get: function() {{
-                    return '{self.clientUserAgent}';
-                }}
-            }});
-            '''
-            webview.windows[0].evaluate_js(script)
-        return self.clientUserAgent
 
     def setTheme(self, params):
         self.themeType = (params or {}).get('type', self.themeType)

@@ -19,7 +19,7 @@ html_content = """
 """
 
 def initialize_app():
-    version = '3.9.20'
+    version = '3.9.21'
     # os_info = distro.name(pretty=True) if platform.system() == 'Linux' else platform.platform()
     # Give a user agent including OysapeDesktop, so that the SignIn.jsx in React JS can indicate this is a desktop version.
     # Otherwise, the SignIn.jsx in React JS will execute reloadUserSession because it is not a desktop version as the beginning.

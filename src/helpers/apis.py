@@ -21,7 +21,7 @@ def getApiObjectByTeam(tname):
         if file.endswith('.json'):
             teamId = os.path.splitext(file)[0]
             if scheduler.apiSchedulers.get(teamId) == None:
-                scheduler.apiSchedulers[teamId] = ApiScheduler(clientId='scheduler_for_'+teamId, clientUserAgent='OysapeScheduler/3.9.20')
+                scheduler.apiSchedulers[teamId] = ApiScheduler(clientId='scheduler_for_'+teamId, clientUserAgent='OysapeScheduler/3.9.21')
                 scheduler.apiSchedulers[teamId].teamId = teamId
                 scheduler.apiSchedulers[teamId].reloadUserSession({'credentials': scheduler.apiSchedulers[teamId].loadCredentials()})
     for tid in scheduler.apiSchedulers:

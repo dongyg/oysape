@@ -141,7 +141,14 @@ def get_custom_user_agent(version='3.9.21'):
     elif system == "Windows":
         os_name = f"Windows NT {release}; {machine}"
     elif system == "Linux":
-        os_name = f"Linux {release}; {machine}"
+        # 在 VMware 中运行的 Ubuntu 64-bit Arm 22.04.3 中, User Agent 存在问题, 会造成 CodeiumEditor 无法鼠标点任意地方. 并且发现是 () 中的操作系统信息部分影响 CodeiumEditor
+        # Firefox   得到的是 Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:127.0) Gecko/20100101 Firefox/127.0  试了不行
+        # pywebview 得到的是 Mozilla/5.0 (X11; Ubuntu; Linux aarch64) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15  试了不行
+        # os_name = f"Linux {release}; {machine}"  试了不行
+        # 使用与 Windows 相同的 os_name 生成方法  试了不行
+        # 写死 (Windows NT 10; AMD64) 试了不行. 但是 VMware 中运行的 Windows 系统就是这个. 里面运行时 CodeiumEditor 是正常的
+        # 使用与 Darwin 相同的操作系统信息就可以. 但是这样的话 CodeiumEditor 的 Command Palette 的快捷键就不是 Ctrl 而是 Command 了, 一些快捷键会无法匹配
+        os_name = f"Macintosh; Intel Mac OS X {release.replace('.', '_')}; {machine}"
     else:
         os_name = f"{system} {release}; {machine}"
     user_agent = f"Mozilla/5.0 ({os_name}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 OysapeDesktop/{version}"

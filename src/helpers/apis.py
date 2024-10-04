@@ -126,9 +126,9 @@ class ApiBase:
                     return '{self.clientUserAgent}';
                 }}
             }});
-            window.updateUserAgent && window.updateUserAgent();
             '''
             webview.windows[0].evaluate_js(script)
+        return self.clientUserAgent
 
     def setTheme(self, params):
         self.themeType = (params or {}).get('type', self.themeType)

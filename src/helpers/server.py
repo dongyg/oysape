@@ -385,9 +385,9 @@ def serve_static(filename):
 def open_http_server(host='', port=19790, queue=None):
     try:
         # Try to bind the port
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.bind((host or "127.0.0.1", port))
-        sock.close()
+        # sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # sock.bind((host or "127.0.0.1", port))
+        # sock.close()
         # Start the server
         server = WSGIServer((host or "127.0.0.1", port), app, handler_class=WebSocketHandler)
         if queue is not None:
@@ -395,6 +395,7 @@ def open_http_server(host='', port=19790, queue=None):
         logging.info(('Websocket server started on port', port))
         server.serve_forever()
     except Exception as e:
+        traceback.print_exc()
         logging.error(('Websocket server failed to start on port', port, str(e)))
         if queue is not None:
             queue.put(False)

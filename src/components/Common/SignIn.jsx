@@ -133,16 +133,16 @@ export default function BodyContainer() {
     }
 
     if(isDesktopVersion) {
-      const waitForPywebivewTimer = setInterval(() => {
+      const waitForPywebviewTimer = setInterval(() => {
         if(window.pywebview && window.pywebview.token && typeof window.pywebview.token === 'string') {
-          clearInterval(waitForPywebivewTimer);
+          clearInterval(waitForPywebviewTimer);
           callApi('get_token').then((data) => {
             runMeFirst();
           }).catch((err) => {
             message.error(err.message);
           });
         } else {
-          clearInterval(waitForPywebivewTimer);
+          clearInterval(waitForPywebviewTimer);
           runMeFirst();
         }
       })

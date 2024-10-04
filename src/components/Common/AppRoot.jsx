@@ -1,8 +1,10 @@
+import React, { useEffect } from 'react';
 import { ConfigProvider, App, theme, Layout } from 'antd';
 
 import { useCustomContext } from '../Contexts/CustomContext'
 import BodyContainer from './BodyContainer';
 import SignIn from './SignIn';
+import { callApi } from '../Common/global';
 
 const AppRoot = () => {
   const { message } = App.useApp();
@@ -14,6 +16,29 @@ const AppRoot = () => {
     if(content && lambda && typeof lambda === 'function') lambda(content);
   };
   window.showMessageInWebpage = showMessageInWebpage;
+
+  useEffect(() => {
+    const maxWaitTime = 2000;
+    const startTime = new Date().getTime();
+    const waitForPywebviewTimer = setInterval(() => {
+      const currentTime = new Date().getTime();
+      const elapsedTime = currentTime - startTime;
+      // console.log('Checking for pywebview...', elapsedTime, 'ms');
+      if (window.pywebview) {
+        // console.log('init app');
+        clearInterval(waitForPywebviewTimer);
+        callApi('init_app', {userAgent: navigator.userAgent}).then((data) => {
+          window.updateUserAgent && window.updateUserAgent();
+        }).catch((err) => { });
+      } else if (elapsedTime >= maxWaitTime) {
+        // console.log('pywebview not found within 2 seconds');
+        clearInterval(waitForPywebviewTimer);
+      }
+    });
+    return () => {
+      clearInterval(waitForPywebviewTimer);
+    }
+  }, []);
 
   return (
     <ConfigProvider

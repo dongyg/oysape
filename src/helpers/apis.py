@@ -202,8 +202,8 @@ class ApiOysape(ApiOauth):
             else:
                 if not os.path.isdir(folder_base): os.makedirs(folder_base)
                 open(cerdPath, 'w').write(json.dumps({}))
-            if credentials.get('credentialMapping'): params['credentialMapping'] = credentials.get('credentialMapping')
-            if credentials.get('credentialListing'): params['credentialListing'] = credentials.get('credentialListing')
+            if 'credentialMapping' in credentials: params['credentialMapping'] = credentials.get('credentialMapping')
+            if 'credentialListing' in credentials: params['credentialListing'] = credentials.get('credentialListing')
         return credentials
 
     def reloadUserSession(self, params={}):
@@ -494,7 +494,7 @@ class ApiOysape(ApiOauth):
                 serverKey = site.get('target')
                 oldVal = self.get_credentials({'obh': obh})
                 if not oldVal.get('errinfo'):
-                    if params.get('credentialListing'):
+                    if 'credentialListing' in params:
                         oldVal['credentialListing'] = params.get('credentialListing')
                     if params.get('credentialMapping') and params['credentialMapping'].get(team_id):
                         if not oldVal.get('credentialMapping'):

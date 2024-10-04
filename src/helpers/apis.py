@@ -199,6 +199,9 @@ class ApiOysape(ApiOauth):
                         credentials = json.load(f)
                 except Exception as e:
                     pass
+            else:
+                if not os.path.isdir(folder_base): os.makedirs(folder_base)
+                open(cerdPath, 'w').write(json.dumps({}))
             if credentials.get('credentialMapping'): params['credentialMapping'] = credentials.get('credentialMapping')
             if credentials.get('credentialListing'): params['credentialListing'] = credentials.get('credentialListing')
         return credentials
@@ -447,6 +450,8 @@ class ApiOysape(ApiOauth):
             if os.path.isfile(filePath):
                 return json.loads(open(filePath, 'r').read())
             else:
+                if not os.path.isdir(folder_base): os.makedirs(folder_base)
+                open(filePath, 'w').write(json.dumps({}))
                 return {}
         # Get webhost's credentials.json
         for site in (self.userSession.get('sites') or []):
@@ -468,6 +473,7 @@ class ApiOysape(ApiOauth):
         filePath = os.path.join('.oysape','credentials.json')
         # Set credentials to localhost if obh is http://localhost
         if obh == 'localhost':
+            if not os.path.isdir(folder_base): os.makedirs(folder_base)
             filePath = os.path.expanduser(os.path.join('~', filePath))
             oldVal = self.get_credentials({'obh': obh})
             if not oldVal.get('errinfo'):

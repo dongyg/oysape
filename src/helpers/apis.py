@@ -468,7 +468,6 @@ class ApiOysape(ApiOauth):
         return {'errinfo': 'Server not found'}
 
     def set_credentials(self, params={}):
-        print(json.dumps(params, indent=4))
         obh = params.get('obh')
         team_id = params.get('team_id')
         filePath = os.path.join('.oysape','credentials.json')

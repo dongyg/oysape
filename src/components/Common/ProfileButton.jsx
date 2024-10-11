@@ -13,7 +13,7 @@ const { useToken } = theme;
 export default function ProfileButton() {
   const { message, modal } = App.useApp();
   const [api, contextHolder] = notification.useNotification();
-  const { customTheme, toggleCustomTheme, userSession, setUserSession, editorType, setEditorType } = useCustomContext();
+  const { customTheme, toggleCustomTheme, userSession, setUserSession, editorType, setEditorType, tabActiveKey, tabItems } = useCustomContext();
   const [visibleCredentialsModal, setVisibleCredentialsModal] = useState(false);
   const { token } = useToken();
   const isSignOut = useRef(false);
@@ -165,8 +165,14 @@ export default function ProfileButton() {
         },
       });
     }else if(key === 'menuTest3') {
-      console.log(JSON.stringify(userSession.credentials, null, 4));
-      console.log(userSession.team0);
+      let currentTermTab = tabItems.find(x => tabActiveKey === x.key && x.serverKey);
+      console.log(currentTermTab);
+      tabItems.forEach((item) => {
+        console.log(item, item.key, item.serverKey, tabActiveKey);
+      })
+
+      // console.log(JSON.stringify(userSession.credentials, null, 4));
+      // console.log(userSession.team0);
       // window.openWebpageInTab && window.openWebpageInTab('https://aifetel.cc', 'aifetel.cc');
       // window.openWebpageInTab && window.openWebpageInTab('https://codeium.com/live/general', 'Codeium');
       // callApi('testApi', {}).then((res) => {

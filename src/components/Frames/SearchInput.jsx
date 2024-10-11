@@ -18,7 +18,7 @@ import './SearchInput.css';
 
 const SearchInput = () => {
   const { message } = App.useApp();
-  const { folderFiles, tabItems, setTabItems, setTabActiveKey, userSession, setUserSession } = useCustomContext();
+  const { folderFiles, tabItems, setTabItems, setTabActiveKey, userSession, setUserSession, tabActiveKey } = useCustomContext();
   const [options, setOptions] = useState([]);
   const [showSearch, setShowSearch] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -76,7 +76,7 @@ const SearchInput = () => {
           // Team not found
         }
       }
-      setShowSearch(false); setSearchValue(''); setShowDropdown(false); setOptions([]); searchMode.current = '';
+      handleEsc();
     } else {
       setTimeout(() => {
         if(value&&[indexTaskSign].includes(value[0])) {
@@ -96,6 +96,9 @@ const SearchInput = () => {
     // console.log('searchValue', inputSearch.current.input.value);
     // console.log('searchMode.current', searchMode.current);
   }
+  const handleEsc = (e) => {
+    setShowSearch(false); setSearchValue(''); setShowDropdown(false); setOptions([]); searchMode.current = '';
+  }
   const onKeyDown = (e) => {
     // console.log('onKeyDown', e.key, e.keyCode);
     if (e.key === indexServerSign) {
@@ -114,7 +117,7 @@ const SearchInput = () => {
       if([13].includes(e.keyCode) && (e.metaKey === true || e.ctrlKey === true)){
         executeInput(searchValue);
       } else if([27].includes(e.keyCode)){
-        setShowSearch(false); setSearchValue(''); setShowDropdown(false); setOptions([]); searchMode.current = '';
+        handleEsc(e);
       }
     } else if ([8].includes(e.keyCode)) {
       if (searchValue.indexOf(indexServerSign) >= 0 && searchValue.indexOf(indexServerSign)>searchValue.indexOf(indexTaskSign)) searchMode.current = indexServerSign;
@@ -131,7 +134,26 @@ const SearchInput = () => {
     const v1 = query.indexOf(indexServerSign)>=0;
     const prefix = v1 ? '' : indexServerSign;
     query = v1 ? query.toLowerCase().split(indexServerSign)[1] : query;
-    return userSession.servers.filter((item) => getShowTitle(item.name).toLowerCase().includes(query) || (item.tags&&item.tags.join(',').toLowerCase().includes(query))).map((item) => {
+    var retItems = [];
+    // Insert current terminal if the active tab is a terminal when input starts with :
+    // This means that the user can run a task in the current terminal
+    if(searchValue.startsWith(indexTaskSign)) {
+      let currentTermTab = tabItems.find(x => tabActiveKey === x.key && x.serverKey);
+      if(currentTermTab) {
+        let serverItem = userSession.servers.find(x => x.name === currentTermTab.serverKey);
+        if(serverItem) {
+          retItems.push({ value: 'current_terminal('+serverItem.name+')', label: (
+            <div style={{ display: 'flex', justifyContent: 'space-between'}}>
+              <div>{prefix+'Current Terminal ('+serverItem.name+')'}</div>
+              <div style={{ textAlign: 'right' }}>
+                { serverItem.tags ? serverItem.tags.map((tag) => (<Tag key={getUniqueKey()}>{tag}</Tag>)) : null }
+              </div>
+            </div>
+          )});
+        }
+      }
+    }
+    return retItems.concat(userSession.servers.filter((item) => getShowTitle(item.name).toLowerCase().includes(query) || (item.tags&&item.tags.join(',').toLowerCase().includes(query))).map((item) => {
       return { value: prefix+item.name, label: (
         <div style={{ display: 'flex', justifyContent: 'space-between'}}>
           <div>{prefix+getShowTitle(item.name)}</div>
@@ -140,7 +162,7 @@ const SearchInput = () => {
           </div>
         </div>
       )}
-    });
+    }));
   }
   const getTasksForSearch = (query) => {
     const v1 = query.indexOf(indexTaskSign)>=0;
@@ -247,6 +269,7 @@ const SearchInput = () => {
   };
 
   const executeInput = (text) => {
+    // console.log('executeInput: ', text);
     if(text.indexOf(indexPipelineSign) === 0){
       const pipelineName = text.substring(1);
       const pipelineObj = userSession.pipelines.filter((item) => item.name === pipelineName)[0];
@@ -278,23 +301,37 @@ const SearchInput = () => {
       }
     } else if (text.indexOf(indexServerSign) >= 0 || text.indexOf(indexTaskSign) >= 0) {
       const taskInput = parseTaskString0(text);
+      var inCurrentTerminal = false;
+      if(taskInput.server.startsWith('current_terminal(')) {
+        taskInput.server = taskInput.server.substring(0,taskInput.server.length-1).substring(17);
+        inCurrentTerminal = true;
+      }
       // console.log('executeInput', text, taskInput);
-      const tasks = userSession.tasks.filter((item) => item.name === taskInput.task && taskInput.task !== '');
-      const servers = userSession.servers.filter((item) => item.name === taskInput.server && taskInput.server !== '');
+      const taskObj = userSession.tasks.find((item) => taskInput.task !== '' && item.name === taskInput.task);
+      const serverObj = userSession.servers.find((item) => taskInput.server !== '' && item.name === taskInput.server);
       if(taskInput.server && !taskInput.task) {
         // Open a server terminal
         if(userSession.accesses.terminal) {
           openServerTerminal(taskInput.server);
         }
-      } else if (servers.length>0 && tasks.length>0 && tasks[0].interaction==='terminal' && tasks[0].cmds.length>0) {
+      } else if (serverObj && taskObj && inCurrentTerminal) {
+        // Run a task in current terminal
+        console.log('Run a task in current terminal', taskInput.server, taskInput.task);
+        callApi('runTaskInTerminal', {uniqueKey: tabActiveKey, taskKey: taskInput.task}).then(res => {
+          handleEsc();
+          if(res && res.errinfo) {
+            message.error(res.errinfo);
+          }
+        }).catch(err => { message.error(err.message) });
+      } else if (serverObj && taskObj && taskObj.interaction==='terminal' && taskObj.cmds.length>0) {
         // Open a server terminal, and run a task
         openServerTerminal(taskInput.server, taskInput.task);
-      } else if (tasks.length>0 && servers.length>0) {
+      } else if (taskObj && serverObj) {
         // Run a task in Workspace. Could be interactive or not
         const callMe = () => {
-          window.callTask(tasks[0], servers[0], taskInput);
+          window.callTask(taskObj, serverObj, taskInput);
         }
-        execFunctionByEnsuringServer(servers[0].key, callMe);
+        execFunctionByEnsuringServer(serverObj.key, callMe);
       }
     } else {
       openProjectFile(text, text.split(/[\\/]/).pop());
@@ -442,7 +479,7 @@ const SearchInput = () => {
         style={{ width: '100%', display: showSearch ? 'block' : 'none', transition: 'none' }}
         value={searchValue}
         options={options}
-        onBlur={() => { setShowSearch(false); setSearchValue(''); setShowDropdown(false); setOptions([]); searchMode.current = ''; }}
+        onBlur={(e) => { handleEsc(e); }}
         onFocus={() => { setShowDropdown(true); }}
         onSelect={onSelect}
         onChange={onChange}

@@ -678,7 +678,8 @@ class ApiTerminal(ApiOysape):
                     os.makedirs(folder_cache)
                 with open(filepath, 'w') as f:
                     f.write(content)
-                number, transfered = client.upload_file(filepath, '~/.oysape/cache/%s'%filename)
+                retdat = client.upload_file(filepath, '~/.oysape/cache/%s'%filename)
+                number, transfered = retdat.get('count', 0), retdat.get('size', 0)
                 if number==1 and transfered>0:
                     logging.info(('execTask', client.serverKey, taskKey))
                     client.client.exec_command(f'chmod +x ~/.oysape/cache/%s'%filename)
@@ -789,6 +790,14 @@ class ApiWorkspace(ApiTerminal):
                 if not self.testIfTaskCanRunOnServer({'taskKey': taskKey, 'serverKey': serverKey}):
                     return False
         return True
+
+    def runTaskInTerminal(self, params):
+        taskKey, uniqueKey = params.get('taskKey'), params.get('uniqueKey')
+        if uniqueKey not in self.terminalConnections:
+            return {'errinfo': 'Terminal not found'}
+        taskObj = self.getTaskObject(taskKey)
+        taskCmds = self.getTaskCommands(taskKey)
+        return self.execTask(taskKey, taskObj, taskCmds, self.terminalConnections[uniqueKey], True, False)
 
     def callTask(self, params):
         taskKey, serverKey = params.get('taskKey'), params.get('serverKey')

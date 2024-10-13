@@ -131,7 +131,7 @@ def getDatetimeStrFromTimestamp(t=None):
 
 
 ################################################################################
-def get_custom_user_agent(version='3.9.21'):
+def get_custom_user_agent(version='3.9.22'):
     import platform
     system = platform.system()
     release = platform.release()

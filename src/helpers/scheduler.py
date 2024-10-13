@@ -165,7 +165,7 @@ def initScheduler(obh, schedule_items):
         teamName = item['tname']
         teamId = item['tid']
         if not teamId in apiSchedulers:
-            apiSchedulers[teamId] = apis.ApiScheduler(clientId='scheduler_for_'+teamId, clientUserAgent='OysapeScheduler/3.9.21')
+            apiSchedulers[teamId] = apis.ApiScheduler(clientId='scheduler_for_'+teamId, clientUserAgent='OysapeScheduler/3.9.22')
             apiSchedulers[teamId].teamId = teamId
             apiSchedulers[teamId].teamName = teamName
         # Load credentials for this webhost

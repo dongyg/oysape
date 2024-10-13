@@ -180,7 +180,7 @@ export default function TaskEditor(props) {
         </Form.Item>
         <Form.Item hidden={isFileTransfer} label="Commands" name="cmdText" rules={!isFileTransfer?[{required: true, message: 'Please input commands!',},]:null}>
           { editorType==='monaco' ?
-            <CodeiumEditor height={'auto'}
+            <CodeiumEditor height={'100%'} // autoHeight in Form.Item has a bug
               className='codeCmd withScrollContent'
               theme={customTheme.isDark?'vs-dark':'light'}
               value={codeValue}
@@ -194,6 +194,7 @@ export default function TaskEditor(props) {
                   horizontal: 'visible',
                 },
                 automaticLayout: true,
+                scrollBeyondLastLine: false,
               }}
               onMount={(editor, monaco) => {
                 editor.onDidChangeModelDecorations(() => {

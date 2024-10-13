@@ -393,7 +393,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
           </Form.Item>
           <Form.Item name="initScript" label="Initialization" tooltip={<><p>Initialize the container with this script.</p><p>It will be executed after the container is created.</p><p>Do not include single quote(') in the script</p></>}>
             { editorType==='monaco' ?
-              <CodeiumEditor height={'auto'}
+              <CodeiumEditor height={'auto'} // autoHeight in Form.Item has a bug
                 className='codeCmd withScrollContent'
                 theme={customTheme.isDark?'vs-dark':'light'}
                 value={codeValue}
@@ -407,6 +407,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                     horizontal: 'visible',
                   },
                   automaticLayout: true,
+                  scrollBeyondLastLine: false,
                 }}
                 onMount={(editor, monaco) => {
                   editor.onDidChangeModelDecorations(() => {

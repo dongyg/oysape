@@ -9,6 +9,7 @@ import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
 
 import './CodeEditor.css';
 
+// Useless. Use CodeEditor.jsx. CodeiumEditor and CodeMirror are both implemented in CodeEditor.jsx
 export default function CodeEditor(props) {
   const { message } = App.useApp();
   const { customTheme, tabActiveKey, tabItems, setTabItems, setCodeEditRowColText, setCodeEditCurrentLang, setFooterStatusText, setFolderFiles, currentLocalProject } = useCustomContext();
@@ -146,7 +147,7 @@ export default function CodeEditor(props) {
   });
 
   return (
-    <CodeiumEditor ref={inputCode} height={'100%'}
+    <CodeiumEditor height={'100%'} ref={inputCode}
       theme={customTheme.isDark?'vs-dark':'light'}
       language={langCurr}
       value={value}
@@ -161,6 +162,7 @@ export default function CodeEditor(props) {
           horizontal: 'visible',
         },
         automaticLayout: true,
+        scrollBeyondLastLine: false,
         readOnly: false,
       }}
     />

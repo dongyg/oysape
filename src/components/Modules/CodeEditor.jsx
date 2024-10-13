@@ -274,6 +274,7 @@ export default function CodeEditor(props) {
             horizontal: 'visible',
           },
           automaticLayout: true,
+          scrollBeyondLastLine: false,
         }}
       /> :
       <CodeMirror

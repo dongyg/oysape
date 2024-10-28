@@ -67,7 +67,7 @@ export default function SideFrame() {
       buttons.push({ key: 'sideExplorer', label: <Tooltip placement="right" title={'File Explorer ('+(browserInfo&&browserInfo.isMac ? 'Command' : 'Ctrl')+'+Shift+E)'}><BsFiles style={{fontSize:'2em', marginRight: '0px'}} /></Tooltip>, children: <ProjectsPanel /> })
     }
     if(isDesktopVersion && userSession.teams[userSession.team0].is_creator) {
-      buttons.push({ key: 'sideWebsites', label: <GlobalOutlined style={{fontSize:'2em', marginRight: '0px'}} />, children: <WebsitesPanel /> })
+      buttons.push({ key: 'sideWebsites', label: <Tooltip placement="right" title={'Webhosts'}><GlobalOutlined style={{fontSize:'2em', marginRight: '0px'}} /></Tooltip>, children: <WebsitesPanel /> })
     }
     if(!isDesktopVersion) {
       buttons.push({ key: 'sideWebhostLogs', label: <RxActivityLog style={{fontSize:'2em', marginRight: '0px'}} />, children: <ScheduleLogsPanel /> })

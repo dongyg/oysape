@@ -21,7 +21,7 @@ def getApiObjectByTeam(tname):
         if file.endswith('.json'):
             teamId = os.path.splitext(file)[0]
             if scheduler.apiSchedulers.get(teamId) == None:
-                scheduler.apiSchedulers[teamId] = ApiScheduler(clientId='scheduler_for_'+teamId, clientUserAgent='OysapeScheduler/3.9.22')
+                scheduler.apiSchedulers[teamId] = ApiScheduler(clientId='scheduler_for_'+teamId, clientUserAgent='OysapeScheduler/3.9.23')
                 scheduler.apiSchedulers[teamId].teamId = teamId
                 scheduler.apiSchedulers[teamId].reloadUserSession({'credentials': scheduler.apiSchedulers[teamId].loadCredentials()})
     for tid in scheduler.apiSchedulers:
@@ -201,7 +201,7 @@ class ApiOysape(ApiOauth):
                     pass
             else:
                 if not os.path.isdir(folder_base): os.makedirs(folder_base)
-                open(cerdPath, 'w').write(json.dumps({}))
+                open(cerdPath, 'w', encoding='utf-8').write(json.dumps({}))
             if 'credentialMapping' in credentials: params['credentialMapping'] = credentials.get('credentialMapping')
             if 'credentialListing' in credentials: params['credentialListing'] = credentials.get('credentialListing')
         return credentials
@@ -451,7 +451,7 @@ class ApiOysape(ApiOauth):
                 return json.loads(open(filePath, 'r').read())
             else:
                 if not os.path.isdir(folder_base): os.makedirs(folder_base)
-                open(filePath, 'w').write(json.dumps({}))
+                open(filePath, 'w', encoding='utf-8').write(json.dumps({}))
                 return {}
         # Get webhost's credentials.json
         for site in (self.userSession.get('sites') or []):
@@ -485,7 +485,7 @@ class ApiOysape(ApiOauth):
                     if not oldVal['credentialMapping'].get(team_id):
                         oldVal['credentialMapping'][team_id] = {}
                     oldVal['credentialMapping'][team_id].update(params['credentialMapping'][team_id])
-            open(filePath, 'w').write(json.dumps(oldVal))
+            open(filePath, 'w', encoding='utf-8').write(json.dumps(oldVal))
             return oldVal
         # Set webhost's credentials.json
         for site in (self.userSession.get('sites') or []):
@@ -676,7 +676,8 @@ class ApiTerminal(ApiOysape):
                 content = LF.join(taskCmds)
                 if not os.path.exists(folder_cache):
                     os.makedirs(folder_cache)
-                with open(filepath, 'w') as f:
+                # py2app will use ASCII encoding by default while packaging. So we need to indicate the encoding utf-8 to save the file
+                with open(filepath, 'w', encoding='utf-8') as f:
                     f.write(content)
                 retdat = client.upload_file(filepath, '~/.oysape/cache/%s'%filename)
                 number, transfered = retdat.get('count', 0), retdat.get('size', 0)
@@ -1230,7 +1231,7 @@ class ApiDesktop(ApiOverHttp):
         path = params.get('path', '')
         content = params.get('content', '')
         try:
-            with open(path, 'w') as f:
+            with open(path, 'w', encoding='utf-8') as f:
                 f.write(content)
             return {}
         except Exception as e:
@@ -1312,7 +1313,7 @@ class ApiDesktop(ApiOverHttp):
             filename = webview.windows[0].create_file_dialog(webview.SAVE_DIALOG, directory=params.get('path', ''))
             if filename:
                 try:
-                    with open(filename, 'w') as f:
+                    with open(filename, 'w', encoding='utf-8') as f:
                         f.write('')
                     return {'folderFiles':self.getFolderFiles()}
                 except Exception as e:

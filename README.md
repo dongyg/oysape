@@ -24,28 +24,16 @@ This is a tools to help you manage your ssh servers and your operations on those
 ## Installation
 
 ``` bash
+yarn install
 yarn run init
 ```
 
-This will create a virtual environment, install pip and Node dependencies. Alternatively you can perform these steps manually.
-
-``` bash
-yarn install
-pip install -r requirements.txt
-```
+This will create a virtual environment, install pip and Node dependencies.
 
 On Linux systems installation system makes educated guesses. If you run KDE, QT dependencies are installed, otherwise GTK is chosen. `apt` is used for installing GTK dependencies. In case you are running a non apt-based system, you will have to install GTK dependencies manually. See [installation](https://pywebview.flowrl.com/guide/installation.html) for details.
 
 
 ## Usage
-
-### Running with docker container
-
-```
-docker run --rm --name oyhost -p 19790:19790 -itd oysape/webhost
-```
-
-> Unrecommended for desktop usage. Use desktop version instead. That will give you more convenience to access your local files.
 
 ### Running with source code
 
@@ -72,3 +60,12 @@ To clean the developement environment, this will delete `gui`, `dist`, `build` d
 ``` bash
 yarn run clean
 ```
+
+### Running with docker container
+
+```
+docker run --rm --name oyhost -p 19790:19790 -itd oysape/webhost
+```
+
+> Unrecommended for desktop usage. Use desktop version instead. That will give you more convenience to access your local files.
+

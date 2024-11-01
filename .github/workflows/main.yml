@@ -76,12 +76,38 @@ jobs:
       - name: Setup Linux x64
         if: matrix.platform == 'linux-x64'
         run: |
+          # Install system dependencies
+          sudo apt-get update
+          sudo apt-get install -y python3-dev python3-venv libgl1-mesa-dev libxkbcommon-x11-0 libdbus-1-3 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xfixes0 libxcb-cursor0
+
+          # Create and activate a virtual environment
           python3 -m venv venv-oysape
-          # Uncomment the required dependencies
-          ./venv-oysape/bin/pip install pyqt5 pyqtwebengine -r requirements.txt
-          # sudo apt install libgirepository1.0-dev gcc libcairo2-dev pkg-config python3-dev gir1.2-gtk-3.0 && ./venv-oysape/bin/pip install pycairo pygobject -r requirements.txt
-          ./venv-oysape/bin/pyinstaller build-linux.spec --standalone
-          zip -r Oysape-linux-standalone-x86_64.zip dist/Oysape
+          source venv-oysape/bin/activate
+
+          # Install Python dependencies
+          pip install --upgrade pip
+          pip install pyqt5 pyqtwebengine qtpy -r requirements.txt
+
+          # Build
+          pyinstaller build-linux.spec -- --standalone
+
+          # Copy necessary system libraries into the distribution package
+          mkdir -p dist/Oysape-linux-standalone-x86_64/lib
+          cp /usr/lib/x86_64-linux-gnu/libxcb*.so* dist/Oysape-linux-standalone-x86_64/lib/
+          cp /usr/lib/x86_64-linux-gnu/libX*.so* dist/Oysape-linux-standalone-x86_64/lib/
+          cp /usr/lib/x86_64-linux-gnu/libdbus-1.so* dist/Oysape-linux-standalone-x86_64/lib/
+
+          # Creating a startup script wrapper
+          echo '#!/bin/bash
+          DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+          export LD_LIBRARY_PATH="$DIR/lib:$LD_LIBRARY_PATH"
+          exec "$DIR/Oysape-linux-standalone-x86_64" "$@"' > dist/Oysape-linux-standalone-x86_64/run.sh
+
+          chmod +x dist/Oysape-linux-standalone-x86_64/run.sh
+
+          # Create zip archive
+          cd dist
+          zip -r ../Oysape-linux-standalone-x86_64.zip Oysape-linux-standalone-x86_64
 
       # Linux arm64-specific steps
       - name: Setup Linux arm64
@@ -97,15 +123,27 @@ jobs:
           # Build using arm64 Docker image
           docker run --rm -v ${{ github.workspace }}:/workspace --platform linux/arm64 ubuntu:latest /bin/bash -c '
             apt-get update && \
-            apt-get install -y python3 python3-pip python3-venv && \
+            # Install Python and build dependencies
+            apt-get install -y python3 python3-pip python3-venv \
+                            python3-pyqt5 python3-pyqt5.qtwebengine \
+                            build-essential python3-dev \
+                            pyinstaller && \
             cd /workspace && \
             python3 -m venv venv-oysape && \
-            # Uncomment the required dependencies
-            ./venv-oysape/bin/pip install pyqt5 pyqtwebengine -r requirements.txt
-            # apt-get install -y libgirepository1.0-dev gcc libcairo2-dev pkg-config python3-dev gir1.2-gtk-3.0 && ./venv-oysape/bin/pip install pycairo pygobject -r requirements.txt
-            ./venv-oysape/bin/pyinstaller build-linux.spec --standalone
+            . venv-oysape/bin/activate && \
+            pip install -r requirements.txt && \
+            # Remove PyQt5 and PyQtWebEngine from requirements if they are listed
+            sed -i "/PyQt5/d" requirements.txt && \
+            sed -i "/PyQtWebEngine/d" requirements.txt && \
+            # Create symbolic links for system PyQt5
+            ln -s /usr/lib/python3/dist-packages/PyQt5 venv-oysape/lib/python3.*/site-packages/ && \
+            ln -s /usr/lib/python3/dist-packages/PyQt5-qt5 venv-oysape/lib/python3.*/site-packages/ && \
+            ln -s /usr/lib/python3/dist-packages/sip.cpython-*.so venv-oysape/lib/python3.*/site-packages/ && \
+            pyinstaller build-linux.spec -- --standalone
           '
-          zip -r Oysape-linux-standalone-aarch64.zip dist/Oysape
+          # Create zip archive
+          cd dist
+          zip -r ../Oysape-linux-standalone-x86_64.zip Oysape-linux-standalone-x86_64
 
       # Upload build products as artifacts
       - name: Upload artifact

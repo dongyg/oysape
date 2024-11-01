@@ -34,7 +34,7 @@ jobs:
       # Compress the executable file into a zip file
       - name: Zip the executable
         run: |
-          Compress-Archive -Path dist/Oysape.app -DestinationPath Oysape-mac-universal.zip
+          zip -r Oysape-mac-universal.zip dist/Oysape.app
 
       # Create release and upload assets in one step
       - name: Create Release and Upload Assets

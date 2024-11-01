@@ -128,7 +128,7 @@ jobs:
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v1
         with:
-          name: Oysape Multi-Platform Release ${{ github.event.inputs.version }}
+          name: Release ${{ github.event.inputs.version }}
           tag_name: ${{ github.event.inputs.version }}
           draft: false
           prerelease: false

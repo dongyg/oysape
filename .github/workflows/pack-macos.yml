@@ -40,8 +40,8 @@ jobs:
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v1
         with:
-          name: Oysape MacOS Release v3.9.23
-          tag_name: v3.9.23
+          name: MacOS Release ${{ github.event.inputs.version }}
+          tag_name: ${{ github.event.inputs.version }}
           draft: false
           prerelease: false
           files: Oysape-mac-universal.zip

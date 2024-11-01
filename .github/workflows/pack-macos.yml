@@ -11,12 +11,29 @@ on:
 jobs:
   macos:
     runs-on: macos-latest
+    timeout-minutes: 30
+
+    env:
+      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+
     steps:
       - uses: actions/checkout@main
 
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: Upgrade pip
         run: |
@@ -31,12 +48,57 @@ jobs:
         run: |
           ./venv-oysape/bin/python build-macos.py py2app
 
-      # Compress the executable file into a zip file
-      - name: Zip the executable
+      - name: Check entitlements file
         run: |
-          zip -r Oysape-mac-universal.zip dist/Oysape.app
+          if [ ! -f .github/entitlements.plist ]; then
+            echo "Error: entitlements.plist file not found"
+            exit 1
+          fi
 
-      # Create release and upload assets in one step
+      - name: Decode and Install Certificate
+        run: |
+          echo $APPLE_CERTIFICATE | base64 --decode > certificate.p12
+          security create-keychain -p "" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          security import certificate.p12 -k build.keychain -P $APPLE_CERTIFICATE_PASSWORD -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
+
+      - name: Sign App
+        run: |
+          codesign --force --sign "Developer ID Application: [Your Actual Name] (${APPLE_TEAM_ID})" \
+                   --options runtime \
+                   --entitlements .github/entitlements.plist \
+                   --deep "dist/Oysape.app"
+
+      - name: Verify signature
+        run: codesign --verify --verbose "dist/Oysape.app"
+
+      - name: Create ZIP for Notarization
+        run: ditto -c -k --keepParent "dist/Oysape.app" "dist/Oysape.zip"
+
+      - name: Submit for Notarization
+        run: |
+          echo "Submitting for notarization..."
+          NOTARY_OUTPUT=$(xcrun notarytool submit "dist/Oysape.zip" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait)
+          if [ $? -ne 0 ]; then
+            echo "Notarization failed:"
+            echo "$NOTARY_OUTPUT"
+            exit 1
+          fi
+          echo "Notarization completed successfully"
+
+      - name: Staple App
+        run: xcrun stapler staple "dist/Oysape.app"
+
+      - name: Package and Upload
+        run: |
+          ditto -c -k --keepParent "dist/Oysape.app" "Oysape-mac-universal.zip"
+
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v1
         with:

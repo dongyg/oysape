@@ -45,7 +45,7 @@ jobs:
           ./venv-oysape/bin/pip install pyqt5 pyqtwebengine -r requirements.txt
           # sudo apt install libgirepository1.0-dev gcc libcairo2-dev pkg-config python3-dev gir1.2-gtk-3.0 && ./venv-oysape/bin/pip install pycairo pygobject -r requirements.txt
           ./venv-oysape/bin/pyinstaller build-linux.spec -- --standalone
-          zip -r Oysape-linux-standalone-x86_64.zip dist/Oysape
+          zip -r Oysape-linux-standalone-x86_64.zip dist/Oysape-linux-standalone-x86_64
 
       # Linux arm64-specific steps
       - name: Setup Linux arm64
@@ -69,7 +69,7 @@ jobs:
             # apt-get install -y libgirepository1.0-dev gcc libcairo2-dev pkg-config python3-dev gir1.2-gtk-3.0 && ./venv-oysape/bin/pip install pycairo pygobject -r requirements.txt
             ./venv-oysape/bin/pyinstaller build-linux.spec -- --standalone
           '
-          zip -r Oysape-linux-standalone-aarch64.zip dist/Oysape
+          zip -r Oysape-linux-standalone-aarch64.zip dist/Oysape-linux-standalone-aarch64
 
       # Upload build products as artifacts
       - name: Upload artifact

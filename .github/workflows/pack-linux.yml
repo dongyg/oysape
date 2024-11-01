@@ -2,23 +2,102 @@ name: Pack Linux
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. v3.9.23)'
+        required: true
+        default: 'v3.9.23'
 
 jobs:
-  windows:
-    runs-on: windows-latest
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux-x64
+            asset_path: Oysape-linux-standalone-x86_64.zip
+            artifact_name: linux-x64-artifact
+          - os: ubuntu-latest
+            platform: linux-arm64
+            asset_path: Oysape-linux-standalone-aarch64.zip
+            artifact_name: linux-arm64-artifact
+
+    runs-on: ${{ matrix.os }}
+
     steps:
       - uses: actions/checkout@main
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20.x'
-      - uses: actions/setup-python@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install dependencies
+
+      - name: Upgrade pip
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-      - name: Setup venv-oysape
+
+      # Linux x64-specific steps
+      - name: Setup Linux x64
+        if: matrix.platform == 'linux-x64'
         run: |
-          yarn run init
-      - run: yarn run pack
+          python3 -m venv venv-oysape
+          # Uncomment the required dependencies
+          ./venv-oysape/bin/pip install pyqt5 pyqtwebengine -r requirements.txt
+          # sudo apt install libgirepository1.0-dev gcc libcairo2-dev pkg-config python3-dev gir1.2-gtk-3.0 && ./venv-oysape/bin/pip install pycairo pygobject -r requirements.txt
+          ./venv-oysape/bin/pyinstaller build-linux.spec --standalone
+          zip -r Oysape-linux-standalone-x86_64.zip dist/Oysape
+
+      # Linux arm64-specific steps
+      - name: Setup Linux arm64
+        if: matrix.platform == 'linux-arm64'
+        run: |
+          # Setting up QEMU for arm64 emulation
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static
+
+          # Create an arm64 build environment using Docker
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+
+          # Build using arm64 Docker image
+          docker run --rm -v ${{ github.workspace }}:/workspace --platform linux/arm64 ubuntu:latest /bin/bash -c '
+            apt-get update && \
+            apt-get install -y python3 python3-pip python3-venv && \
+            cd /workspace && \
+            python3 -m venv venv-oysape && \
+            # Uncomment the required dependencies
+            ./venv-oysape/bin/pip install pyqt5 pyqtwebengine -r requirements.txt
+            # apt-get install -y libgirepository1.0-dev gcc libcairo2-dev pkg-config python3-dev gir1.2-gtk-3.0 && ./venv-oysape/bin/pip install pycairo pygobject -r requirements.txt
+            ./venv-oysape/bin/pyinstaller build-linux.spec --standalone
+          '
+          zip -r Oysape-linux-standalone-aarch64.zip dist/Oysape
+
+      # Upload build products as artifacts
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.asset_path }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      # Download all build artifacts
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      # Create a release and upload all assets
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Oysape Multi-Platform Release ${{ github.event.inputs.version }}
+          tag_name: ${{ github.event.inputs.version }}
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/linux-x64-artifact/Oysape-linux-standalone-x86_64.zip
+            artifacts/linux-arm64-artifact/Oysape-linux-standalone-aarch64.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

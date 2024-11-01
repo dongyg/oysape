@@ -18,6 +18,7 @@ jobs:
       APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_NAME: ${{ secrets.APPLE_NAME }}
       APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
 
     steps:
@@ -66,7 +67,7 @@ jobs:
 
       - name: Sign App
         run: |
-          codesign --force --sign "Developer ID Application: [Your Actual Name] (${APPLE_TEAM_ID})" \
+          codesign --force --sign "Developer ID Application: ${APPLE_NAME} (${APPLE_TEAM_ID})" \
                    --options runtime \
                    --entitlements .github/entitlements.plist \
                    --deep "dist/Oysape.app"

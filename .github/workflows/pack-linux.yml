@@ -44,7 +44,7 @@ jobs:
           # Uncomment the required dependencies
           ./venv-oysape/bin/pip install pyqt5 pyqtwebengine -r requirements.txt
           # sudo apt install libgirepository1.0-dev gcc libcairo2-dev pkg-config python3-dev gir1.2-gtk-3.0 && ./venv-oysape/bin/pip install pycairo pygobject -r requirements.txt
-          ./venv-oysape/bin/pyinstaller build-linux.spec --standalone
+          ./venv-oysape/bin/pyinstaller build-linux.spec -- --standalone
           zip -r Oysape-linux-standalone-x86_64.zip dist/Oysape
 
       # Linux arm64-specific steps
@@ -67,7 +67,7 @@ jobs:
             # Uncomment the required dependencies
             ./venv-oysape/bin/pip install pyqt5 pyqtwebengine -r requirements.txt
             # apt-get install -y libgirepository1.0-dev gcc libcairo2-dev pkg-config python3-dev gir1.2-gtk-3.0 && ./venv-oysape/bin/pip install pycairo pygobject -r requirements.txt
-            ./venv-oysape/bin/pyinstaller build-linux.spec --standalone
+            ./venv-oysape/bin/pyinstaller build-linux.spec -- --standalone
           '
           zip -r Oysape-linux-standalone-aarch64.zip dist/Oysape
 

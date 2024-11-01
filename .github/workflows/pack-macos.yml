@@ -1,4 +1,4 @@
-name: Pack Windows
+name: Pack MacOS
 
 on:
   workflow_dispatch:

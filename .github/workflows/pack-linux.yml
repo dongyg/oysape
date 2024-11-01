@@ -1,4 +1,4 @@
-name: Pack Windows
+name: Pack Linux
 
 on:
   workflow_dispatch:

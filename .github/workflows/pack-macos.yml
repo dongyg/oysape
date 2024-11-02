@@ -49,13 +49,6 @@ jobs:
         run: |
           ./venv-oysape/bin/python build-macos.py py2app
 
-      - name: Check entitlements file
-        run: |
-          if [ ! -f .github/entitlements.plist ]; then
-            echo "Error: entitlements.plist file not found"
-            exit 1
-          fi
-
       - name: Decode and Install Certificate
         run: |
           echo $APPLE_CERTIFICATE | base64 --decode > certificate.p12
@@ -67,13 +60,9 @@ jobs:
 
       - name: Sign App
         run: |
-          codesign --force --sign "Developer ID Application: ${APPLE_NAME} (${APPLE_TEAM_ID})" \
-                   --options runtime \
-                   --entitlements .github/entitlements.plist \
-                   --deep "dist/Oysape.app"
-
-      - name: Verify signature
-        run: codesign --verify --verbose "dist/Oysape.app"
+          codesign --deep --force --verbose --timestamp --options runtime --entitlements .github/entitlements.plist --sign "Developer ID Application: ${APPLE_NAME} (${APPLE_TEAM_ID})" "dist/Oysape.app"
+          codesign --deep --force --verbose --timestamp --options runtime --entitlements .github/entitlements.plist --sign "Developer ID Application: Lijuan Liu (${APPLE_TEAM_ID})" "dist/Oysape.app/Contents/MacOS/Oysape"
+          find "dist/Oysape.app/Contents/Resources" -type f -name "*.so" -exec codesign --deep --force --verbose --timestamp --options runtime --entitlements .github/entitlements.plist --sign "Developer ID Application: Lijuan Liu (${APPLE_TEAM_ID})" {} \;
 
       - name: Create ZIP for Notarization
         run: ditto -c -k --keepParent "dist/Oysape.app" "dist/Oysape.zip"
@@ -81,17 +70,24 @@ jobs:
       - name: Submit for Notarization
         run: |
           echo "Submitting for notarization..."
-          NOTARY_OUTPUT=$(xcrun notarytool submit "dist/Oysape.zip" \
-            --apple-id "$APPLE_ID" \
-            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-            --team-id "$APPLE_TEAM_ID" \
-            --wait)
-          if [ $? -ne 0 ]; then
-            echo "Notarization failed:"
-            echo "$NOTARY_OUTPUT"
-            exit 1
-          fi
-          echo "Notarization completed successfully"
+          SUBMISSION_ID=$(xcrun notarytool submit "dist/Oysape.zip" "$APPLE_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" --team-id "$APPLE_TEAM_ID" --output-format json | jq -r '.id')
+          echo "Submission ID: $SUBMISSION_ID"
+          while true; do
+            STATUS=$(xcrun notarytool info "$SUBMISSION_ID" "$APPLE_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" --team-id "$APPLE_TEAM_ID" --output-format json | jq -r '.status')
+            echo "Notarization status: $STATUS"
+            if [ "$STATUS" = "Accepted" ]; then
+              echo "Notarization completed successfully"
+              break
+            elif [ "$STATUS" = "Invalid" ] || [ "$STATUS" = "Rejected" ]; then
+              echo "Notarization failed"
+              xcrun notarytool info "$SUBMISSION_ID" --apple-id "$APPLE_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" --team-id "$APPLE_TEAM_ID"
+              exit 1
+            fi
+            echo "Waiting for notarization to complete..."
+            sleep 30
+          done
+          echo "Waiting for notarization to propagate..."
+          sleep 30
 
       - name: Staple App
         run: xcrun stapler staple "dist/Oysape.app"

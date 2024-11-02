@@ -70,11 +70,15 @@ jobs:
       - name: Submit for Notarization
         run: |
           echo "Submitting for notarization..."
-          SUBMISSION_ID=$(xcrun notarytool submit "dist/Oysape.zip" "$APPLE_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" --team-id "$APPLE_TEAM_ID" --output-format json | jq -r '.id')
+          SUBMISSION_ID=$(xcrun notarytool submit "dist/Oysape.zip" --apple-id "$APPLE_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" --team-id "$APPLE_TEAM_ID" --output-format json | jq -r '.id')
+
           echo "Submission ID: $SUBMISSION_ID"
+
           while true; do
-            STATUS=$(xcrun notarytool info "$SUBMISSION_ID" "$APPLE_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" --team-id "$APPLE_TEAM_ID" --output-format json | jq -r '.status')
+            STATUS=$(xcrun notarytool info "$SUBMISSION_ID" --apple-id "$APPLE_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" --team-id "$APPLE_TEAM_ID" --output-format json | jq -r '.status')
+
             echo "Notarization status: $STATUS"
+
             if [ "$STATUS" = "Accepted" ]; then
               echo "Notarization completed successfully"
               break
@@ -83,9 +87,11 @@ jobs:
               xcrun notarytool info "$SUBMISSION_ID" --apple-id "$APPLE_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" --team-id "$APPLE_TEAM_ID"
               exit 1
             fi
+
             echo "Waiting for notarization to complete..."
             sleep 30
           done
+
           echo "Waiting for notarization to propagate..."
           sleep 30
 

@@ -61,6 +61,7 @@ jobs:
       - name: Sign App
         run: |
           find "dist/Oysape.app/Contents/Resources" -type f -name "*.so" -exec codesign --deep --force --verbose --timestamp --options runtime --entitlements .github/entitlements.plist --sign "Developer ID Application: ${APPLE_NAME} (${APPLE_TEAM_ID})" {} \;
+          codesign --deep --force --verbose --timestamp --options runtime --entitlements .github/entitlements.plist --sign "Developer ID Application: ${APPLE_NAME} (${APPLE_TEAM_ID})" "dist/Oysape.app/Contents/MacOS/Oysape"
           codesign --deep --force --verbose --timestamp --options runtime --entitlements .github/entitlements.plist --sign "Developer ID Application: ${APPLE_NAME} (${APPLE_TEAM_ID})" "dist/Oysape.app"
           codesign -vvv --deep --strict "dist/Oysape.app"
           spctl --assess --verbose=4 "dist/Oysape.app"

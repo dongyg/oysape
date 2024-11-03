@@ -119,6 +119,7 @@ def execScheduleFunction(functionObj, parameterObj):
     if functionObj and callable(functionObj):
         b1 = False
         log_id = 0
+        result = ''
         try:
             obh = parameterObj.get('obh')
             sch = parameterObj.get('sch')
@@ -130,8 +131,10 @@ def execScheduleFunction(functionObj, parameterObj):
             log_id = logdb.insert('INSERT INTO schedule_logs (ts, obh, sch, out1, out2) VALUES (?, ?, ?, ?, ?)', (int(time.time()), obh, sch, '', ''))
             apiSchedulers[teamId].log_id = log_id
             b1 = True
-            print('Scheduled:', log_id, tools.getDatetimeStrFromTimestamp(time.time()), obh, sch)
-            result = functionObj(parameterObj)
+            print('Scheduled:', log_id, tools.getDatetimeStrFromTimestamp(time.time()), obh, sch, flush=True)
+            result = str(functionObj(parameterObj)).strip()
+            if result:
+                print(result, flush=True)
             if parameterObj.get('runMode') == 'command':
                 logdb.update("UPDATE schedule_logs SET out1 = COALESCE(out1, '') || ? WHERE id = ?", (result, log_id))
                 scheduleObj = getScheduleObject(sch)

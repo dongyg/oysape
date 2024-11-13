@@ -5,7 +5,7 @@ import { EditOutlined, DeleteOutlined, QuestionCircleFilled, FolderOpenOutlined,
 import { useCustomContext } from '../Contexts/CustomContext'
 import { callApi } from '../Common/global';
 
-const WebsiteCredentials = ({ obh, visible, initialMode, onCancel, onChoose, onRemove=() => {}, initTitle = 'Website Credentials' }) => {
+const WebsiteCredentials = ({ obh, visible, initialMode, onCancel, onChoose, onRemove=() => {}, initTitle = 'Website Credentials', credentialListing = null, setCredentialListing = null}) => {
   const { message } = App.useApp();
   const { userSession, setUserSession } = useCustomContext();
   const [mode, setMode] = useState(initialMode);
@@ -14,8 +14,8 @@ const WebsiteCredentials = ({ obh, visible, initialMode, onCancel, onChoose, onR
   const [form] = Form.useForm();
 
   const loadCredentials = useCallback(() => {
-    setCredentials((userSession.credentials||{}).credentialListing||[]);
-  }, [userSession.credentials]);
+    setCredentials(credentialListing || (userSession.credentials||{}).credentialListing || []);
+  }, [userSession.credentials, credentialListing]);
 
   useEffect(() => {
     loadCredentials();
@@ -27,7 +27,11 @@ const WebsiteCredentials = ({ obh, visible, initialMode, onCancel, onChoose, onR
         message.error(data.errinfo);
       } else {
         setCredentials(newCredentials);
-        setUserSession({...userSession, credentials: {credentialListing: newCredentials, credentialMapping: (userSession.credentials.credentialMapping||{})}});
+        if(setCredentialListing) {
+          setCredentialListing(newCredentials);
+        } else {
+          setUserSession({...userSession, credentials: {credentialListing: newCredentials, credentialMapping: (userSession.credentials.credentialMapping||{})}});
+        }
       }
     }).catch((err) => { message.error(err.message); })
   };

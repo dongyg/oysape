@@ -84,9 +84,9 @@ export default function ProfileButton() {
       type: userSession ? 'group' : undefined,
       label: getSignInTitle(),
       children: userSession ? [
-        { key: 'menuReloadTeams', label: 'Reload everything', icon: <ReloadOutlined />, },
         { key: 'menuAccount', label: <>My {isMobileVersion?'Dashboard':'Account'}</>, icon: <SettingOutlined />, },
-        { key: 'menuCredentials', label: ('My Credentials'), icon: <KeyOutlined />, },
+        { key: 'menuReloadTeams', label: 'Reload everything', icon: <ReloadOutlined />, },
+        isDesktopVersion ? { key: 'menuCredentials', label: ('My Credentials'), icon: <KeyOutlined />, } : null,
         { type: 'divider', },
         { key: 'menuSignOut', label: ('Sign Out'), icon: <LogoutOutlined />, },
       ] : undefined,
@@ -165,14 +165,9 @@ export default function ProfileButton() {
         },
       });
     }else if(key === 'menuTest3') {
-      let currentTermTab = tabItems.find(x => tabActiveKey === x.key && x.serverKey);
-      console.log(currentTermTab);
-      tabItems.forEach((item) => {
-        console.log(item, item.key, item.serverKey, tabActiveKey);
-      })
-
-      // console.log(JSON.stringify(userSession.credentials, null, 4));
+      console.log(userSession.remote_projects);
       // console.log(userSession.team0);
+      // console.log(JSON.stringify(userSession.credentials, null, 4));
       // window.openWebpageInTab && window.openWebpageInTab('https://aifetel.cc', 'aifetel.cc');
       // window.openWebpageInTab && window.openWebpageInTab('https://codeium.com/live/general', 'Codeium');
       // callApi('testApi', {}).then((res) => {

@@ -91,7 +91,7 @@ def loadEntrypointWindow(window=None, apiObject=None):
 def mainloop(window):
     window.load_url(consts.HOME_ENTRY)
     ua = window.evaluate_js('navigator.userAgent')
-    print(ua)
+    print(ua, flush=True)
 
 
 ################################################################################
@@ -1420,7 +1420,6 @@ class ApiDesktop(ApiOverHttp):
             if self.combinedConnections[serverKey].dockerAutoPrefix == None:
                 self.combinedConnections[serverKey].onChannelString((CRLF+'Checking docker environment...'))
                 retval = self.combinedConnections[serverKey].dockerCheckEnv(sudoPass)
-                print(retval, flush=True)
                 if retval and retval.get('errinfo'): return retval
             # No need to remove the container
             self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerAutoPrefix + 'docker rm -f '+containerName)

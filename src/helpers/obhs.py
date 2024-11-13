@@ -1,1 +1,1 @@
-keys = {'http://127.0.0.1:19790': 'cl6Ba5tZVoCrOuDrcpHDxz2hcWQ2crxIwyw0Yz5hpkWNTUmOkiv7nPk4MQvg', 'http://192.168.0.2:9790': 'FNqoq7c00J3rMOMDVxjgqmq88CyScZLHOCkKv7j6D91XnTvmbmlccZ3nQ0sQ'}
+keys = {'http://127.0.0.1:19790': 'cl6Ba5tZVoCrOuDrcpHDxz2hcWQ2crxIwyw0Yz5hpkWNTUmOkiv7nPk4MQvg', 'http://192.168.0.105:9790': 'FNqoq7c00J3rMOMDVxjgqmq88CyScZLHOCkKv7j6D91XnTvmbmlccZ3nQ0sQ'}

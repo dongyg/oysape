@@ -5,7 +5,7 @@ import { FiTerminal } from "react-icons/fi";
 import { BsTerminal } from "react-icons/bs";
 
 import { useCustomContext } from '../Contexts/CustomContext'
-import { getUniqueKey, callApi, getCredentials } from '../Common/global';
+import { getUniqueKey, callApi, getCredentials, isDesktopVersion } from '../Common/global';
 // import CredentialsModal from '../Server/CredentialsModal';
 import WebsiteCredentials from '../Websites/WebsiteCredentials';
 import ServerEditor from './ServerEditor';
@@ -59,7 +59,9 @@ const ServerList = () => {
       ]);
     }
     retval.push({ type: 'divider', });
-    retval.push({ key: 'credential', label: 'Credential', icon: <KeyOutlined />, });
+    if(isDesktopVersion) {
+      retval.push({ key: 'credential', label: 'Credential', icon: <KeyOutlined />, });
+    }
     return retval;
   };
   const columns = [

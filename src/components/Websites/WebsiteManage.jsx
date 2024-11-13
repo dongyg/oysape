@@ -364,6 +364,15 @@ const credForServer = useRef('');
       }
     }).catch((err) => { message.error(err.message); })
   }
+  const handleCredentialsRemove = () => {
+    callApi('set_credentials', {obh: webhostObject.obh, team_id: credForTeam.current, credentialMapping: { [credForTeam.current]: { [credForServer.current]: null}}}).then((res) => {
+      if(res&&res.credentialMapping) {
+        setCredentialMapping(res.credentialMapping);
+      }else if(res && res.errinfo) {
+        message.error(res.errinfo);
+      }
+    }).catch((err) => { message.error(err.message); })
+  }
 
   useEffect(() => {
     window.getHostObject = () => {
@@ -589,7 +598,7 @@ const credForServer = useRef('');
                   {
                     checkedList.length > 0 ?
                     <>
-                      <p>The server used by a scheduled work needs to set a credential. For servers of other teams, please switch to the team and set a credential.</p>
+                      <p>Please set the credentials for each server so that users accessing the webhost (including Apps) can connect to it.</p>
                       <Table size="small" columns={[
                         { title: 'Team', dataIndex: 'tname', key: 'tname', },
                         { title: 'Server', dataIndex: 'serverKey', key: 'serverKey', },
@@ -852,7 +861,7 @@ const credForServer = useRef('');
       </div>
 
       {/* Credentials for servers */}
-      <WebsiteCredentials obh={webhostObject.obh} visible={visibleWebsiteCredentials} onCancel={handleCredentialsCancel} onChoose={handleCredentialsChoose} initialMode="choose" credentialListing={credentialListing} setCredentialListing={setCredentialListing} />
+      <WebsiteCredentials obh={webhostObject.obh} visible={visibleWebsiteCredentials} onCancel={handleCredentialsCancel} onChoose={handleCredentialsChoose} onRemove={handleCredentialsRemove} initialMode="choose" credentialListing={credentialListing} setCredentialListing={setCredentialListing} />
       {/* For sudo password */}
       <TextInputModal visible={showSudoPassword} defaultValue={""} title={"Permission denied"} onCreate={sudoWithPassword} onCancel={() => setShowSudoPassword(false)} placeholder={"Enter sudo password"} description='Sudo with the password or Cancel' password={true}></TextInputModal>
     </div>

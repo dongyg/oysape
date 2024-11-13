@@ -58,9 +58,9 @@ export default function Sftp(props) {
         setSftpTarget(value);
         if(!sftpFileTree[value] || force){
           setSftpFileTree({...sftpFileTree, [value]:Object.keys(sftProject.folders||{}).map(target => ({
-              title: target, key: `target_${target}`, isLeaf: false, icon: <VscServerEnvironment />, target: target,
+              title: target, key: `target_${target}`, isLeaf: false, icon: <VscServerEnvironment />,
               children: (sftProject.folders[target]||[]).map(path => ({
-                title: path, key: `${target}:${path}`, isLeaf: false, target: target, path: path
+                title: path, key: `${target}:${path}`, isLeaf: false, path: path
               }))
             }))
           });
@@ -243,8 +243,9 @@ export default function Sftp(props) {
       switchSftpTarget(sftpTarget, true);
       return;
     }
-    const serverKey = anode.target || sftpTarget;
+    const serverKey = anode.key.indexOf(':')>0 ? anode.key.substring(0,anode.key.indexOf(':')) : (anode.target || sftpTarget);
     if(!anode.isLeaf) {
+      console.log('reloadThisFolder', sftpTarget, serverKey, anode);
       setSftpFileTree({...sftpFileTree, [sftpTarget]: updateTreeData(sftpFileTree[sftpTarget], anode.key, undefined, true, serverKey)});
       callApi('sftpGetFileTree', {target: serverKey, path: anode.path}).then((resp) => {
         if(resp && resp.errinfo) {
@@ -271,11 +272,11 @@ export default function Sftp(props) {
   const updateTreeData = (list, key, children, isLoading, serverKey) => {
     return list.map(node => {
       if (node.key === key) {
-        return { ...node, target: serverKey, children, icon: isLoading ? <AntIcon name="LoadingOutlined" /> : undefined };
+        return { ...node, children, icon: isLoading ? <AntIcon name="LoadingOutlined" /> : undefined };
       } else if (node.children) {
-        return { ...node, target: serverKey, children: updateTreeData(node.children, key, children, isLoading, serverKey) };
+        return { ...node, children: updateTreeData(node.children, key, children, isLoading, serverKey) };
       }
-      return {...node, target: serverKey};
+      return {...node};
     });
   };
 
@@ -444,6 +445,7 @@ export default function Sftp(props) {
             onSelect={(keys, info) => {
               setSelectedKeys(keys);
               node1.current = info.node;
+              console.log(node1.current);
               setContextMenus(node1.current);
               if(Date.now() - time1.current < 500 && path1.current === info.node.path) {
                 time1.current = Date.now();

@@ -16,6 +16,7 @@ import { callApi, isDesktopVersion } from '../Common/global';
 import ScheduleForm from './ScheduleForm';
 import ScheduleLogViewer from './ScheduleLogViewer';
 import WebsiteCredentials from './WebsiteCredentials';
+import TextInputModal from '../Modules/TextInputModal';
 
 const CheckboxGroup = Checkbox.Group;
 const { Title, Paragraph, Link } = Typography;
@@ -112,7 +113,9 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
   const [verifying, setVerifying] = useState(false);
   const [codeValue, setCodeValue] = useState(websiteObject.initScript||'');
   const [visibleWebsiteCredentials, setVisibleWebsiteCredentials] = useState(false);
-  const credForServer = useRef('');
+  const [showSudoPassword, setShowSudoPassword] = React.useState(false);
+  const [sudoAction, setSudoAction] = React.useState(null);
+const credForServer = useRef('');
   const credForTeam = useRef('');
   let prevHeight = useRef(58)
 
@@ -179,6 +182,13 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
     // Validate host paths which can be in UNIX style, Windows style, or start with '~' for home directories
     return /^\/[^\0]*$/.test(path) || /^[a-zA-Z]:\/[^\0]*$/.test(path) || /^\.\.?\/[^\0]*$/.test(path) || /^~\/[^\0]*$/.test(path);
   };
+
+  const sudoWithPassword = (sudopass) => {
+    setShowSudoPassword(false);
+    if (sudoAction) {
+      sudoAction(sudopass);
+    }
+  };
   const execInstall = async (obh, target) => {
     try {
       const values = await formInstall.validateFields();
@@ -196,7 +206,26 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
       callApi('installWebHost', values).then((data) => {
         setInstalling(false);
         if(data && data.errinfo) {
-          message.error(data.errinfo);
+          if(data.needPassword) {
+            const callMe = (sudopass) => {
+              setShowSudoPassword(false);
+              callApi('installWebHost', Object.assign({}, values, {sudoPass:sudopass})).then((r2) => {
+                if(r2 && r2.errinfo) {
+                  message.error(r2.errinfo);
+                }else if(r2 && r2.sites) {
+                  message.success('Started successfully');
+                  setUserSession({...userSession, sites: r2.sites, teams: r2.teams});
+                  setWebHostObject( r2.sites.find((item) => item.key === obh) );
+                }
+              }).catch((err) => {
+                message.error(err.message);
+              })
+            }
+            setSudoAction(() => callMe);
+            setShowSudoPassword(true);
+          }else{
+            message.error(data.errinfo);
+          }
         }else if(data && data.sites){
           message.success('Started successfully');
           setUserSession({...userSession, sites: data.sites});
@@ -240,7 +269,26 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
       onOk() {
         callApi('uninstallWebHost', {obh: obh, containerName: webhostObject.containerName}).then((data) => {
           if(data && data.errinfo) {
-            message.error(data.errinfo);
+            if(data.needPassword) {
+              const callMe = (sudopass) => {
+                setShowSudoPassword(false);
+                callApi('uninstallWebHost', {obh: obh, containerName: webhostObject.containerName, sudoPass:sudopass}).then((r2) => {
+                  if(r2 && r2.errinfo) {
+                    message.error(r2.errinfo);
+                  }else if(r2 && r2.sites) {
+                    message.success('Stopped successfully');
+                    setUserSession({...userSession, sites: r2.sites, teams: r2.teams});
+                    setWebHostObject( r2.sites.find((item) => item.key === obh) );
+                  }
+                }).catch((err) => {
+                  message.error(err.message);
+                })
+              }
+              setSudoAction(() => callMe);
+              setShowSudoPassword(true);
+            }else{
+              message.error(data.errinfo);
+            }
           }else if(data && data.sites){
             message.success('Stopped successfully');
             setUserSession({...userSession, sites: data.sites, teams: data.teams});
@@ -541,7 +589,7 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
                   {
                     checkedList.length > 0 ?
                     <>
-                      <p>Credentials are required for the servers used in web hosting. For other team's servers, please switch to the team to set up credentials.</p>
+                      <p>The server used by a scheduled work needs to set a credential. For servers of other teams, please switch to the team and set a credential.</p>
                       <Table size="small" columns={[
                         { title: 'Team', dataIndex: 'tname', key: 'tname', },
                         { title: 'Server', dataIndex: 'serverKey', key: 'serverKey', },
@@ -805,6 +853,8 @@ const WebsiteManage = ({ uniqueKey, websiteKey, websiteObject}) => {
 
       {/* Credentials for servers */}
       <WebsiteCredentials obh={webhostObject.obh} visible={visibleWebsiteCredentials} onCancel={handleCredentialsCancel} onChoose={handleCredentialsChoose} initialMode="choose" credentialListing={credentialListing} setCredentialListing={setCredentialListing} />
+      {/* For sudo password */}
+      <TextInputModal visible={showSudoPassword} defaultValue={""} title={"Permission denied"} onCreate={sudoWithPassword} onCancel={() => setShowSudoPassword(false)} placeholder={"Enter sudo password"} description='Sudo with the password or Cancel' password={true}></TextInputModal>
     </div>
   );
 }

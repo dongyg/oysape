@@ -11,12 +11,15 @@ import { loadLanguage } from '@uiw/codemirror-extensions-langs';
 import { useCustomContext } from '../Contexts/CustomContext'
 import { callApi, getCodeMirrorLanguages, getMonacoLanguages, isMacOs, isTouchDevice } from '../Common/global';
 import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
+import TextInputModal from './TextInputModal';
 
 import './CodeEditor.css';
 
 export default function CodeEditor(props) {
   const { message, modal } = App.useApp();
   const { customTheme, tabActiveKey, tabItems, setTabItems, setCodeEditRowColText, setCodeEditCurrentLang, setFooterStatusText, setFolderFiles, editorType, currentLocalProject } = useCustomContext();
+  const [showSudoPassword, setShowSudoPassword] = React.useState(false);
+  const [sudoAction, setSudoAction] = React.useState(null);
   const [value, setValue] = React.useState('');
   const [langExts, setLangExts] = React.useState([]);
   const [langCurr, setLangCurr] = React.useState(null);
@@ -190,6 +193,12 @@ export default function CodeEditor(props) {
     }
   })
 
+  const sudoWithPassword = (sudopass) => {
+    setShowSudoPassword(false);
+    if (sudoAction) {
+      sudoAction(sudopass);
+    }
+  };
   const saveFile = (path, title, content, target) => {
     if(path === 'globalExcludes.json') {
       callApi('updateGlobalExcludes', {'excludes':JSON.parse(content)}).then((resp)=>{
@@ -210,23 +219,33 @@ export default function CodeEditor(props) {
         message.error(err.message);
       })
     } else {
-      let sudo = false;
-      let handleResponse = (data) => {
+      let handleResponse = (data, sudo) => {
         if(data && data.errinfo){
           if(!sudo && data.errinfo.indexOf('Permission denied')>=0) {
-            modal.confirm({
-              title: 'Permission denied',
-              content: 'Do you want to try with sudo?',
-              onOk() {
-                sudo = true;
-                callApi(target?'save_remote_file':'save_file', {path:path, content:content, target:target, sudo:sudo}).then((r2)=>{
-                  handleResponse(r2);
+            if(data.needPassword) {
+              const callMe = (sudopass) => {
+                callApi(target?'save_remote_file':'save_file', {path:path, content:content, target:target, sudo:!sudo, password:sudopass}).then((r2)=>{
+                  handleResponse(r2, !sudo);
                 }).catch((err) => {
                   message.error(err.message);
-                });
-              },
-              onCancel() {},
-            })
+                })
+              }
+              setSudoAction(() => callMe);
+              setShowSudoPassword(true);
+            } else {
+              modal.confirm({
+                title: 'Permission denied',
+                content: 'Do you want to try with sudo?',
+                onOk() {
+                  callApi(target?'save_remote_file':'save_file', {path:path, content:content, target:target, sudo:!sudo}).then((r2)=>{
+                    handleResponse(r2, !sudo);
+                  }).catch((err) => {
+                    message.error(err.message);
+                  });
+                },
+                onCancel() {},
+              })
+            }
           }else{
             message.error(data.errinfo);
           }
@@ -244,7 +263,7 @@ export default function CodeEditor(props) {
           message.success('Saved');
         }
       }
-      callApi(target?'save_remote_file':'save_file', {path:path, content:content, target:target, sudo:sudo}).then((data)=>{
+      callApi(target?'save_remote_file':'save_file', {path:path, content:content, target:target, sudo:false}).then((data)=>{
         handleResponse(data);
       }).catch((err) => {
         message.error(err.message);
@@ -252,7 +271,15 @@ export default function CodeEditor(props) {
     }
   }
   useKeyPress(keyMapping["shortcutSave"], (event) => {
-    if(tabActiveKey === uniqueKey) saveFile(props.filename, props.tabTitle, value, props.target);
+    if(tabActiveKey === uniqueKey) {
+      if(window.oypaseTabs[uniqueKey].state && window.oypaseTabs[uniqueKey].state && window.oypaseTabs[uniqueKey].state.doc.toString) {
+        // CodeMirror
+        saveFile(props.filename, props.tabTitle, window.oypaseTabs[uniqueKey].state.doc.toString(), props.target);
+      } else if (window.oypaseTabs[uniqueKey].getValue) {
+        // Codeium Editor
+        saveFile(props.filename, props.tabTitle, window.oypaseTabs[uniqueKey].getValue(), props.target);
+      }
+    }
     event.preventDefault(); return;
   });
 
@@ -307,6 +334,9 @@ export default function CodeEditor(props) {
           setCodeEditRowColText(rowColText);
         }}
       />
-    }</>
+    }
+    {/* For sudo password */}
+    <TextInputModal visible={showSudoPassword} defaultValue={""} title={"Permission denied"} onCreate={sudoWithPassword} onCancel={() => setShowSudoPassword(false)} placeholder={"Enter sudo password"} description='Sudo with the password or Cancel' password={true}></TextInputModal>
+    </>
   )
 }

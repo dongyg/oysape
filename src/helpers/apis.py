@@ -867,12 +867,13 @@ class ApiSftp(ApiWorkspace):
         thisPath = params.get('path') or '/'
         content = params.get('content')
         sudo = params.get('sudo')
+        password = params.get('password')
         if not serverKey in self.combinedConnections:
             ret1 = self.createCombConnection(serverKey)
             if ret1 and ret1.get('errinfo'): return ret1
         if not serverKey in self.combinedConnections:
             return {'errinfo': 'SSH connection not found'}
-        retval = self.combinedConnections[serverKey].save_remote_file(thisPath, content, sudo)
+        retval = self.combinedConnections[serverKey].save_remote_file(thisPath, content, sudo, password)
         return retval
 
     def download_remote_file(self, params={}):
@@ -944,12 +945,13 @@ class ApiSftp(ApiWorkspace):
         path = params.get('path')
         filename = params.get('filename')
         sudo = params.get('sudo')
+        password = params.get('password')
         if not serverKey in self.combinedConnections:
             ret1 = self.createCombConnection(serverKey)
             if ret1 and ret1.get('errinfo'): return ret1
         if not serverKey in self.combinedConnections:
             return {'errinfo': 'SSH connection not found'}
-        retval = self.combinedConnections[serverKey].create_remote_file(os.path.join(path, filename), sudo)
+        retval = self.combinedConnections[serverKey].create_remote_file(os.path.join(path, filename), sudo, password)
         return retval
 
     def addSftpProjectItem(self, params={}):
@@ -980,12 +982,13 @@ class ApiDockerManager(ApiSftp):
     def dockerGetWholeTree(self, params={}):
         if not self.hasPermission('docker'): return {'errinfo': 'Docker access denied'}
         serverKey = params.get('target')
+        sudoPass = params.get('sudoPass')
         if not serverKey in self.combinedConnections:
             ret1 = self.createCombConnection(serverKey)
             if ret1 and ret1.get('errinfo'): return ret1
         if not serverKey in self.combinedConnections:
             return {'errinfo': 'SSH connection not found'}
-        return self.combinedConnections[serverKey].dockerGetWholeTree()
+        return self.combinedConnections[serverKey].dockerGetWholeTree(sudoPass)
     def dockerGetTreeNode(self, params={}):
         if not self.hasPermission('docker'): return {'errinfo': 'Docker access denied'}
         serverKey = params.get('target')
@@ -1029,7 +1032,7 @@ class ApiDockerManager(ApiSftp):
             if ret1 and ret1.get('errinfo'): return ret1
         if not serverKey in self.combinedConnections:
             return {'errinfo': 'SSH connection not found'}
-        self.combinedConnections[serverKey].dockerCommandPrefix = command
+        self.combinedConnections[serverKey].dockerManualPrefix = command
         #TODO: save the docker command path on the server
     def dockerSetComposeCommand(self, params={}):
         if not self.hasPermission('docker'): return {'errinfo': 'Docker access denied'}
@@ -1365,6 +1368,7 @@ class ApiDesktop(ApiOverHttp):
             return retval
 
     def uninstallWebHost(self, params={}):
+        sudoPass = params.get('sudoPass')
         obh = params.get('obh')
         containerName = params.get('containerName') or 'oyhost'
         sobj = [x for x in self.userSession['sites'] if x['obh']==obh]
@@ -1378,16 +1382,16 @@ class ApiDesktop(ApiOverHttp):
             if not serverKey in self.combinedConnections:
                 return {'errinfo': 'SSH connection not found'}
             # Check the docker environment
-            if self.combinedConnections[serverKey].dockerCommandPrefix == None:
+            if self.combinedConnections[serverKey].dockerAutoPrefix == None:
                 self.combinedConnections[serverKey].onChannelString((CRLF+'Checking docker environment...'))
-                retval = self.combinedConnections[serverKey].dockerCheckEnv()
+                retval = self.combinedConnections[serverKey].dockerCheckEnv(sudoPass)
                 if retval and retval.get('errinfo'): return retval
             retval = tools.callServerApiDelete('/user/webhost/verify', {'obh': obh, 'target': serverKey}, self)
             if retval and retval.get('errinfo'): return retval
             self.combinedConnections[serverKey].onChannelString((CRLF+'Removing webhost container...'))
-            retcmd = self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker ps --filter "name=^/'+containerName+'$" --format \'{{.Names}}\' | grep -qw '+containerName+' && ' + self.combinedConnections[serverKey].dockerCommandPrefix + 'docker stop '+containerName)
+            retcmd = self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerAutoPrefix + 'docker ps --filter "name=^/'+containerName+'$" --format \'{{.Names}}\' | grep -qw '+containerName+' && ' + self.combinedConnections[serverKey].dockerAutoPrefix + 'docker stop '+containerName)
             self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
-            retcmd = self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rmi -f oysape/webhost')
+            retcmd = self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerAutoPrefix + 'docker rmi -f oysape/webhost')
             self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
             self.combinedConnections[serverKey].onChannelString((CRLF+'Webhost stoped'+CRLF))
             if retval and not retval.get('errinfo'):
@@ -1398,6 +1402,7 @@ class ApiDesktop(ApiOverHttp):
             return {'errinfo': str(e)}
 
     def installWebHost(self, params={}):
+        sudoPass = params.get('sudoPass')
         obh = params.get('obh')
         initScript = params.get('initScript')
         serverKey = params.get('target')
@@ -1412,22 +1417,23 @@ class ApiDesktop(ApiOverHttp):
             if not serverKey in self.combinedConnections:
                 return {'errinfo': 'SSH connection not found'}
             # Check the docker environment
-            if self.combinedConnections[serverKey].dockerCommandPrefix == None:
+            if self.combinedConnections[serverKey].dockerAutoPrefix == None:
                 self.combinedConnections[serverKey].onChannelString((CRLF+'Checking docker environment...'))
-                retval = self.combinedConnections[serverKey].dockerCheckEnv()
+                retval = self.combinedConnections[serverKey].dockerCheckEnv(sudoPass)
+                print(retval, flush=True)
                 if retval and retval.get('errinfo'): return retval
             # No need to remove the container
-            self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rm -f '+containerName)
-            self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker rmi -f oysape/webhost')
+            self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerAutoPrefix + 'docker rm -f '+containerName)
+            self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerAutoPrefix + 'docker rmi -f oysape/webhost')
             # Pull the latest image first
             self.combinedConnections[serverKey].onChannelString((CRLF+'Pull the latest image...'))
-            self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker pull oysape/webhost')
+            self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerAutoPrefix + 'docker pull oysape/webhost')
             # Run the container
-            self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerCommandPrefix + 'docker ps --filter "name=^/'+containerName+'$" --format \'{{.Names}}\' | grep -qw '+containerName+' && ' + self.combinedConnections[serverKey].dockerCommandPrefix + 'docker stop '+containerName)
+            self.combinedConnections[serverKey].execute_command(self.combinedConnections[serverKey].dockerAutoPrefix + 'docker ps --filter "name=^/'+containerName+'$" --format \'{{.Names}}\' | grep -qw '+containerName+' && ' + self.combinedConnections[serverKey].dockerAutoPrefix + 'docker stop '+containerName)
             self.combinedConnections[serverKey].onChannelString((CRLF+'Running webhost container...'))
             oneTimeSecret = obhs.keys.get(obh) or tools.getRandomString(60)
-            # cmd1 = self.combinedConnections[serverKey].dockerCommandPrefix + f'docker run --rm --name {containerName} -p {portMapping} -e WEBHOST_CONFIG=' + (oneTimeSecret+'@'+obh) + ' -e GITHUB_WEBHOOK_SECRET='+(params.get('github_hook_secret') or '') + ' -e BITBUCKET_WEBHOOK_SECRET=' + (params.get('bitbucket_hook_secret') or '') + f' {volumes} -itd oysape/webhost'
-            cmd1 = self.combinedConnections[serverKey].dockerCommandPrefix + f'docker run --name {containerName} -p {portMapping} -e WEBHOST_CONFIG=' + (oneTimeSecret+'@'+obh) + ' -e GITHUB_WEBHOOK_SECRET='+(params.get('github_hook_secret') or '""') + ' -e BITBUCKET_WEBHOOK_SECRET=' + (params.get('bitbucket_hook_secret') or '""') + f' {volumes} -itd oysape/webhost'
+            # cmd1 = self.combinedConnections[serverKey].dockerAutoPrefix + f'docker run --rm --name {containerName} -p {portMapping} -e WEBHOST_CONFIG=' + (oneTimeSecret+'@'+obh) + ' -e GITHUB_WEBHOOK_SECRET='+(params.get('github_hook_secret') or '') + ' -e BITBUCKET_WEBHOOK_SECRET=' + (params.get('bitbucket_hook_secret') or '') + f' {volumes} -itd oysape/webhost'
+            cmd1 = self.combinedConnections[serverKey].dockerAutoPrefix + f'docker run --name {containerName} -p {portMapping} -e WEBHOST_CONFIG=' + (oneTimeSecret+'@'+obh) + ' -e GITHUB_WEBHOOK_SECRET='+(params.get('github_hook_secret') or '""') + ' -e BITBUCKET_WEBHOOK_SECRET=' + (params.get('bitbucket_hook_secret') or '""') + f' {volumes} -itd oysape/webhost'
             # self.dockerExecCommand({'command': cmd1, 'target': serverKey, 'output': True})
             retcmd = self.combinedConnections[serverKey].execute_command(cmd1)
             if retcmd and retcmd.find("See 'docker run --help'")>=0:
@@ -1435,17 +1441,17 @@ class ApiDesktop(ApiOverHttp):
             self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
             # Config the webhost
             self.combinedConnections[serverKey].onChannelString((CRLF+'Configuring webhost...'))
-            cmd2 = self.combinedConnections[serverKey].dockerCommandPrefix + 'docker exec '+containerName+' python src/webhost-setup.py --obh=' + obh
+            cmd2 = self.combinedConnections[serverKey].dockerAutoPrefix + 'docker exec '+containerName+' python src/webhost-setup.py --obh=' + obh
             if params.get('title'): cmd2 += ' --title="' + params.get('title') + '"'
             retcmd = self.combinedConnections[serverKey].execute_command(cmd2)
             self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
-            cmd3 = self.combinedConnections[serverKey].dockerCommandPrefix + 'docker restart '+containerName
+            cmd3 = self.combinedConnections[serverKey].dockerAutoPrefix + 'docker restart '+containerName
             retcmd = self.combinedConnections[serverKey].execute_command(cmd3)
             self.combinedConnections[serverKey].onChannelString((CRLF+retcmd))
             # Run the init script
             if initScript:
                 for x in initScript.split('\n'):
-                    cmdText = self.combinedConnections[serverKey].dockerCommandPrefix + 'docker exec '+containerName+" bash -c '"+x+"'"
+                    cmdText = self.combinedConnections[serverKey].dockerAutoPrefix + 'docker exec '+containerName+" bash -c '"+x+"'"
                     retcmd = self.combinedConnections[serverKey].execute_command(cmdText)
             # Save the secret and others fields
             adata = {'obh': obh, 'target': serverKey, 'secret': oneTimeSecret, 'title': params.get('title'), 'containerName': containerName, 'port': portMapping, 'volumes': (params.get('volumes') or []), 'initScript': initScript}

@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Modal, Input } from 'antd';
+import { Modal, Input, Typography } from 'antd';
 
-const TextInputModal = ({ visible, onCreate, onCancel, defaultValue, title, placeholder, rules }) => {
+const { Text } = Typography;
+
+const TextInputModal = ({ visible, onCreate, onCancel, defaultValue, title, placeholder, rules, description="", password=false }) => {
   const [inputValue, setInputValue] = useState('');
   const inputRef = useRef(null);
 
@@ -41,6 +43,14 @@ const TextInputModal = ({ visible, onCreate, onCancel, defaultValue, title, plac
         }
       }}
     >
+      {password ? <>{description ? <Text type="secondary">{description}</Text> : null}<Input.Password
+        placeholder={placeholder||"Enter password"}
+        value={inputValue}
+        onChange={handleChange}
+        onPressEnter={handleOk}
+        ref={inputRef}
+        autoComplete='off' autoCapitalize='off' autoCorrect='off'
+      /></> :
       <Input
         placeholder={placeholder||"Enter here"}
         value={inputValue}
@@ -49,6 +59,7 @@ const TextInputModal = ({ visible, onCreate, onCancel, defaultValue, title, plac
         ref={inputRef}
         autoComplete='off' autoCapitalize='off' autoCorrect='off'
       />
+      }
     </Modal>
   );
 };

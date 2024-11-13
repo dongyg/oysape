@@ -23,6 +23,8 @@ export default function Sftp(props) {
   const [selectedKeys, setSelectedKeys] = useState([]);
   const [showFilenameInput, setShowFilenameInput] = React.useState(false);
   const [showProjectInput, setShowProjectInput] = React.useState(false);
+  const [showSudoPassword, setShowSudoPassword] = React.useState(false);
+  const [sudoAction, setSudoAction] = React.useState(null);
   const [showChooseRemotePath, setShowChooseRemotePath] = React.useState(false);
   const headerHeight = 56;
   const filetree = React.useRef(null);
@@ -297,26 +299,44 @@ export default function Sftp(props) {
     }
   };
 
+  const sudoWithPassword = (sudopass) => {
+    setShowSudoPassword(false);
+    if (sudoAction) {
+      sudoAction(sudopass);
+    }
+  };
   const createRemoteFile = (path) => {
     setShowFilenameInput(false);
     const serverKey = node1.current.target || sftpTarget;
-    let sudo = false;
-    let handleResponse = (resp) => {
+    let handleResponse = (resp, sudo) => {
       if(resp && resp.errinfo) {
         if(!sudo && resp.errinfo.indexOf('Permission denied')>=0) {
-          modal.confirm({
-            title: 'Permission denied',
-            content: 'Do you want to try with sudo?',
-            onOk() {
-              sudo = true;
-              callApi('create_remote_file', {target: serverKey, path:node1.current.path, filename:path, sudo:sudo}).then((r2)=>{
-                handleResponse(r2);
+          if(resp.needPassword) {
+            const callMe = (sudopass) => {
+              setShowSudoPassword(false);
+              callApi('create_remote_file', {target: serverKey, path:node1.current.path, filename:path, sudo:!sudo, password:sudopass}).then((r2)=>{
+                handleResponse(r2, !sudo);
               }).catch((err) => {
                 message.error(err.message);
               })
-            },
-            onCancel() {},
-          })
+            }
+            setSudoAction(() => callMe);
+            setShowSudoPassword(true);
+          } else {
+            modal.confirm({
+              title: 'Permission denied',
+              content: 'Do you want to try with sudo?',
+              onOk() {
+                sudo = true;
+                callApi('create_remote_file', {target: serverKey, path:node1.current.path, filename:path, sudo:!sudo}).then((r2)=>{
+                  handleResponse(r2, !sudo);
+                }).catch((err) => {
+                  message.error(err.message);
+                })
+              },
+              onCancel() {},
+            })
+          }
         } else {
           message.error(resp.errinfo);
         }
@@ -324,7 +344,7 @@ export default function Sftp(props) {
         reloadThisFolder(node1.current);
       }
     }
-    callApi('create_remote_file', {target: serverKey, path:node1.current.path, filename:path, sudo:sudo}).then((resp)=>{
+    callApi('create_remote_file', {target: serverKey, path:node1.current.path, filename:path, sudo:false}).then((resp)=>{
       handleResponse(resp);
     }).catch((err) => {
       message.error(err.message);
@@ -457,6 +477,8 @@ export default function Sftp(props) {
       <TextInputModal visible={showFilenameInput} defaultValue={""} title={"Create a new file"} onCreate={createRemoteFile} onCancel={() => setShowFilenameInput(false)} placeholder={"Please input a file name"}></TextInputModal>
       {/* For create new project */}
       <TextInputModal visible={showProjectInput} defaultValue={""} title={"Create a new project"} onCreate={createSftpProject} onCancel={() => setShowProjectInput(false)} placeholder={"Please input a project name"}></TextInputModal>
+      {/* For sudo password */}
+      <TextInputModal visible={showSudoPassword} defaultValue={""} title={"Permission denied"} onCreate={sudoWithPassword} onCancel={() => setShowSudoPassword(false)} placeholder={"Enter sudo password"} description='Sudo with the password or Cancel' password={true}></TextInputModal>
       <ChooseRemotePath visible={showChooseRemotePath} serverKey={(node1.current&&node1.current.target)||null} serverVisible={'visible'} chooseType={"folder"} onOk={handleChooseRemotePath} onCancel={() => setShowChooseRemotePath(false)}></ChooseRemotePath>
     </>
   );

@@ -6,6 +6,7 @@ import { useCustomContext } from '../Contexts/CustomContext'
 import { callApi, } from '../Common/global';
 import AntIcon from '../Common/AntIcon';
 import CommandInputModal from './TextInputModal';
+import TextInputModal from './TextInputModal';
 
 const { DirectoryTree } = Tree; // 把 Tree 赋值给 DirectoryTree, 然后使用 DirectoryTree 就是出现整行选中效果, 否则就不出现整行选中效果
 
@@ -17,6 +18,8 @@ export default function ProjectsPanel() {
   const [contextMenuItems, setContextMenuItems] = React.useState([]);
   const [dockerCommandInputVisible, setDockerCommandInputVisible] = React.useState(false);
   const [dockerComposeInputVisible, setDockerComposeInputVisible] = React.useState(false);
+  const [showSudoPassword, setShowSudoPassword] = React.useState(false);
+  const [sudoAction, setSudoAction] = React.useState(null);
   const headerHeight = 56;
   const filetree = React.useRef(null);
   const time1 = React.useRef(0);
@@ -98,12 +101,36 @@ export default function ProjectsPanel() {
     // console.log(anode);
   }
 
+  const sudoWithPassword = (sudopass) => {
+    setShowSudoPassword(false);
+    if (sudoAction) {
+      sudoAction(sudopass);
+    }
+  };
   const reloadDockerServer = (serverKey) => {
     setDockerTree({[serverKey]:[{'title': 'Loading...', 'key': serverKey+'_docker', isLeaf: true, icon: <AntIcon name="LoadingOutlined" />}]});
     callApi('dockerGetWholeTree', {target: serverKey}).then((resp) => {
       if(resp && resp.errinfo) {
-        message.error(resp.errinfo);
-        setDockerTree({[serverKey]:[{'title': resp.errinfo, 'key': serverKey+'_docker_version', isLeaf: true, icon: <AntIcon name="ExclamationOutlined" />}]});
+        if(resp.needPassword) {
+          const callMe = (sudopass) => {
+            setShowSudoPassword(false);
+            callApi('dockerGetWholeTree', {target: serverKey, sudoPass:sudopass}).then((r2) => {
+              if(r2 && r2.errinfo) {
+                message.error(r2.errinfo);
+                setDockerTree({[serverKey]:[{'title': r2.errinfo, 'key': serverKey+'_docker_version', isLeaf: true, icon: <AntIcon name="ExclamationOutlined" />}]});
+              }else if(r2 && r2.version && r2.featureList) {
+                setDockerTree({...dockerTree, [serverKey]: r2.featureList});
+              }
+            }).catch((err) => {
+              message.error(err.message);
+            })
+          }
+          setSudoAction(() => callMe);
+          setShowSudoPassword(true);
+        } else {
+          message.error(resp.errinfo);
+          setDockerTree({[serverKey]:[{'title': resp.errinfo, 'key': serverKey+'_docker_version', isLeaf: true, icon: <AntIcon name="ExclamationOutlined" />}]});
+        }
       } else if(resp && resp.version && resp.featureList) {
         setDockerTree({...dockerTree, [serverKey]: resp.featureList});
       }
@@ -211,6 +238,8 @@ export default function ProjectsPanel() {
       </Space>
       <CommandInputModal visible={dockerCommandInputVisible} onCreate={handleDockerCommandOk} onCancel={()=>setDockerCommandInputVisible(false)} title={"Give the docker command prefix"} placeholder={"Such as: /usr/local/bin/, sudo"} />
       <CommandInputModal visible={dockerComposeInputVisible} onCreate={handleDockerComposeOk} onCancel={()=>setDockerComposeInputVisible(false)} title={"Give the docker compose command prefix"} placeholder={"Such as: /usr/local/bin/, sudo"} />
-    </>
+      {/* For sudo password */}
+      <TextInputModal visible={showSudoPassword} defaultValue={""} title={"Permission denied"} onCreate={sudoWithPassword} onCancel={() => setShowSudoPassword(false)} placeholder={"Enter sudo password"} description='Sudo with the password or Cancel' password={true}></TextInputModal>
+   </>
   );
 }

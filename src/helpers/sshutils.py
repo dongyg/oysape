@@ -149,11 +149,22 @@ def get_ps(sshconn, tty_number, debug=False):
     if debug: print(json.dumps(output))
     return [x for x in output.split('\n') if x and not x.strip().endswith((' sudo', ' sudo su', ' su', ' sh', ' bash'))]
 
+def get_if_sudo_need_password(sshconn):
+    try:
+        stdin, stdout, stderr = sshconn.client.exec_command('sudo -n true 2>/dev/null && echo "NOPASSWD" || echo "NEEDPASSWD"')
+        output = stdout.read().decode()
+        if 'NOPASSWD' in output:
+            return False
+        else:
+            return True
+    except Exception as e:
+        return True
 
 class SSHClient:
     def __init__(self, ssh_connection_string, password=None, private_key=None, passphrase=None, serverKey=None, parentApi=None, uniqueKey=None, startup=None):
         self.hostname, self.port, self.username = parse_ssh_connection_string(ssh_connection_string)
-        self.dockerCommandPrefix = None
+        self.dockerManualPrefix = None
+        self.dockerAutoPrefix = None
         self.dockerComposePrefix = None
         self.password = password
         self.private_key = private_key
@@ -581,9 +592,11 @@ class SSHClient:
             traceback.print_exc()
             return {'errinfo': str(e)}
 
-    def save_remote_file(self, thisPath, content, sudo=False):
+    def save_remote_file(self, thisPath, content, sudo=False, sudoPass=None):
         if not self.client: return {'errinfo': 'No server connection'}
         try:
+            if self.password and not sudoPass:
+                sudoPass = self.password
             sftp = self.client.open_sftp()
             try:
                 sftp.stat(os.path.dirname(thisPath))
@@ -593,14 +606,14 @@ class SSHClient:
             with sftp.open(writePath, "w") as remote_file:
                 remote_file.write(content)
             if sudo:
-                command = f"sudo mv {writePath} {thisPath}"
+                command = (f'echo "{sudoPass}" | sudo -S -p ""' if sudoPass else 'sudo') + f' cp {writePath} {thisPath} && rm -f {writePath}'
                 stdin, stdout, stderr = self.client.exec_command(command)
                 # output = stdout.read().decode()
                 error = stderr.read().decode()
                 if error:
                     return {'errinfo': error}
         except PermissionError:
-            return {'errinfo': 'Permission denied'}
+            return {'errinfo': 'Permission denied', 'needPassword': get_if_sudo_need_password(self) and not bool(sudoPass)}
         except Exception as e:
             print(self.hostname, thisPath, flush=True)
             traceback.print_exc()
@@ -609,36 +622,42 @@ class SSHClient:
             sftp.close()
         return {}
 
-    def create_remote_file(self, remote_file_path, sudo=False):
+    def create_remote_file(self, remote_file_path, sudo=False, sudoPass=None):
         if not self.client: return {'errinfo': 'No server connection'}
         try:
+            if self.password and not sudoPass:
+                sudoPass = self.password
             sftp = self.client.open_sftp()
             writePath = ('./'+tools.get_key(remote_file_path)) if sudo else remote_file_path
             with sftp.open(writePath, 'w') as f:
                 f.write('')
             if sudo:
-                command = f"sudo mv {writePath} {remote_file_path}"
+                command = (f'echo "{sudoPass}" | sudo -S -p ""' if sudoPass else 'sudo') + f' cp {writePath} {remote_file_path} && rm -f {writePath}'
                 stdin, stdout, stderr = self.client.exec_command(command)
                 # output = stdout.read().decode()
                 error = stderr.read().decode()
                 if error:
                     return {'errinfo': error}
         except PermissionError:
-            return {'errinfo': 'Permission denied'}
+            return {'errinfo': 'Permission denied', 'needPassword': get_if_sudo_need_password(self) and not bool(sudoPass)}
         except Exception as e:
             return {'errinfo': str(e)}
         finally:
             sftp.close()
         return {}
 
-    def dockerCheckEnv(self):
-        self.dockerCommandPrefix = ''
+    def dockerCheckEnv(self, sudoPass=None):
+        if self.password and not sudoPass:
+            sudoPass = self.password
         tryCmds = ['', '/usr/local/bin/' ]
         for cmd in tryCmds:
             retval = self.dockerGetCommandResult(cmd+'docker version')
             retval = retval.get('errinfo') or ''
             if (retval.find('permission denied')>=0):
-                self.dockerCommandPrefix = 'sudo ' + (self.dockerCommandPrefix or '')
+                if not sudoPass and get_if_sudo_need_password(self):
+                    return {'errinfo': 'Sudo and password are required', 'needPassword': True}
+                self.dockerAutoPrefix = (f'echo "{sudoPass}" | sudo -S -p ""' if sudoPass else 'sudo') + ' ' + (self.dockerAutoPrefix or '')
+                self.dockerManualPrefix = 'sudo' + ' ' + (self.dockerManualPrefix or '')
                 return None
             elif (retval.find('docker.sock')>=0):
                 return {'errinfo': 'Docker is not running'}
@@ -647,7 +666,8 @@ class SSHClient:
             elif retval:
                 return {'errinfo': retval}
             else:
-                self.dockerCommandPrefix = (self.dockerCommandPrefix or '') + cmd
+                self.dockerAutoPrefix = (self.dockerAutoPrefix or '') + cmd
+                self.dockerManualPrefix = (self.dockerManualPrefix or '') + cmd
                 return None
         return {'errinfo': 'Docker is not found'}
 
@@ -667,8 +687,7 @@ class SSHClient:
         return {'errinfo': 'Docker Compose is not found'}
 
     def dockerGetCommandResult(self, command):
-        command = (self.dockerCommandPrefix or '') + command
-        # print(command)
+        command = (self.dockerAutoPrefix or '') + command
         try:
             stdin, stdout, stderr = self.client.exec_command(command)
             output = stdout.read().decode()
@@ -691,8 +710,7 @@ class SSHClient:
             return {'errinfo': str(e), 'output': output}
 
     def dockerGetComposeResult(self, command):
-        command = (self.dockerCommandPrefix or '') + (self.dockerComposePrefix or '') + command
-        # print(command)
+        command = (self.dockerAutoPrefix or '') + (self.dockerComposePrefix or '') + command
         try:
             stdin, stdout, stderr = self.client.exec_command(command)
             output = stdout.read().decode()
@@ -723,17 +741,17 @@ class SSHClient:
         else:
             containerList = [{'key': self.serverKey+'_docker_container_'+x['ID'], 'theName': x['Names'], 'title': x['Names']+' ('+x['State']+')', 'isLeaf': True, 'parent': containersParentKey, 'raw':x } for x in (retval.get('output') or [])]
         return {'key': containersParentKey, 'title': 'Containers', 'isLeaf': False, 'children': containerList, 'subMenus':[
-            {'label': 'restart', 'key': 'tree_menu_command_container_restart', 'command': self.dockerCommandPrefix+'docker container restart {theName}', 'icon':'ReloadOutlined', 'refresh': True },
+            {'label': 'restart', 'key': 'tree_menu_command_container_restart', 'command': self.dockerManualPrefix+'docker container restart {theName}', 'icon':'ReloadOutlined', 'refresh': True },
             {'type': 'divider', 'key': tools.getRandomString() },
-            {'label': 'start', 'key': 'tree_menu_command_container_start', 'command': self.dockerCommandPrefix+'docker container start {theName}', 'icon':'CaretRightOutlined', 'refresh': True },
-            {'label': 'pause', 'key': 'tree_menu_command_container_pause', 'command': self.dockerCommandPrefix+'docker container pause {theName}', 'icon':'PauseOutlined', 'refresh': True },
-            {'label': 'stop', 'key': 'tree_menu_command_container_stop', 'command': self.dockerCommandPrefix+'docker container stop {theName}', 'icon':'BorderOutlined', 'refresh': True },
+            {'label': 'start', 'key': 'tree_menu_command_container_start', 'command': self.dockerManualPrefix+'docker container start {theName}', 'icon':'CaretRightOutlined', 'refresh': True },
+            {'label': 'pause', 'key': 'tree_menu_command_container_pause', 'command': self.dockerManualPrefix+'docker container pause {theName}', 'icon':'PauseOutlined', 'refresh': True },
+            {'label': 'stop', 'key': 'tree_menu_command_container_stop', 'command': self.dockerManualPrefix+'docker container stop {theName}', 'icon':'BorderOutlined', 'refresh': True },
             {'type': 'divider', 'key': tools.getRandomString() },
-            {'label': 'logs -f', 'key': 'tree_menu_command_container_logs', 'command': self.dockerCommandPrefix+'docker container logs -f {theName}', 'terminal': True, 'icon':'UnorderedListOutlined', 'hideSide': True },
-            {'label': 'inspect', 'key': 'tree_menu_command_container_inspect', 'command': self.dockerCommandPrefix+'docker container inspect {theName}', 'icon':'EyeOutlined', 'hideSide': True },
-            {'label': 'stats --no-stream', 'key': 'tree_menu_command_container_stats', 'command': self.dockerCommandPrefix+'docker container stats --no-stream {theName}', 'icon':'LineChartOutlined', 'hideSide': True },
+            {'label': 'logs -f', 'key': 'tree_menu_command_container_logs', 'command': self.dockerManualPrefix+'docker container logs -f {theName}', 'terminal': True, 'icon':'UnorderedListOutlined', 'hideSide': True },
+            {'label': 'inspect', 'key': 'tree_menu_command_container_inspect', 'command': self.dockerManualPrefix+'docker container inspect {theName}', 'icon':'EyeOutlined', 'hideSide': True },
+            {'label': 'stats --no-stream', 'key': 'tree_menu_command_container_stats', 'command': self.dockerManualPrefix+'docker container stats --no-stream {theName}', 'icon':'LineChartOutlined', 'hideSide': True },
             {'type': 'divider', 'key': tools.getRandomString() },
-            {'label': 'rm', 'key': 'tree_menu_command_container_rm', 'command': self.dockerCommandPrefix+'docker container rm {theName}', 'icon':'DeleteOutlined', 'refresh': True, 'confirm': 'Are you sure you want to delete this container' },
+            {'label': 'rm', 'key': 'tree_menu_command_container_rm', 'command': self.dockerManualPrefix+'docker container rm {theName}', 'icon':'DeleteOutlined', 'refresh': True, 'confirm': 'Are you sure you want to delete this container' },
         ]}
 
     def dockerGetImages(self):
@@ -745,10 +763,10 @@ class SSHClient:
         else:
             imageList = [{'key': self.serverKey+'_docker_image_'+x['ID'], 'theName': x['Repository'], 'title': x['Repository']+':'+x['Tag']+' ('+x['Size']+')', 'isLeaf': True, 'parent': imagesParentKey, 'raw':x } for x in (retval.get('output') or [])]
         return {'key': imagesParentKey, 'title': 'Images', 'isLeaf': False, 'children': imageList, 'subMenus':[
-            {'label': 'inspect', 'key': 'tree_menu_command_image_inspect', 'command': self.dockerCommandPrefix+'docker image inspect {theName}', 'icon':'EyeOutlined', 'hideSide': True },
-            {'label': 'history', 'key': 'tree_menu_command_image_history', 'command': self.dockerCommandPrefix+'docker image history {theName}', 'icon':'HistoryOutlined', 'hideSide': True },
+            {'label': 'inspect', 'key': 'tree_menu_command_image_inspect', 'command': self.dockerManualPrefix+'docker image inspect {theName}', 'icon':'EyeOutlined', 'hideSide': True },
+            {'label': 'history', 'key': 'tree_menu_command_image_history', 'command': self.dockerManualPrefix+'docker image history {theName}', 'icon':'HistoryOutlined', 'hideSide': True },
             {'type': 'divider', 'key': tools.getRandomString() },
-            {'label': 'rm', 'key': 'tree_menu_command_image_rm', 'command': self.dockerCommandPrefix+'docker image rm {theName}', 'icon':'DeleteOutlined', 'refresh': True, 'confirm': 'Are you sure you want to delete this image' },
+            {'label': 'rm', 'key': 'tree_menu_command_image_rm', 'command': self.dockerManualPrefix+'docker image rm {theName}', 'icon':'DeleteOutlined', 'refresh': True, 'confirm': 'Are you sure you want to delete this image' },
         ]}
 
     def dockerGetComposes(self):
@@ -766,23 +784,23 @@ class SSHClient:
         else:
             composeList = [{'key': self.serverKey+'_docker_compose_'+x['Name'], 'theName':x['ConfigFiles'], 'title': x['Name']+' - '+x['Status'], 'isLeaf': True, 'parent': composeParentKey, 'raw':x } for x in (retval.get('output') or [])]
         return {'key': composeParentKey, 'title': 'Composes', 'isLeaf': False, 'children': composeList, 'subMenus':[
-            {'label': 'restart', 'key': 'tree_menu_command_compose_restart', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} restart', 'icon':'ReloadOutlined', 'refresh': True },
+            {'label': 'restart', 'key': 'tree_menu_command_compose_restart', 'command': self.dockerManualPrefix+self.dockerComposePrefix+' -f {theName} restart', 'icon':'ReloadOutlined', 'refresh': True },
             {'type': 'divider', 'key': tools.getRandomString() },
-            {'label': 'start', 'key': 'tree_menu_command_compose_start', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} start', 'icon':'CaretRightOutlined', 'refresh': True },
-            {'label': 'pause', 'key': 'tree_menu_command_compose_pause', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} pause', 'icon':'PauseOutlined', 'refresh': True },
-            {'label': 'stop', 'key': 'tree_menu_command_compose_stop', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} stop', 'icon':'BorderOutlined', 'refresh': True },
+            {'label': 'start', 'key': 'tree_menu_command_compose_start', 'command': self.dockerManualPrefix+self.dockerComposePrefix+' -f {theName} start', 'icon':'CaretRightOutlined', 'refresh': True },
+            {'label': 'pause', 'key': 'tree_menu_command_compose_pause', 'command': self.dockerManualPrefix+self.dockerComposePrefix+' -f {theName} pause', 'icon':'PauseOutlined', 'refresh': True },
+            {'label': 'stop', 'key': 'tree_menu_command_compose_stop', 'command': self.dockerManualPrefix+self.dockerComposePrefix+' -f {theName} stop', 'icon':'BorderOutlined', 'refresh': True },
             {'type': 'divider', 'key': tools.getRandomString() },
-            {'label': 'logs -f', 'key': 'tree_menu_command_compose_logs', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} logs -f', 'terminal': True, 'icon':'UnorderedListOutlined', 'hideSide': True },
+            {'label': 'logs -f', 'key': 'tree_menu_command_compose_logs', 'command': self.dockerManualPrefix+self.dockerComposePrefix+' -f {theName} logs -f', 'terminal': True, 'icon':'UnorderedListOutlined', 'hideSide': True },
             {'type': 'divider', 'key': tools.getRandomString() },
-            {'label': 'up -d', 'key': 'tree_menu_command_compose_up-d', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} up -d', 'icon':'VerticalAlignTopOutlined', 'refresh': True },
-            {'label': 'down && up -d', 'key': 'tree_menu_command_compose_down_up-d', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} down && '+self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} up -d', 'icon':'ColumnHeightOutlined', 'refresh': True },
-            {'label': 'down', 'key': 'tree_menu_command_compose_down', 'command': self.dockerCommandPrefix+self.dockerComposePrefix+' -f {theName} down', 'icon':'DeleteOutlined', 'confirm': 'Are you sure you want to delete this', 'refresh': True },
+            {'label': 'up -d', 'key': 'tree_menu_command_compose_up-d', 'command': self.dockerManualPrefix+self.dockerComposePrefix+' -f {theName} up -d', 'icon':'VerticalAlignTopOutlined', 'refresh': True },
+            {'label': 'down && up -d', 'key': 'tree_menu_command_compose_down_up-d', 'command': self.dockerManualPrefix+self.dockerComposePrefix+' -f {theName} down && '+self.dockerManualPrefix+self.dockerComposePrefix+' -f {theName} up -d', 'icon':'ColumnHeightOutlined', 'refresh': True },
+            {'label': 'down', 'key': 'tree_menu_command_compose_down', 'command': self.dockerManualPrefix+self.dockerComposePrefix+' -f {theName} down', 'icon':'DeleteOutlined', 'confirm': 'Are you sure you want to delete this', 'refresh': True },
         ]}
 
-    def dockerGetWholeTree(self):
+    def dockerGetWholeTree(self, sudoPass=None):
         # Get the whole docker tree
-        if self.dockerCommandPrefix == None:
-            retval = self.dockerCheckEnv()
+        if self.dockerAutoPrefix == None:
+            retval = self.dockerCheckEnv(sudoPass)
             if retval and retval.get('errinfo'): return retval
         featureList = []
         retval = self.dockerGetCommandResult('docker --version')
@@ -792,9 +810,9 @@ class SSHClient:
         if (output and output.strip().find('Docker version')>=0):
             # Insert a node to show the Docker version
             featureList.append({'key': self.serverKey+'_docker_version', 'title': output, 'isLeaf': True, 'menus':[
-                {'label': 'ps -a', 'key': 'tree_menu_command_ps_a', 'command': self.dockerCommandPrefix+'docker ps -a', 'icon':'ToolOutlined' },
-                {'label': 'images', 'key': 'tree_menu_command_images', 'command': self.dockerCommandPrefix+'docker images', 'icon':'FileImageOutlined'},
-                {'label': 'stats', 'key': 'tree_menu_command_stats', 'command': self.dockerCommandPrefix+'docker stats --no-stream', 'icon':'LineChartOutlined'},
+                {'label': 'ps -a', 'key': 'tree_menu_command_ps_a', 'command': self.dockerManualPrefix+'docker ps -a', 'icon':'ToolOutlined' },
+                {'label': 'images', 'key': 'tree_menu_command_images', 'command': self.dockerManualPrefix+'docker images', 'icon':'FileImageOutlined'},
+                {'label': 'stats', 'key': 'tree_menu_command_stats', 'command': self.dockerManualPrefix+'docker stats --no-stream', 'icon':'LineChartOutlined'},
             ]})
             featureList.append(self.dockerGetContainers())
             featureList.append(self.dockerGetImages())

@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (e.g. v3.9.23)'
+        description: 'Release version (e.g. v3.10.2)'
         required: true
-        default: 'v3.9.23'
+        default: 'v3.10.2'
 
 jobs:
   macos:

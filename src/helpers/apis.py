@@ -301,8 +301,7 @@ class ApiOysape(ApiOauth):
         serverObject = params.get('serverObject') or {}
         if params.get('prikey') and not os.path.isfile(os.path.expanduser(serverObject.get('prikey'))):
             return {"errinfo": "Private key file not found: %s" % serverObject.get('prikey')}
-        self.importTo({'what': 'servers', 'items': [serverObject], 'credentials': params.get('credentials')})
-        return self.userSession
+        return self.importTo({'what': 'servers', 'items': [serverObject], 'credentials': params.get('credentials')})
 
     def deleteServer(self, params):
         # Return server list in {'servers': []}

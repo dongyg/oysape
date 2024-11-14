@@ -7,7 +7,7 @@ import { PiControl } from "react-icons/pi";
 import { callApi, getCredentials } from '../Common/global';
 import { useCustomContext } from '../Contexts/CustomContext'
 import { useKeyPress, keyMapping } from '../Contexts/useKeyPress'
-import { getShowTitle, getPathAndName, flatFileTree, parseTaskString0, getUniqueKey, calculateMD5 } from '../Common/global';
+import { getShowTitle, getPathAndName, flatFileTree, parseTaskString0, getUniqueKey, calculateMD5, isDesktopVersion } from '../Common/global';
 import CodeEditor from '../Modules/CodeEditor';
 import Terminal from '../Modules/UITerminal1';
 import IframeComponent from './IframeComponent';
@@ -246,9 +246,13 @@ const SearchInput = () => {
     }
     const v1 = userSession.servers.find((item) => item.name === serverKey);
     if(v1 && typeof v1.credType === 'undefined') {
-      setPassForServer( v1.key );
-      callbackExecuteInput.current = callMe;
-      setVisibleCredentialsModal(true);
+      if(isDesktopVersion) {
+        setPassForServer( v1.key );
+        callbackExecuteInput.current = callMe;
+        setVisibleCredentialsModal(true);
+      } else {
+        message.error('No credential set for server '+serverKey);
+      }
     } else {
       callMe();
     }

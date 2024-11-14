@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os, traceback, json, json, time, base64, fnmatch, platform, hmac, hashlib, logging, webbrowser
+import os, traceback, json, json, time, base64, fnmatch, platform, hmac, hashlib, logging, webbrowser, copy
 from . import auth, tools, consts, obhs, scheduler
 
 BUF_SIZE = 1024
@@ -277,11 +277,20 @@ class ApiOysape(ApiOauth):
             return retval
 
     def saveTeamDataToServer(self, data, needVerify=False):
+        objs = copy.deepcopy(data)
+        # Make a copy and remove the credentials from servers
+        for server in (objs.get('servers') or []):
+            server.pop('username', None)
+            server.pop('password', None)
+            server.pop('prikey', None)
+            server.pop('passphrase', None)
+            server.pop('credType', None)
+            server.pop('credAlias', None)
         for site in (self.userSession.get('sites') or []):
             serverKey = site.get('target')
-            if serverKey and site.get('verified') and serverKey in [x.get('key') for x in data['servers']]:
+            if serverKey and site.get('verified') and serverKey in [x.get('key') for x in objs['servers']]:
                 filename = self.userSession.get('team0')+'.json'
-                self.save_remote_file({'target': serverKey, 'path': os.path.join('.oysape','teams',filename), 'content': json.dumps(data)})
+                self.save_remote_file({'target': serverKey, 'path': os.path.join('.oysape','teams',filename), 'content': json.dumps(objs)})
                 if needVerify:
                     retval = tools.callServerApiPost('/user/webhost/verify', {'obh': site.get('obh')}, self)
                     if retval and retval.get('errinfo'):
@@ -368,7 +377,7 @@ class ApiOysape(ApiOauth):
         what = params.get('what')
         objs = {
             'tname': self.userSession.get('teams',{}).get(self.userSession.get('team0'),{}).get('tname') or self.userSession.get('team0'),
-            'servers': self.userSession['servers'],
+            'servers': copy.deepcopy(self.userSession['servers']),
             'tasks': self.userSession['tasks'],
             'pipelines': self.userSession['pipelines'],
             'folders': self.listFolder,
@@ -392,6 +401,14 @@ class ApiOysape(ApiOauth):
                 else:
                     return {"errinfo": "Please give a file to import"}
             if isinstance(import_list, list):
+                if what == 'servers':
+                    for server in import_list:
+                        server.pop('username', None)
+                        server.pop('password', None)
+                        server.pop('prikey', None)
+                        server.pop('passphrase', None)
+                        server.pop('credType', None)
+                        server.pop('credAlias', None)
                 retval = tools.callServerApiPost('/user/'+what, {what: import_list}, self)
                 if retval and retval.get('errinfo'):
                     return retval

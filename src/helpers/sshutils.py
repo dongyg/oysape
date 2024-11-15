@@ -687,6 +687,7 @@ class SSHClient:
         return {'errinfo': 'Docker Compose is not found'}
 
     def dockerGetCommandResult(self, command):
+        if not self.client: return {'errinfo': 'No server connection'}
         command = (self.dockerAutoPrefix or '') + command
         try:
             stdin, stdout, stderr = self.client.exec_command(command)
@@ -710,6 +711,7 @@ class SSHClient:
             return {'errinfo': str(e), 'output': output}
 
     def dockerGetComposeResult(self, command):
+        if not self.client: return {'errinfo': 'No server connection'}
         command = (self.dockerAutoPrefix or '') + (self.dockerComposePrefix or '') + command
         try:
             stdin, stdout, stderr = self.client.exec_command(command)
@@ -734,6 +736,7 @@ class SSHClient:
 
     def dockerGetContainers(self):
         # Nodes for Docker containers
+        if not self.client: return {'errinfo': 'No server connection'}
         containersParentKey = self.serverKey+'_docker_containers'
         retval = self.dockerCommandJsonResult('docker container ls --format=json -a')
         if retval.get('errinfo'):
@@ -756,6 +759,7 @@ class SSHClient:
 
     def dockerGetImages(self):
         # Nodes for Docker images
+        if not self.client: return {'errinfo': 'No server connection'}
         imagesParentKey = self.serverKey+'_docker_images'
         retval = self.dockerCommandJsonResult('docker image ls --format=json -a')
         if retval.get('errinfo'):
@@ -771,6 +775,7 @@ class SSHClient:
 
     def dockerGetComposes(self):
         # Nodes for Docker compose
+        if not self.client: return {'errinfo': 'No server connection'}
         composeParentKey = self.serverKey+'_docker_composes'
         if self.dockerComposePrefix == None:
             retval = self.dockerComposeCheckEnv()
@@ -799,6 +804,7 @@ class SSHClient:
 
     def dockerGetWholeTree(self, sudoPass=None):
         # Get the whole docker tree
+        if not self.client: return {'errinfo': 'No server connection'}
         if self.dockerAutoPrefix == None:
             retval = self.dockerCheckEnv(sudoPass)
             if retval and retval.get('errinfo'): return retval

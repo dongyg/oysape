@@ -1,6 +1,7 @@
 # Custom
 build
 releases
+zips
 venv-oysape
 yarn.lock
 .DS_Store

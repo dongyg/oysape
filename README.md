@@ -67,5 +67,7 @@ yarn run clean
 docker run --rm --name oyhost -p 19790:19790 -itd oysape/webhost
 ```
 
+Then open http://localhost:19790 with your favorite browser.
+
 > Unrecommended for desktop usage. Use desktop version instead. That will give you more convenience to access your local files.
 

@@ -795,6 +795,8 @@ class ApiWorkspace(ApiTerminal):
             if ret1 and ret1.get('errinfo'): return ret1
         time1 = time.time()
         while not self.combinedConnections[serverKey].areAllTasksDone():
+            if not self.combinedConnections[serverKey].running and self.combinedConnections[serverKey].message:
+                return {"errinfo": self.combinedConnections[serverKey].message}
             time.sleep(0.1)
             time2 = time.time()
             if time2-time1 > 3:

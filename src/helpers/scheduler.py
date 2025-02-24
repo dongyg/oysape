@@ -173,7 +173,7 @@ def initScheduler(obh, schedule_items):
             apiSchedulers[teamId].teamName = teamName
         # Load credentials for this webhost
         credWebhost = apiSchedulers[teamId].loadCredentials()
-        apiSchedulers[teamId].reloadUserSession({'credentials': credWebhost})
+        apiSchedulers[teamId].reloadUserSession(credWebhost)
         if item.get('running'):
             # print('Scheduled:', item.get('title'))
             functionObj = None
@@ -193,7 +193,9 @@ def initScheduler(obh, schedule_items):
             elif item['type'] == 'interval':
                 runner.schedule_interval_task(item['start']/1000, item['interval'], item['end']/1000, execScheduleFunction, (functionObj, parameterObj,))
             count += 1
+
     print('Initialized', count, 'items in scheduler')
+
     for event in runner.scheduler.queue:
         print(tools.getDatetimeStrFromTimestamp(event.time), event.argument[1].get('sch'))
     return runner

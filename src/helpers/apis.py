@@ -21,7 +21,7 @@ def getApiObjectByTeam(tname):
         if file.endswith('.json'):
             teamId = os.path.splitext(file)[0]
             if scheduler.apiSchedulers.get(teamId) == None:
-                scheduler.apiSchedulers[teamId] = ApiScheduler(clientId='scheduler_for_'+teamId, clientUserAgent='OysapeScheduler/3.10.2')
+                scheduler.apiSchedulers[teamId] = ApiScheduler(clientId='scheduler_for_'+teamId, clientUserAgent='OysapeScheduler/%s'%consts.CLIENT_VERSION)
                 scheduler.apiSchedulers[teamId].teamId = teamId
                 scheduler.apiSchedulers[teamId].reloadUserSession({'credentials': scheduler.apiSchedulers[teamId].loadCredentials()})
     for tid in scheduler.apiSchedulers:
@@ -240,14 +240,14 @@ class ApiOysape(ApiOauth):
 
     def downloadNewVersion(self, params={}):
         if not params.get('version'): return {"errinfo": "No version"}
-        url = 'https://oysape.aifetel.cc/releases/%s/Oysape-windows-standalone.zip' % params.get('version')
+        url = 'https://oysape.aifetel.cc/download.html?os=windows-standalone&ver=' + params.get('version')
         if self.clientUserAgent.find('Mac OS')>0:
-            url = 'https://oysape.aifetel.cc/releases/%s/Oysape-mac-universal.zip' % params.get('version')
+            url = 'https://oysape.aifetel.cc/download.html?os=mac-universal&ver=' + params.get('version')
         elif self.clientUserAgent.find('Linux')>0:
             if self.clientUserAgent.find('aarch64')>0:
-                url = 'https://oysape.aifetel.cc/releases/%s/Oysape-linux-standalone-aarch64.zip' % params.get('version')
+                url = 'https://oysape.aifetel.cc/download.html?os=linux-aarch64&ver=' + params.get('version')
             elif self.clientUserAgent.find('x86_64')>0:
-                url = 'https://oysape.aifetel.cc/releases/%s/Oysape-linux-standalone-x86_64.zip' % params.get('version')
+                url = 'https://oysape.aifetel.cc/download.html?os=linux-x86_64&ver=' + params.get('version')
         webbrowser.open_new(url)
         return {'url': url}
 
@@ -791,22 +791,33 @@ class ApiWorkspace(ApiTerminal):
     def testIfTaskCanRunOnServer(self, params):
         taskKey, serverKey = params.get('taskKey'), params.get('serverKey')
         if not serverKey in self.combinedConnections:
-            return True
+            ret1 = self.createCombConnection(serverKey)
+            if ret1 and ret1.get('errinfo'): return ret1
+        time1 = time.time()
+        while not self.combinedConnections[serverKey].areAllTasksDone():
+            time.sleep(0.1)
+            time2 = time.time()
+            if time2-time1 > 3:
+                return {"errinfo": 'Timeout(3s) waiting for %s to finish tasks'%serverKey}
         if not self.combinedConnections[serverKey].areAllTasksDone():
-            return False
-        return True
+            if not self.combinedConnections[serverKey].running and self.combinedConnections[serverKey].message:
+                return {"errinfo": self.combinedConnections[serverKey].message}
+            else:
+                return {"errinfo": 'No connection or %s is busy'%serverKey}
+        return {}
 
     def testIfPipelineCanRun(self, params):
         pipeName = params.get('pipelineName')
         steps = self.getPipelineSteps(pipeName)
-        steps = merge_steps(steps)
-        for step in steps:
+        merged = merge_steps(steps)
+        for step in merged: # Use merged steps to check if all tasks can run on the server
             serverKey = step['target']
             tasks = step['tasks']
             for taskKey in tasks:
-                if not self.testIfTaskCanRunOnServer({'taskKey': taskKey, 'serverKey': serverKey}):
-                    return False
-        return True
+                v1 = self.testIfTaskCanRunOnServer({'taskKey': taskKey, 'serverKey': serverKey})
+                if v1 and v1.get('errinfo'):
+                    return v1
+        return {}
 
     def runTaskInTerminal(self, params):
         taskKey, uniqueKey = params.get('taskKey'), params.get('uniqueKey')
@@ -819,34 +830,37 @@ class ApiWorkspace(ApiTerminal):
     def callTask(self, params):
         taskKey, serverKey = params.get('taskKey'), params.get('serverKey')
         isCommandMode = params.get('runMode') == 'command'
-        if not self.testIfTaskCanRunOnServer({'taskKey': taskKey, 'serverKey': serverKey}):
+        v1 = self.testIfTaskCanRunOnServer({'taskKey': taskKey, 'serverKey': serverKey})
+        if v1 and v1.get('errinfo'):
             if serverKey in self.combinedConnections:
-                self.combinedConnections[serverKey].onChannelString(tools.colorizeText(LF+'Other tasks are currently running.', 'red'))
-            return {}
+                self.combinedConnections[serverKey].onChannelString(tools.colorizeText(LF+v1.get('errinfo'),'red'))
+            return v1
         return self.taskOnServer(taskKey, serverKey, isCommandMode)
 
     def callPipeline(self, params):
         pipeName = params.get('pipelineName')
         steps = self.getPipelineSteps(pipeName)
-        steps = merge_steps(steps)
+        merged = merge_steps(steps)
         isCommandMode = params.get('runMode') == 'command'
-        for step in steps:
+        for step in merged: # Use merged steps to check if all tasks can run on the server
             serverKey = step['target']
             tasks = step['tasks']
             for taskKey in tasks:
-                if not self.testIfTaskCanRunOnServer({'taskKey': taskKey, 'serverKey': serverKey}):
+                v1 = self.testIfTaskCanRunOnServer({'taskKey': taskKey, 'serverKey': serverKey})
+                if v1 and v1.get('errinfo'):
                     if serverKey in self.combinedConnections:
-                        self.combinedConnections[serverKey].onChannelString(tools.colorizeText(LF+'Other tasks are currently running.', 'red'))
-                    return
+                        self.combinedConnections[serverKey].onChannelString(tools.colorizeText(LF+v1.get('errinfo'), 'red'))
+                    return v1
         logging.info((time.time(), 'execPipeline', pipeName))
         retval = ''
+        # Don't use merged steps for execution, run every step strictly in the set order
         for step in steps:
             serverKey = step['target']
             tasks = step['tasks']
             for taskKey in tasks:
                 time.sleep(0.5)
                 retval += self.taskOnServer(taskKey, serverKey, isCommandMode) or ''
-                while True: # Wait for all tasks on current server to finish
+                while True: # Wait for all tasks on current server and prior servers to finish
                     if serverKey in self.combinedConnections and self.combinedConnections[serverKey].areAllTasksDone():
                         break
                     time.sleep(0.5)

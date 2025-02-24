@@ -19,7 +19,6 @@ html_content = """
 """
 
 def initialize_app():
-    version = '3.10.2'
     # os_info = distro.name(pretty=True) if platform.system() == 'Linux' else platform.platform()
     # Give a user agent including OysapeDesktop, so that the SignIn.jsx in React JS can indicate this is a desktop version.
     # Otherwise, the SignIn.jsx in React JS will execute reloadUserSession because it is not a desktop version as the beginning.
@@ -27,13 +26,13 @@ def initialize_app():
     # clientAgent = f'{os_info} OysapeDesktop/{version}'
 
     # Give the user agnet string depending on the OS
-    clientAgent = tools.get_custom_user_agent(version)
+    clientAgent = tools.get_custom_user_agent(consts.CLIENT_VERSION)
 
     parser = argparse.ArgumentParser(description="Oysape Desktop Entry Point")
     parser.add_argument('--debug', type=bool, help="Debug mode", default=False)
     args = parser.parse_args()
 
-    consts.initVariants(args.debug, version)
+    consts.initVariants(args.debug, consts.CLIENT_VERSION)
 
     apis.apiInstances[webview.token] = apis.ApiDesktop(clientId=webview.token, clientUserAgent=clientAgent)
     if server.start_http_server():

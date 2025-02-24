@@ -8,13 +8,12 @@ def sig_handler(signum, frame):
     raise SystemExit()
 
 if __name__ == '__main__':
-    version = '3.10.2'
     parser = argparse.ArgumentParser(description="Oysape Webhost Entry Point")
     parser.add_argument('--debug', type=bool, help="Debug mode", default=False)
     parser.add_argument('--port', type=int, help="Port", default=19790)
     args = parser.parse_args()
 
-    consts.initVariants(args.debug, version)
+    consts.initVariants(args.debug, consts.CLIENT_VERSION)
 
     signal.signal(signal.SIGTERM, sig_handler)
     if sys.argv and sys.argv[0].find('src/www.py')>=0:

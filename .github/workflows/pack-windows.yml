@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (e.g. v3.10.2)'
+        description: 'Release version (e.g. v3.12.2)'
         required: true
-        default: 'v3.10.2'
+        default: 'v3.12.2'
 
 jobs:
   windows:

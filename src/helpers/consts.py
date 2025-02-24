@@ -19,10 +19,11 @@ __all__ = [
 IS_DEBUG = False
 IS_LOGGING = True
 API_ROOT = '/oyapi'
+CLIENT_VERSION = '3.12.2'
 
 # Variables for local app
 # HOME_ENTRY = 'http://localhost:3000'
-HOME_ENTRY = 'http://127.0.0.1:19790/index.html?v=3.10.2'
+HOME_ENTRY = 'http://127.0.0.1:19790/index.html?v=%s' % CLIENT_VERSION
 
 
 # Variables for server conmunication

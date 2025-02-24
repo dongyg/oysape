@@ -5,7 +5,7 @@ import sched, asyncio
 import threading, os, json, traceback, logging, re
 import time
 
-from . import tools, apis
+from . import tools, apis, consts
 
 schedule_demo = [
     {"title":"Demo schedule task", "type": "interval", "team":"7g8RSa3WaJD0wZNgcGUYPE", "interval": 5, "start": 10, "end": 20, "priority": 1, "action": ":Git pull Oysape @myocipro"},
@@ -168,7 +168,7 @@ def initScheduler(obh, schedule_items):
         teamName = item['tname']
         teamId = item['tid']
         if not teamId in apiSchedulers:
-            apiSchedulers[teamId] = apis.ApiScheduler(clientId='scheduler_for_'+teamId, clientUserAgent='OysapeScheduler/3.10.2')
+            apiSchedulers[teamId] = apis.ApiScheduler(clientId='scheduler_for_'+teamId, clientUserAgent='OysapeScheduler/%s'%consts.CLIENT_VERSION)
             apiSchedulers[teamId].teamId = teamId
             apiSchedulers[teamId].teamName = teamName
         # Load credentials for this webhost

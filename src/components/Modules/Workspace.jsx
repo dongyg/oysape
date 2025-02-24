@@ -40,9 +40,13 @@ export default function WorkspaceTerminal(props) {
         const taskKey = taskInput.task;
         const serverKey = taskInput.server;
         if(!taskKey || !serverKey) return;
+        setTabActiveKey('workspace');
+        setTimeout(() => {
+            xtermRef.current.focus();
+        }, 10);
         callApi('testIfTaskCanRunOnServer', {taskKey: taskKey, serverKey: serverKey}).then(res1 => {
-            if(!res1) {
-                message.warning('Please wait for tasks to finish...');
+            if(res1 && res1.errinfo) {
+                message.warning(res1.errinfo);
                 return;
             }
             // Set the workspace's tab label if workspace is interaction
@@ -51,10 +55,10 @@ export default function WorkspaceTerminal(props) {
             }
             // xtermRef.current.write(showCursor);
             // xtermRef.current.setOption('disableStdin',false);
-            setTabActiveKey('workspace');
-            setTimeout(() => {
-                xtermRef.current.focus();
-            }, 10);
+            // setTabActiveKey('workspace');
+            // setTimeout(() => {
+            //     xtermRef.current.focus();
+            // }, 10);
             // xtermRef.current.write(colorizeText(serverKey, 'cyan', customTheme.type==='light' ? 'white' : 'gray'));
             // const command = taskObj.cmds.join('\r\n');
             // console.log(command);
@@ -70,8 +74,8 @@ export default function WorkspaceTerminal(props) {
     }
     const callPipeline = (pipelineObj) => {
         callApi('testIfPipelineCanRun', {pipelineName:pipelineObj.name}).then(res1 => {
-            if(!res1) {
-                message.warning('Please wait for tasks to finish...');
+            if(res1 && res1.errinfo) {
+                message.warning(res1.errinfo);
                 return;
             }
             const pipelineName = pipelineObj.name;

@@ -255,7 +255,7 @@ class SSHClient:
 
     def updateChannelStatus(self, source):
         # time1 = time.time()
-        # print(time1, source, 'update channel status', end="")
+        # print(time1, self.serverKey, source, 'update channel status', end="", flush=True)
         if self.tty_number:
             ps_current = get_ps(self, self.tty_number)
             if len(ps_current) > len(self.ps_list):
@@ -277,13 +277,13 @@ class SSHClient:
             self.input.append(self.data1)
             if hasattr(self, 'channelCommandStart') and callable(self.channelCommandStart):
                 self.channelCommandStart(self.data1)
-        # print(' done', time.time() - time1, self.channel_available)
+        # print(self.serverKey, 'updateChannelStatus', time.time(), self.channel.recv_ready(), self.channel_available, flush=True)
         self.output = ''
         self.check_ps_source = source
         self.check_ps_time = time.time()
 
     def areAllTasksDone(self):
-        # print(self.shellCacheAuto, self.shellCacheHuman, self.channel_available, self.isChannelIdle())
+        # print(self.serverKey, self.tty_number, self.shellCacheAuto, self.shellCacheHuman, self.channel_available, self.isChannelIdle())
         return len(self.shellCacheAuto) == 0 and len(self.shellCacheHuman) == 0 and self.channel_available and self.isChannelIdle()
 
     def onChannelString(self, string):
@@ -311,7 +311,8 @@ class SSHClient:
                     except:
                         pass
                     # time.sleep(0.01)
-                if self.output and re.findall(pattern, self.output):
+                # if self.output and re.findall(pattern, self.output): # Some commands do not have any output, but are still running.
+                if not self.channel_available:
                     self.updateChannelStatus('recv')
             if self.shellCacheAuto or self.shellCacheHuman:
                 if not self.isChannelActive(): self.openChannel()

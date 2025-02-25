@@ -40,6 +40,10 @@ export default function WorkspaceTerminal(props) {
         const taskKey = taskInput.task;
         const serverKey = taskInput.server;
         if(!taskKey || !serverKey) return;
+        // Set the workspace's tab label if workspace is interaction
+        if(userSession.accesses.terminal) {
+            updateWorkspaceTabTitle(taskObj.interaction==='interactive'||taskObj.interaction==='terminal'?serverKey:'');
+        }
         setTabActiveKey('workspace');
         setTimeout(() => {
             xtermRef.current.focus();
@@ -49,16 +53,8 @@ export default function WorkspaceTerminal(props) {
                 message.warning(res1.errinfo);
                 return;
             }
-            // Set the workspace's tab label if workspace is interaction
-            if(userSession.accesses.terminal) {
-                updateWorkspaceTabTitle(taskObj.interaction==='interactive'||taskObj.interaction==='terminal'?serverKey:'');
-            }
             // xtermRef.current.write(showCursor);
             // xtermRef.current.setOption('disableStdin',false);
-            // setTabActiveKey('workspace');
-            // setTimeout(() => {
-            //     xtermRef.current.focus();
-            // }, 10);
             // xtermRef.current.write(colorizeText(serverKey, 'cyan', customTheme.type==='light' ? 'white' : 'gray'));
             // const command = taskObj.cmds.join('\r\n');
             // console.log(command);
@@ -73,15 +69,17 @@ export default function WorkspaceTerminal(props) {
         }).catch(err => {});
     }
     const callPipeline = (pipelineObj) => {
+        updateWorkspaceTabTitle('');
+        setTabActiveKey('workspace');
+        setTimeout(() => {
+            xtermRef.current.focus();
+        }, 10);
         callApi('testIfPipelineCanRun', {pipelineName:pipelineObj.name}).then(res1 => {
             if(res1 && res1.errinfo) {
                 message.warning(res1.errinfo);
                 return;
             }
             const pipelineName = pipelineObj.name;
-            updateWorkspaceTabTitle('');
-            setTabActiveKey('workspace');
-            xtermRef.current.focus();
             xtermRef.current.write('\r\n\r\n'+colorizeText('Pipeline: '+pipelineName, 'green', customTheme.type==='light' ? 'white' : 'gray'));
             callApi('setTheme', {type:customTheme.type}).then((data) => {}); // To ensure the theme is set on backend
             callApi('callPipeline', {pipelineName:pipelineName}).then(res2 => {}).catch(err => {});
